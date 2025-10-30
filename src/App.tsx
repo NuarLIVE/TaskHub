@@ -48,46 +48,58 @@ function App() {
 
   if (route === '/') {
     Page = HomePage;
-  } else if (route === '/login') {
+  } else if (route === '/auth/login' || route === '/login') {
     Page = LoginPage;
-  } else if (route === '/register') {
+  } else if (route === '/auth/register' || route === '/register') {
     Page = RegisterPage;
   } else if (route === '/onboarding') {
     Page = OnboardingPage;
-  } else if (route === '/profile') {
+  } else if (route === '/me' || route === '/profile') {
     Page = ProfilePage;
-  } else if (route === '/market') {
-    Page = MarketPage;
-  } else if (route === '/order/new') {
-    Page = OrderCreatePage;
-  } else if (route === '/task/new') {
-    Page = TaskCreatePage;
-  } else if (route.startsWith('/orders/')) {
-    Page = OrderDetailPage;
-  } else if (route.startsWith('/tasks/')) {
-    Page = TaskDetailPage;
-  } else if (route === '/proposals') {
-    Page = ProposalsPage;
-  } else if (route.startsWith('/messages')) {
-    Page = MessagesPage;
-  } else if (route.startsWith('/deal/')) {
-    Page = DealPage;
-  } else if (route === '/wallet') {
-    Page = WalletPage;
-  } else if (route === '/talents') {
-    Page = TalentsPage;
-  } else if (route === '/notifications') {
-    Page = NotificationsPage;
-  } else if (route === '/saved') {
-    Page = SavedPage;
-  } else if (route.startsWith('/disputes')) {
-    Page = DisputesPage;
+  } else if (route === '/me/edit') {
+    Page = ProfilePage;
   } else if (route === '/me/orders') {
     Page = MyOrdersPage;
   } else if (route === '/me/deals') {
     Page = MyDealsPage;
   } else if (route === '/me/portfolio') {
     Page = ProfilePage;
+  } else if (route === '/orders') {
+    Page = MarketPage;
+  } else if (route === '/orders/create' || route === '/order/new') {
+    Page = OrderCreatePage;
+  } else if (route.startsWith('/orders/')) {
+    Page = OrderDetailPage;
+  } else if (route === '/tasks') {
+    Page = MarketPage;
+  } else if (route === '/tasks/create' || route === '/task/new') {
+    Page = TaskCreatePage;
+  } else if (route.startsWith('/tasks/')) {
+    Page = TaskDetailPage;
+  } else if (route === '/proposals') {
+    Page = ProposalsPage;
+  } else if (route.startsWith('/messages/')) {
+    Page = MessagesPage;
+  } else if (route === '/messages') {
+    Page = MessagesPage;
+  } else if (route.startsWith('/deal/')) {
+    Page = DealPage;
+  } else if (route === '/wallet') {
+    Page = WalletPage;
+  } else if (route === '/reviews') {
+    Page = ProfilePage;
+  } else if (route === '/talents') {
+    Page = TalentsPage;
+  } else if (route.startsWith('/u/')) {
+    Page = ProfilePage;
+  } else if (route === '/notifications') {
+    Page = NotificationsPage;
+  } else if (route === '/saved') {
+    Page = SavedPage;
+  } else if (route.startsWith('/disputes/')) {
+    Page = DisputesPage;
+  } else if (route === '/disputes') {
+    Page = DisputesPage;
   } else if (route === '/settings/profile') {
     Page = SettingsProfilePage;
   } else if (route === '/settings/security') {
@@ -106,11 +118,15 @@ function App() {
     Page = FAQPage;
   } else if (route === '/contact') {
     Page = ContactPage;
+  } else if (route === '/market') {
+    Page = MarketPage;
+  } else if (route === '/404') {
+    Page = NotFoundPage;
   } else {
     Page = NotFoundPage;
   }
 
-  const isAuthPage = route === '/login' || route === '/register' || route === '/onboarding';
+  const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding';
 
   return (
     <div className="min-h-screen bg-background text-foreground">
