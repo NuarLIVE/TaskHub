@@ -145,7 +145,7 @@ function Categories() {
                 <div className="p-2 rounded-xl bg-[#EFFFF8]">{c.icon}</div>
                 <CardTitle className="text-lg">{c.title}</CardTitle>
               </CardHeader>
-              <CardContent className="pt-0 text-[#3F7F6E]">{c.desc}</CardContent>
+              <CardContent className="px-6 pb-6 text-[#3F7F6E]">{c.desc}</CardContent>
             </Card>
           </motion.div>
         ))}
@@ -220,12 +220,10 @@ function HowItWorks() {
 
 function Sponsors() {
   return (
-    <section className="border-y">
+    <section className="border-y bg-[#EFFFF8]/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex items-center justify-between gap-6 overflow-x-auto">
-          {sponsors.map((s) => (
-            <img key={s.name} src={s.logo} alt={s.name} className="h-8 opacity-70 hover:opacity-100 transition" />
-          ))}
+        <div className="flex items-center justify-center">
+          <p className="text-2xl font-bold tracking-tight text-center">Здесь платят за результат, а не за обещания!</p>
         </div>
       </div>
     </section>

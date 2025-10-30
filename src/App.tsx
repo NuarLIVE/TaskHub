@@ -6,6 +6,8 @@ import ProfilePage from './pages/ProfilePage';
 import OrderCreatePage from './pages/OrderCreatePage';
 import TaskCreatePage from './pages/TaskCreatePage';
 import MarketPage from './pages/MarketPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 function App() {
   const [route, setRoute] = useState(window.location.hash.slice(1) || '/');
@@ -37,15 +39,10 @@ function App() {
       Page = MarketPage;
       break;
     case '/login':
+      Page = LoginPage;
+      break;
     case '/register':
-      Page = () => (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">{route === '/login' ? 'Вход' : 'Регистрация'}</h2>
-            <p className="text-[#3F7F6E]">Эта страница ещё в разработке</p>
-          </div>
-        </div>
-      );
+      Page = RegisterPage;
       break;
     default:
       Page = () => (
@@ -59,11 +56,13 @@ function App() {
       );
   }
 
+  const isAuthPage = route === '/login' || route === '/register';
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <NavBar />
+      {!isAuthPage && <NavBar />}
       <Page />
-      <Footer />
+      {!isAuthPage && <Footer />}
     </div>
   );
 }
