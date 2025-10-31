@@ -47,7 +47,7 @@ CardTitle.displayName = 'CardTitle';
 export const CardContent = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`${className}`} {...props}>
+      <div ref={ref} className={`p-6 ${className}`} {...props}>
         {children}
       </div>
     );

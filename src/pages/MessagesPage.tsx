@@ -9,13 +9,38 @@ const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 },
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function MessagesPage() {
+  const params = new URLSearchParams(window.location.hash.split('?')[1]);
+  const newUserSlug = params.get('to');
+
+  const [threads, setThreads] = useState([
+    { id: 1, user: 'NovaTech', avatar: 'https://i.pravatar.cc/64?img=12', lastMessage: 'Когда сможете начать?', time: '10:30', unread: 2 },
+    { id: 2, user: 'AppNest', avatar: 'https://i.pravatar.cc/64?img=22', lastMessage: 'Спасибо за работу!', time: 'Вчера', unread: 0 }
+  ]);
+
   const [selectedThread, setSelectedThread] = useState(1);
   const [message, setMessage] = useState('');
 
-  const threads = [
-    { id: 1, user: 'NovaTech', avatar: 'https://i.pravatar.cc/64?img=12', lastMessage: 'Когда сможете начать?', time: '10:30', unread: 2 },
-    { id: 2, user: 'AppNest', avatar: 'https://i.pravatar.cc/64?img=22', lastMessage: 'Спасибо за работу!', time: 'Вчера', unread: 0 }
-  ];
+  React.useEffect(() => {
+    if (newUserSlug) {
+      const userName = newUserSlug.charAt(0).toUpperCase() + newUserSlug.slice(1);
+      const existingThread = threads.find(t => t.user.toLowerCase() === newUserSlug.toLowerCase());
+
+      if (!existingThread) {
+        const newThread = {
+          id: threads.length + 1,
+          user: userName,
+          avatar: `https://i.pravatar.cc/64?img=${Math.floor(Math.random() * 70)}`,
+          lastMessage: 'Новый чат',
+          time: 'Сейчас',
+          unread: 0
+        };
+        setThreads([newThread, ...threads]);
+        setSelectedThread(newThread.id);
+      } else {
+        setSelectedThread(existingThread.id);
+      }
+    }
+  }, [newUserSlug]);
 
   const allMessages: Record<number, Array<{id: number, sender: string, text: string, time: string, isOwn: boolean}>> = {
     1: [
