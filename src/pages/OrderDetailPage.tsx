@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, MapPin, DollarSign, Calendar, Send } from 'lucide-react';
+import { Clock, MapPin, DollarSign, Calendar, Send, Handshake, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import FavoriteButton from '@/components/ui/FavoriteButton';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -68,6 +69,7 @@ export default function OrderDetailPage() {
                         ))}
                       </div>
                     </div>
+                    <FavoriteButton itemId={order.id} itemType="order" />
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-6">
@@ -92,6 +94,27 @@ export default function OrderDetailPage() {
                     <div className="flex items-center gap-2 text-[#3F7F6E]">
                       <span>{order.views} просмотров</span>
                     </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 pt-4">
+                    <Button asChild>
+                      <a href={`#/proposals/create?type=order&id=${order.id}`}>
+                        <Send className="h-4 w-4 mr-2" />
+                        Откликнуться
+                      </a>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <a href={`#/deal/open?type=order&id=${order.id}`}>
+                        <Handshake className="h-4 w-4 mr-2" />
+                        Открыть сделку
+                      </a>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <a href={`#/messages?to=${order.author.name.toLowerCase()}`}>
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Написать
+                      </a>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

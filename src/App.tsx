@@ -12,6 +12,11 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import TaskDetailPage from './pages/TaskDetailPage';
 import ProposalsPage from './pages/ProposalsPage';
 import MessagesPage from './pages/MessagesPage';
+import NotFound from './pages/NotFound';
+import ProposalsCreate from './pages/proposals/Create';
+import PublicProfile from './pages/users/PublicProfile';
+import PortfolioAdd from './pages/me/PortfolioAdd';
+import DealOpen from './pages/deal/Open';
 import {
   DealPage,
   WalletPage,
@@ -64,6 +69,8 @@ function App() {
     Page = MyDealsPage;
   } else if (route === '/me/portfolio') {
     Page = ProfilePage;
+  } else if (route.startsWith('/me/portfolio/add')) {
+    Page = PortfolioAdd;
   } else if (route === '/orders') {
     Page = MarketPage;
   } else if (route === '/orders/create' || route === '/order/new') {
@@ -78,10 +85,14 @@ function App() {
     Page = TaskDetailPage;
   } else if (route === '/proposals') {
     Page = ProposalsPage;
+  } else if (route.startsWith('/proposals/create')) {
+    Page = ProposalsCreate;
   } else if (route.startsWith('/messages/')) {
     Page = MessagesPage;
   } else if (route === '/messages') {
     Page = MessagesPage;
+  } else if (route.startsWith('/deal/open')) {
+    Page = DealOpen;
   } else if (route.startsWith('/deal/')) {
     Page = DealPage;
   } else if (route === '/wallet') {
@@ -91,7 +102,7 @@ function App() {
   } else if (route === '/talents') {
     Page = TalentsPage;
   } else if (route.startsWith('/u/')) {
-    Page = ProfilePage;
+    Page = PublicProfile;
   } else if (route === '/notifications') {
     Page = NotificationsPage;
   } else if (route === '/saved') {
@@ -121,9 +132,9 @@ function App() {
   } else if (route === '/market') {
     Page = MarketPage;
   } else if (route === '/404') {
-    Page = NotFoundPage;
+    Page = NotFound;
   } else {
-    Page = NotFoundPage;
+    Page = NotFound;
   }
 
   const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding';

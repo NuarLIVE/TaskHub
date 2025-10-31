@@ -4,6 +4,7 @@ import { Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -84,6 +85,17 @@ export default function LoginPage() {
                 </div>
 
                 <Button type="submit" className="w-full h-11">Войти</Button>
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-[#6FE7C8]/20"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-background px-4 text-[#3F7F6E]">или</span>
+                  </div>
+                </div>
+
+                <GoogleAuthButton mode="login" />
 
                 <div className="text-center text-sm text-[#3F7F6E]">
                   Нет аккаунта?{' '}

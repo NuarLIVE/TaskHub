@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Star, CheckCircle, Send } from 'lucide-react';
+import { Clock, Star, CheckCircle, Send, Handshake, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import FavoriteButton from '@/components/ui/FavoriteButton';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -44,12 +45,17 @@ export default function TaskDetailPage() {
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-2xl mb-3">{task.title}</CardTitle>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">{task.category}</Badge>
-                    {task.tags.map((tag) => (
-                      <Badge key={tag} variant="outline">{tag}</Badge>
-                    ))}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <CardTitle className="text-2xl mb-3">{task.title}</CardTitle>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary">{task.category}</Badge>
+                        {task.tags.map((tag) => (
+                          <Badge key={tag} variant="outline">{tag}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <FavoriteButton itemId={task.id} itemType="task" />
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-6">
@@ -87,6 +93,26 @@ export default function TaskDetailPage() {
                       <div className="font-semibold">{task.currency}</div>
                     </div>
                   </div>
+
+                  <div className="flex flex-wrap gap-3 pt-4">
+                    <Button asChild>
+                      <a href={`#/deal/open?type=task&id=${task.id}`}>
+                        <Handshake className="h-4 w-4 mr-2" />
+                        Заказать услугу
+                      </a>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <a href={`#/messages?to=${task.author.name.toLowerCase()}`}>
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Написать
+                      </a>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <a href={`#/u/${task.author.name.toLowerCase()}`}>
+                        Посмотреть профиль
+                      </a>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -117,11 +143,17 @@ export default function TaskDetailPage() {
                       <div className="font-semibold">{task.author.rating}</div>
                     </div>
                   </div>
-                  <Button className="w-full">
-                    <Send className="h-4 w-4 mr-2" />
-                    Заказать услугу
+                  <Button asChild className="w-full">
+                    <a href={`#/deal/open?type=task&id=${task.id}`}>
+                      <Send className="h-4 w-4 mr-2" />
+                      Заказать услугу
+                    </a>
                   </Button>
-                  <Button variant="secondary" className="w-full">Написать сообщение</Button>
+                  <Button asChild variant="secondary" className="w-full">
+                    <a href={`#/messages?to=${task.author.name.toLowerCase()}`}>
+                      Написать сообщение
+                    </a>
+                  </Button>
                 </CardContent>
               </Card>
             </div>
