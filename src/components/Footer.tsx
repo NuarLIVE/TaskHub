@@ -6,21 +6,26 @@ const FOOTER_LINKS = {
     { href: '#/orders', label: 'Заказы' },
     { href: '#/tasks', label: 'Объявления' },
     { href: '#/talents', label: 'Исполнители' },
-    { href: '#/proposals', label: 'Отклики' }
+    { href: '#/proposals', label: 'Отклики' },
+    { href: '#/proposals/create', label: 'Создать отклик' }
   ],
   account: [
     { href: '#/me', label: 'Профиль' },
+    { href: '#/me/edit', label: 'Редактировать профиль' },
     { href: '#/wallet', label: 'Кошелёк' },
     { href: '#/messages', label: 'Сообщения' },
     { href: '#/notifications', label: 'Уведомления' },
-    { href: '#/saved', label: 'Сохранённые' }
+    { href: '#/saved', label: 'Сохранённые' },
+    { href: '#/reviews', label: 'Отзывы' }
   ],
   create: [
     { href: '#/orders/create', label: 'Создать заказ' },
     { href: '#/tasks/create', label: 'Создать объявление' },
     { href: '#/me/portfolio', label: 'Портфолио' },
+    { href: '#/me/portfolio/add', label: 'Добавить в портфолио' },
     { href: '#/me/orders', label: 'Мои заказы' },
-    { href: '#/me/deals', label: 'Мои сделки' }
+    { href: '#/me/deals', label: 'Мои сделки' },
+    { href: '#/deal/open', label: 'Открыть сделку' }
   ],
   support: [
     { href: '#/faq', label: 'FAQ' },
