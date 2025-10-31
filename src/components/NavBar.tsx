@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Menu, X } from 'lucide-react';
+import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_LINKS = [
   { href: '#/orders', label: 'Заказы' },
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -65,19 +67,39 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            className="hidden sm:inline-flex"
-          >
-            <a href="#/auth/login">Войти</a>
-          </Button>
-          <Button
-            asChild
-            className="hidden sm:inline-flex"
-          >
-            <a href="#/auth/register">Зарегистрироваться</a>
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <div className="hidden sm:flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-[#6FE7C8]" />
+                <span className="font-medium">{user?.profile?.name}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="hidden sm:inline-flex"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Выход
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                className="hidden sm:inline-flex"
+              >
+                <a href="#/login">Войти</a>
+              </Button>
+              <Button
+                asChild
+                className="hidden sm:inline-flex"
+              >
+                <a href="#/register">Зарегистрироваться</a>
+              </Button>
+            </>
+          )}
 
           <Button
             variant="ghost"
@@ -107,18 +129,36 @@ export default function NavBar() {
               </a>
             ))}
             <div className="pt-3 space-y-2 border-t border-[#6FE7C8]/20">
-              <a
-                href="#/auth/login"
-                className="block px-3 py-2 rounded-md text-sm font-medium text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground"
-              >
-                Войти
-              </a>
-              <a
-                href="#/auth/register"
-                className="block px-3 py-2 rounded-md text-sm font-medium bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]"
-              >
-                Зарегистрироваться
-              </a>
+              {isAuthenticated ? (
+                <>
+                  <div className="px-3 py-2 text-sm font-medium text-[#3F7F6E] flex items-center gap-2">
+                    <User className="h-4 w-4 text-[#6FE7C8]" />
+                    {user?.profile?.name}
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4 inline mr-2" />
+                    Выход
+                  </button>
+                </>
+              ) : (
+                <>
+                  <a
+                    href="#/login"
+                    className="block px-3 py-2 rounded-md text-sm font-medium text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground"
+                  >
+                    Войти
+                  </a>
+                  <a
+                    href="#/register"
+                    className="block px-3 py-2 rounded-md text-sm font-medium bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]"
+                  >
+                    Зарегистрироваться
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </div>

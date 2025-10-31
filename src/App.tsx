@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AuthProvider } from './contexts/AuthContext';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -140,11 +141,13 @@ function App() {
   const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding';
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {!isAuthPage && <NavBar />}
-      <Page />
-      {!isAuthPage && <Footer />}
-    </div>
+    <AuthProvider>
+      <div className="min-h-screen bg-background text-foreground">
+        {!isAuthPage && <NavBar />}
+        <Page />
+        {!isAuthPage && <Footer />}
+      </div>
+    </AuthProvider>
   );
 }
 

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -19,16 +20,45 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('freelancer');
+  const [role, setRole] = useState('FREELANCER');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { register } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
     if (password !== confirmPassword) {
-      alert('Пароли не совпадают');
+      setError('Пароли не совпадают');
       return;
     }
-    console.log('Register attempt:', { name, email, password, role });
-    alert('Регистрация успешна (демо)');
+
+    if (password.length < 8) {
+      setError('Пароль должен содержать минимум 8 символов');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await register({
+        email,
+        password,
+        name,
+        role: role as 'CLIENT' | 'FREELANCER',
+      });
+
+      if (result.success) {
+        window.location.hash = '/';
+      } else {
+        setError(result.error || 'Ошибка регистрации');
+      }
+    } catch (err) {
+      setError('Произошла ошибка. Попробуйте позже.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,6 +81,13 @@ export default function RegisterPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="grid gap-4">
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">{error}</span>
+                  </div>
+                )}
+
                 <div className="grid gap-2">
                   <label htmlFor="name" className="text-sm font-medium">Имя</label>
                   <div className="relative">
@@ -63,6 +100,7 @@ export default function RegisterPage() {
                       onChange={(e) => setName(e.target.value)}
                       className="pl-9 h-11"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -79,12 +117,13 @@ export default function RegisterPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-9 h-11"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
 
                 <div className="grid gap-2">
-                  <label htmlFor="password" className="text-sm font-medium">Пароль</label>
+                  <label htmlFor="password" className="text-sm font-medium">Пароль (минимум 8 символов)</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
                     <Input
@@ -95,6 +134,8 @@ export default function RegisterPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-9 h-11"
                       required
+                      minLength={8}
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -111,6 +152,7 @@ export default function RegisterPage() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="pl-9 h-11"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -122,18 +164,21 @@ export default function RegisterPage() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     className="h-11 rounded-md border px-3 bg-background"
+                    disabled={loading}
                   >
-                    <option value="freelancer">Фрилансер</option>
-                    <option value="client">Заказчик</option>
+                    <option value="FREELANCER">Фрилансер</option>
+                    <option value="CLIENT">Заказчик</option>
                   </select>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="h-4 w-4" required />
+                  <input type="checkbox" className="h-4 w-4" required disabled={loading} />
                   <span>Я принимаю условия использования и политику конфиденциальности</span>
                 </label>
 
-                <Button type="submit" className="w-full h-11">Зарегистрироваться</Button>
+                <Button type="submit" className="w-full h-11" disabled={loading}>
+                  {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                </Button>
 
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
