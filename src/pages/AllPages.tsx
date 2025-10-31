@@ -126,7 +126,7 @@ export function TalentsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {talents.map((t) => (
             <Card key={t.id}>
-              <CardContent className="p-6 grid gap-4 text-center">
+              <CardContent className="grid gap-4 text-center">
                 <img src={t.avatar} alt={t.name} className="h-20 w-20 rounded-full object-cover mx-auto" />
                 <div>
                   <div className="font-semibold text-lg">{t.name}</div>
@@ -189,7 +189,7 @@ export function SavedPage() {
         <div className="grid gap-4">
           {saved.map((s) => (
             <Card key={s.id}>
-              <CardContent className="p-6 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between">
                 <div>
                   <Badge variant="secondary" className="mb-2">{s.type === 'order' ? 'Заказ' : 'Task'}</Badge>
                   <div className="font-semibold">{s.title}</div>
@@ -217,7 +217,7 @@ export function DisputesPage() {
         <div className="grid gap-4">
           {disputes.map((d) => (
             <Card key={d.id}>
-              <CardContent className="p-6 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold">{d.title}</div>
                   <div className="text-sm text-[#3F7F6E]">Открыт: {d.date}</div>
@@ -248,7 +248,7 @@ export function MyOrdersPage() {
         <div className="grid gap-4">
           {orders.map((o) => (
             <Card key={o.id}>
-              <CardContent className="p-6 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold">{o.title}</div>
                   <div className="text-sm text-[#3F7F6E]">{o.proposals} откликов • {o.date}</div>
@@ -279,7 +279,7 @@ export function MyDealsPage() {
         <div className="grid gap-4">
           {deals.map((d) => (
             <Card key={d.id}>
-              <CardContent className="p-6 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold">{d.title}</div>
                   <div className="text-sm text-[#3F7F6E]">Клиент: {d.client} • ${d.price}</div>
@@ -303,7 +303,7 @@ export function SettingsProfilePage() {
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl font-bold mb-6">Настройки профиля</h1>
         <Card>
-          <CardContent className="p-6 grid gap-4">
+          <CardContent className="grid gap-4">
             <div className="grid gap-2"><label className="text-sm font-medium">Имя</label><Input defaultValue="Mickey" /></div>
             <div className="grid gap-2"><label className="text-sm font-medium">Email</label><Input type="email" defaultValue="mickey@example.com" /></div>
             <div className="grid gap-2"><label className="text-sm font-medium">Телефон</label><Input defaultValue="+7 777 123 4567" /></div>
@@ -321,7 +321,7 @@ export function SettingsSecurityPage() {
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl font-bold mb-6">Безопасность</h1>
         <Card>
-          <CardContent className="p-6 grid gap-4">
+          <CardContent className="grid gap-4">
             <div className="grid gap-2"><label className="text-sm font-medium">Текущий пароль</label><Input type="password" /></div>
             <div className="grid gap-2"><label className="text-sm font-medium">Новый пароль</label><Input type="password" /></div>
             <div className="grid gap-2"><label className="text-sm font-medium">Подтвердите пароль</label><Input type="password" /></div>
@@ -368,10 +368,10 @@ export function AdminPage() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl font-bold mb-6">Админ-панель</h1>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card><CardContent className="p-6"><div className="text-sm text-[#3F7F6E] mb-1">Пользователей</div><div className="text-2xl font-bold">1,234</div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="text-sm text-[#3F7F6E] mb-1">Заказов</div><div className="text-2xl font-bold">456</div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="text-sm text-[#3F7F6E] mb-1">Сделок</div><div className="text-2xl font-bold">789</div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="text-sm text-[#3F7F6E] mb-1">Оборот</div><div className="text-2xl font-bold">$45K</div></CardContent></Card>
+          <Card><CardContent><div className="text-sm text-[#3F7F6E] mb-1">Пользователей</div><div className="text-2xl font-bold">1,234</div></CardContent></Card>
+          <Card><CardContent><div className="text-sm text-[#3F7F6E] mb-1">Заказов</div><div className="text-2xl font-bold">456</div></CardContent></Card>
+          <Card><CardContent><div className="text-sm text-[#3F7F6E] mb-1">Сделок</div><div className="text-2xl font-bold">789</div></CardContent></Card>
+          <Card><CardContent><div className="text-sm text-[#3F7F6E] mb-1">Оборот</div><div className="text-2xl font-bold">$45K</div></CardContent></Card>
         </div>
       </section>
     </motion.div>

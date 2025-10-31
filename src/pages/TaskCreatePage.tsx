@@ -44,7 +44,7 @@ export default function TaskCreatePage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Новый Task (предложение фрилансера)</h1>
           <form className="grid gap-4" onSubmit={onSubmit}>
             <Card>
-              <CardContent className="p-6 grid gap-4">
+              <CardContent className="grid gap-4">
                 <Field label="Название">
                   <Input name="title" placeholder="Сделаю адаптивный лендинг на React / Next" required className="h-11" />
                 </Field>

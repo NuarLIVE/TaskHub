@@ -81,7 +81,7 @@ export default function ProposalsPage() {
         <div className="grid gap-4">
           {proposals.map((proposal) => (
             <Card key={proposal.id}>
-              <CardContent className="p-6">
+              <CardContent>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
