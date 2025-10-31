@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, CheckCircle, X } from 'lucide-react';
+import { Clock, CheckCircle, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -15,6 +16,8 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 
 export default function ProposalsPage() {
   const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<any>(null);
 
   const handleAccept = (proposalId: number) => {
     alert(`Отклик #${proposalId} принят! Переходим к открытию сделки...`);
@@ -29,15 +32,20 @@ export default function ProposalsPage() {
     }
   };
 
+  const showDetails = (proposal: any) => {
+    setSelectedProposal(proposal);
+    setDetailsOpen(true);
+  };
+
   const sentProposals = [
-    { id: 1, order: 'Лендинг на React для стартапа', price: 650, status: 'pending', date: '2025-10-25', client: 'NovaTech' },
-    { id: 2, order: 'Редизайн мобильного приложения', price: 950, status: 'accepted', date: '2025-10-23', client: 'AppNest' },
-    { id: 3, order: 'UX-аудит дашборда', price: 600, status: 'rejected', date: '2025-10-20', client: 'Metricly' }
+    { id: 1, order: 'Лендинг на React для стартапа', price: 650, days: 10, status: 'pending', date: '2025-10-25', client: 'NovaTech', message: 'Здравствуйте! Готов взяться за проект. Имею опыт создания лендингов на React с использованием современных технологий. Могу предложить адаптивную вёрстку и оптимизацию производительности.' },
+    { id: 2, order: 'Редизайн мобильного приложения', price: 950, days: 14, status: 'accepted', date: '2025-10-23', client: 'AppNest', message: 'Добрый день! Изучил требования к редизайну. Предлагаю современный UI/UX с акцентом на пользовательский опыт.' },
+    { id: 3, order: 'UX-аудит дашборда', price: 600, days: 7, status: 'rejected', date: '2025-10-20', client: 'Metricly', message: 'Здравствуйте! Проведу полный UX-аудит с рекомендациями по улучшению интерфейса.' }
   ];
 
   const receivedProposals = [
-    { id: 4, freelancer: 'John Doe', task: 'Unity прототип', price: 1200, status: 'pending', date: '2025-10-26', avatar: 'https://i.pravatar.cc/64?img=15' },
-    { id: 5, freelancer: 'Jane Smith', task: 'Unity прототип', price: 950, status: 'pending', date: '2025-10-25', avatar: 'https://i.pravatar.cc/64?img=20' }
+    { id: 4, freelancer: 'John Doe', freelancerSlug: 'johndoe', task: 'Unity прототип', price: 1200, days: 15, status: 'pending', date: '2025-10-26', avatar: 'https://i.pravatar.cc/64?img=15', message: 'Привет! Я Unity разработчик с 3+ годами опыта. Создам прототип по вашим требованиям с качественным кодом и документацией. Готов предоставить регулярные апдейты процесса разработки.' },
+    { id: 5, freelancer: 'Jane Smith', freelancerSlug: 'janesmith', task: 'Unity прототип', price: 950, days: 12, status: 'pending', date: '2025-10-25', avatar: 'https://i.pravatar.cc/64?img=20', message: 'Здравствуйте! Опытный Unity разработчик. Работала над множеством прототипов и готова реализовать ваш проект качественно и в срок. Использую лучшие практики разработки.' }
   ];
 
   const proposals = activeTab === 'sent' ? sentProposals : receivedProposals;
@@ -78,7 +86,9 @@ export default function ProposalsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       {activeTab === 'received' && (
-                        <img src={proposal.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+                        <a href={`#/u/${proposal.freelancerSlug}`} className="hover:opacity-80 transition">
+                          <img src={proposal.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+                        </a>
                       )}
                       <div>
                         <div className="font-semibold">
@@ -111,7 +121,7 @@ export default function ProposalsPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" variant="ghost">Подробнее</Button>
+                    <Button size="sm" variant="ghost" onClick={() => showDetails(proposal)}>Подробнее</Button>
                   </div>
                 </div>
               </CardContent>
@@ -119,6 +129,79 @@ export default function ProposalsPage() {
           ))}
         </div>
       </section>
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          {selectedProposal && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  Детали отклика #{selectedProposal.id}
+                </DialogTitle>
+                <DialogDescription>
+                  {activeTab === 'sent' ? `Заказ: ${selectedProposal.order}` : `Исполнитель: ${selectedProposal.freelancer}`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                {activeTab === 'received' && (
+                  <div className="flex items-center gap-3 p-3 bg-[#EFFFF8] rounded-lg">
+                    <a href={`#/u/${selectedProposal.freelancerSlug}`} className="hover:opacity-80 transition">
+                      <img src={selectedProposal.avatar} alt={selectedProposal.freelancer} className="h-12 w-12 rounded-full object-cover" />
+                    </a>
+                    <div>
+                      <a href={`#/u/${selectedProposal.freelancerSlug}`} className="font-semibold hover:opacity-80 transition">
+                        {selectedProposal.freelancer}
+                      </a>
+                      <div className="text-sm text-[#3F7F6E]">Задача: {selectedProposal.task}</div>
+                    </div>
+                  </div>
+                )}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-[#3F7F6E] mb-1">Цена</div>
+                    <div className="text-2xl font-bold">${selectedProposal.price}</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium text-[#3F7F6E] mb-1">Срок выполнения</div>
+                    <div className="text-2xl font-bold">{selectedProposal.days} дней</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-2">Сообщение</div>
+                  <div className="p-4 bg-[#EFFFF8] rounded-lg text-sm text-[#3F7F6E]">
+                    {selectedProposal.message}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-[#3F7F6E]">Дата отправки: </span>
+                    <span className="font-medium">{selectedProposal.date}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#3F7F6E]">Статус: </span>
+                    {getStatusBadge(selectedProposal.status)}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDetailsOpen(false)}>Закрыть</Button>
+                {activeTab === 'received' && selectedProposal.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => { setDetailsOpen(false); handleReject(selectedProposal.id); }}>
+                      <X className="h-4 w-4 mr-1" />
+                      Отклонить
+                    </Button>
+                    <Button onClick={() => { setDetailsOpen(false); handleAccept(selectedProposal.id); }}>
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Принять
+                    </Button>
+                  </div>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

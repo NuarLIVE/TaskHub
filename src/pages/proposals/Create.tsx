@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, X, Paperclip } from 'lucide-react';
+import { Send, X, Paperclip, Briefcase, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
@@ -18,11 +19,22 @@ export default function ProposalsCreate() {
   const type = params.get('type') || 'order';
   const id = params.get('id') || '1';
 
+  const orderData = {
+    id: id,
+    title: type === 'order' ? 'Лендинг на React для стартапа' : 'Unity прототип',
+    description: type === 'order'
+      ? 'Нужен современный лендинг на React с адаптивной вёрсткой и интеграцией с API. Дизайн готов.'
+      : 'Создание игрового прототипа на Unity. Требуется опыт разработки 2D/3D игр.',
+    budget: type === 'order' ? '$600-800' : '$1000',
+    tags: type === 'order' ? ['React', 'Landing', 'Responsive'] : ['Unity', 'Game Dev', 'Prototype'],
+    author: { name: 'NovaTech', avatar: 'https://i.pravatar.cc/64?img=12' }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Proposal submitted:', { type, id, price, days, message, attachment });
     alert('Отклик отправлен (демо)');
-    window.location.hash = '/proposals';
+    window.location.hash = '/';
   };
 
   const handleCancel = () => {
@@ -41,13 +53,43 @@ export default function ProposalsCreate() {
     >
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl font-bold mb-6">
-          Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'} #{id}
+          Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'}
         </h1>
+
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle className="flex items-center gap-2">
+                  {type === 'order' ? <Briefcase className="h-5 w-5" /> : <Tag className="h-5 w-5" />}
+                  {orderData.title}
+                </CardTitle>
+                <p className="text-sm text-[#3F7F6E] mt-2">{orderData.description}</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <a href={`#/u/${orderData.author.name.toLowerCase()}`} className="flex items-center gap-2 hover:opacity-80 transition">
+                  <img src={orderData.author.avatar} alt={orderData.author.name} className="h-8 w-8 rounded-full" />
+                  <span className="text-sm font-medium">{orderData.author.name}</span>
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">{orderData.budget}</span>
+                {orderData.tags.map(tag => (
+                  <Badge key={tag} variant="outline">{tag}</Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="mb-4 p-4 rounded-lg bg-[#EFFFF8] border border-[#6FE7C8]/20">
           <p className="text-sm text-[#3F7F6E]">
-            После отправки отклика заказчик получит уведомление и сможет просмотреть ваше предложение.
-            Если ваш отклик подойдёт, заказчик сможет принять его и начать сделку.
+            После отправки отклика {type === 'order' ? 'заказчик' : 'автор объявления'} получит уведомление и сможет просмотреть ваше предложение.
+            Если ваш отклик подойдёт, {type === 'order' ? 'заказчик' : 'автор'} сможет принять его и начать сделку.
           </p>
         </div>
 
