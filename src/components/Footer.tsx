@@ -32,7 +32,8 @@ const FOOTER_LINKS = {
     { href: '#/contact', label: 'Контакты' },
     { href: '#/terms', label: 'Условия использования' },
     { href: '#/privacy', label: 'Конфиденциальность' },
-    { href: '#/disputes', label: 'Споры' }
+    { href: '#/disputes', label: 'Споры' },
+    { href: '#/404', label: 'Страница 404' }
   ],
   settings: [
     { href: '#/settings/profile', label: 'Настройки профиля' },

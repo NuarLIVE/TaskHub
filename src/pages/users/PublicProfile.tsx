@@ -4,6 +4,7 @@ import { MapPin, Star, Briefcase, MessageCircle, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import FavoriteButton from '@/components/ui/FavoriteButton';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
@@ -52,7 +53,10 @@ export default function PublicProfile() {
                 <div className="flex flex-col sm:flex-row gap-6 items-start">
                   <img src={user.avatar} alt={user.name} className="h-24 w-24 rounded-full object-cover" />
                   <div className="flex-1">
-                    <h1 className="text-2xl font-bold mb-2">{user.name}</h1>
+                    <div className="flex items-start justify-between mb-2">
+                      <h1 className="text-2xl font-bold">{user.name}</h1>
+                      <FavoriteButton itemId={user.slug} itemType="task" variant="text" />
+                    </div>
                     <div className="flex flex-wrap items-center gap-4 text-sm text-[#3F7F6E] mb-4">
                       <span className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />

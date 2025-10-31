@@ -118,17 +118,24 @@ export default function ProfilePage() {
               </Card>
 
               {tab === 'portfolio' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Card key={i} className="overflow-hidden">
-                      <div className="aspect-[16/10] bg-[#EFFFF8]" />
-                      <CardContent className="p-4">
-                        <div className="font-medium">Проект #{i}</div>
-                        <div className="text-sm text-[#3F7F6E]">React · Node · PostgreSQL</div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <>
+                  <div className="flex justify-end mb-4">
+                    <Button asChild>
+                      <a href="#/me/portfolio/add">+ Добавить проект</a>
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <Card key={i} className="overflow-hidden">
+                        <div className="aspect-[16/10] bg-[#EFFFF8]" />
+                        <CardContent className="p-4">
+                          <div className="font-medium">Проект #{i}</div>
+                          <div className="text-sm text-[#3F7F6E]">React · Node · PostgreSQL</div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
               )}
 
               {tab === 'about' && (

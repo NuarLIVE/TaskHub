@@ -185,10 +185,10 @@ export default function MarketPage() {
                     <div className="text-sm text-[#3F7F6E] line-clamp-2">{item.description}</div>
                   </CardContent>
                   <div className="flex items-center justify-between px-6 py-4 border-t">
-                    <div className="flex items-center gap-2">
+                    <a href={`#/u/${item.author.name.toLowerCase()}`} className="flex items-center gap-2 hover:opacity-80 transition">
                       <img src={item.author.avatar} alt={item.author.name} className="h-7 w-7 rounded-full object-cover" />
                       <span className="text-sm">{item.author.name}</span>
-                    </div>
+                    </a>
                     <div className="font-semibold">
                       {activeTab === 'orders' ? `$${item.priceMin}–${item.priceMax}` : `$${item.price}`}
                     </div>
@@ -292,13 +292,13 @@ export default function MarketPage() {
                     </div>
                   )}
                   <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="flex items-center gap-3">
+                    <a href={`#/u/${previewItem.author.name.toLowerCase()}`} className="flex items-center gap-3 hover:opacity-80 transition">
                       <img src={previewItem.author.avatar} alt={previewItem.author.name} className="h-10 w-10 rounded-full object-cover" />
                       <div>
                         <div className="font-medium">{previewItem.author.name}</div>
                         <div className="text-xs text-[#3F7F6E]">Опубликовано: {previewItem.createdAt}</div>
                       </div>
-                    </div>
+                    </a>
                     <div className="text-xl font-semibold">
                       {previewType === 'order' ? `$${previewItem.priceMin}–${previewItem.priceMax}` : `$${previewItem.price}`}
                     </div>

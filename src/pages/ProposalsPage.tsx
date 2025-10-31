@@ -16,6 +16,19 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 export default function ProposalsPage() {
   const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
 
+  const handleAccept = (proposalId: number) => {
+    alert(`Отклик #${proposalId} принят! Переходим к открытию сделки...`);
+    window.location.hash = `/deal/open?proposalId=${proposalId}`;
+  };
+
+  const handleReject = (proposalId: number) => {
+    const confirmed = confirm('Вы уверены, что хотите отклонить этот отклик?');
+    if (confirmed) {
+      alert(`Отклик #${proposalId} отклонён`);
+      window.location.reload();
+    }
+  };
+
   const sentProposals = [
     { id: 1, order: 'Лендинг на React для стартапа', price: 650, status: 'pending', date: '2025-10-25', client: 'NovaTech' },
     { id: 2, order: 'Редизайн мобильного приложения', price: 950, status: 'accepted', date: '2025-10-23', client: 'AppNest' },
@@ -88,11 +101,11 @@ export default function ProposalsPage() {
                     {getStatusBadge(proposal.status)}
                     {activeTab === 'received' && proposal.status === 'pending' && (
                       <>
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => handleAccept(proposal.id)}>
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Принять
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" variant="outline" onClick={() => handleReject(proposal.id)}>
                           <X className="h-4 w-4 mr-1" />
                           Отклонить
                         </Button>

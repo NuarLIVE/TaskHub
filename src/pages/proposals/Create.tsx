@@ -44,6 +44,13 @@ export default function ProposalsCreate() {
           Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'} #{id}
         </h1>
 
+        <div className="mb-4 p-4 rounded-lg bg-[#EFFFF8] border border-[#6FE7C8]/20">
+          <p className="text-sm text-[#3F7F6E]">
+            После отправки отклика заказчик получит уведомление и сможет просмотреть ваше предложение.
+            Если ваш отклик подойдёт, заказчик сможет принять его и начать сделку.
+          </p>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Ваше предложение</CardTitle>
