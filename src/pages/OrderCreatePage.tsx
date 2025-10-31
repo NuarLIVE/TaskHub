@@ -44,7 +44,7 @@ export default function OrderCreatePage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Новый заказ</h1>
           <form className="grid gap-4" onSubmit={onSubmit}>
             <Card>
-              <CardContent className="grid gap-4">
+              <CardContent className="p-6 grid gap-4">
                 <Field label="Заголовок">
                   <Input name="title" placeholder="Напр.: Нужен сайт‑лендинг на React" required className="h-11" />
                 </Field>

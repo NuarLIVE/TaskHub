@@ -75,7 +75,7 @@ export default function ProfilePage() {
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
             <Card className="sticky top-24 self-start">
-              <CardContent className="grid gap-4">
+              <CardContent className="p-6 grid gap-4">
                 <div className="flex items-center gap-4">
                   <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
                   <div>
@@ -110,7 +110,7 @@ export default function ProfilePage() {
 
             <div className="grid gap-6">
               <Card>
-                <CardContent className="flex flex-wrap items-center gap-3">
+                <CardContent className="p-6 flex flex-wrap items-center gap-3">
                   {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }, { id: 'edit', label: 'Редактировать' }].map(t => (
                     <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
                   ))}
@@ -140,7 +140,7 @@ export default function ProfilePage() {
 
               {tab === 'about' && (
                 <Card>
-                  <CardContent className="grid gap-4">
+                  <CardContent className="p-6 grid gap-4">
                     <div>
                       <div className="font-semibold">{profile.headline}</div>
                       <div className="text-[#3F7F6E]">{profile.about}</div>
@@ -170,7 +170,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[1, 2, 3].map((i) => (
                     <Card key={i}>
-                      <CardContent className="grid gap-3">
+                      <CardContent className="p-6 grid gap-3">
                         <div className="flex items-center gap-3">
                           <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-9 w-9 rounded-full" />
                           <div className="font-medium">Заказчик #{i}</div>
@@ -189,7 +189,7 @@ export default function ProfilePage() {
 
               {tab === 'edit' && (
                 <Card>
-                  <CardContent>
+                  <CardContent className="p-6">
                     <form className="grid gap-4" onSubmit={onEditSubmit}>
                       <div className="grid sm:grid-cols-2 gap-4">
                         <label className="grid gap-1">
