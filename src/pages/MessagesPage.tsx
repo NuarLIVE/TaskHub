@@ -17,11 +17,21 @@ export default function MessagesPage() {
     { id: 2, user: 'AppNest', avatar: 'https://i.pravatar.cc/64?img=22', lastMessage: 'Спасибо за работу!', time: 'Вчера', unread: 0 }
   ];
 
-  const messages = [
-    { id: 1, sender: 'NovaTech', text: 'Здравствуйте! Интересует ваше предложение по React лендингу', time: '10:00', isOwn: false },
-    { id: 2, sender: 'Вы', text: 'Здравствуйте! Я готов начать в ближайшие дни. У вас есть готовый дизайн?', time: '10:15', isOwn: true },
-    { id: 3, sender: 'NovaTech', text: 'Да, дизайн в Figma готов. Когда сможете начать?', time: '10:30', isOwn: false }
-  ];
+  const allMessages: Record<number, Array<{id: number, sender: string, text: string, time: string, isOwn: boolean}>> = {
+    1: [
+      { id: 1, sender: 'NovaTech', text: 'Здравствуйте! Интересует ваше предложение по React лендингу', time: '10:00', isOwn: false },
+      { id: 2, sender: 'Вы', text: 'Здравствуйте! Я готов начать в ближайшие дни. У вас есть готовый дизайн?', time: '10:15', isOwn: true },
+      { id: 3, sender: 'NovaTech', text: 'Да, дизайн в Figma готов. Когда сможете начать?', time: '10:30', isOwn: false }
+    ],
+    2: [
+      { id: 1, sender: 'AppNest', text: 'Проект завершён отлично, всё как договаривались!', time: '14:00', isOwn: false },
+      { id: 2, sender: 'Вы', text: 'Рад был помочь! Если понадобится что-то ещё, обращайтесь', time: '14:20', isOwn: true },
+      { id: 3, sender: 'AppNest', text: 'Спасибо за работу!', time: '14:25', isOwn: false }
+    ]
+  };
+
+  const messages = allMessages[selectedThread] || [];
+  const currentThread = threads.find(t => t.id === selectedThread);
 
   return (
     <motion.div key="messages" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
@@ -62,8 +72,10 @@ export default function MessagesPage() {
 
           <Card className="flex flex-col">
             <div className="p-4 border-b flex items-center gap-3">
-              <img src={threads.find(t => t.id === selectedThread)?.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
-              <div className="font-semibold">{threads.find(t => t.id === selectedThread)?.user}</div>
+              <a href={`#/u/${currentThread?.user.toLowerCase()}`} className="flex items-center gap-3 hover:opacity-80 transition">
+                <img src={currentThread?.avatar} alt={currentThread?.user} className="h-10 w-10 rounded-full object-cover" />
+                <div className="font-semibold">{currentThread?.user}</div>
+              </a>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((msg) => (

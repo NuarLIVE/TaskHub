@@ -306,7 +306,11 @@ export default function MarketPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Закрыть</Button>
-                  <Button>Откликнуться</Button>
+                  <Button asChild>
+                    <a href={`#/proposals/create?type=${previewType}&id=${previewItem.id}`}>
+                      Откликнуться
+                    </a>
+                  </Button>
                 </DialogFooter>
               </>
             )}
