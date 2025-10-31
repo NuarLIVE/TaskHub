@@ -31,8 +31,17 @@ export default function PublicProfile() {
     ]
   };
 
-  const handleMessage = () => {
-    window.location.hash = `/messages?to=${slug}`;
+  const handleMessage = async () => {
+    const currentUserSlug = 'me';
+
+    const { findOrCreateChat } = await import('@/lib/supabase');
+    const chatId = await findOrCreateChat(currentUserSlug, slug);
+
+    if (chatId) {
+      window.location.hash = `/messages?chat=${chatId}`;
+    } else {
+      window.location.hash = `/messages`;
+    }
   };
 
   return (
