@@ -64,6 +64,14 @@ export default function NavBar() {
               {link.label}
             </a>
           ))}
+          {user?.role === 'ADMIN' && (
+            <a
+              href="#/admin"
+              className="transition-colors font-medium text-purple-600 hover:text-purple-700"
+            >
+              Admin
+            </a>
+          )}
         </div>
 
         <div className="flex items-center gap-2">

@@ -23,6 +23,7 @@ import favoritesRoutes from './modules/favorites/favorites.routes';
 import walletRoutes from './modules/wallet/wallet.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import disputesRoutes from './modules/disputes/disputes.routes';
+import adminRoutes from './modules/admin';
 
 export function createApp() {
   const app = express();
@@ -60,6 +61,7 @@ export function createApp() {
   apiRouter.use('/wallet', walletRoutes);
   apiRouter.use('/notifications', notificationsRoutes);
   apiRouter.use('/disputes', disputesRoutes);
+  apiRouter.use('/admin', adminRoutes);
 
   app.use('/api/v1', apiRouter);
 
