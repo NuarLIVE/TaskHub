@@ -21,10 +21,6 @@ import DealOpen from './pages/deal/Open';
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
-import DashboardPage from './admin/pages/DashboardPage';
-import UsersPage from './admin/pages/UsersPage';
-import UserDetailsPage from './admin/pages/UserDetailsPage';
-import DisputesPage from './admin/pages/DisputesPage';
 import {
   DealPage,
   WalletPage,
@@ -130,13 +126,7 @@ function App() {
   } else if (route === '/media' || route === '/media-library') {
     Page = MediaLibraryPage;
   } else if (route === '/admin') {
-    Page = DashboardPage;
-  } else if (route === '/admin/users') {
-    Page = UsersPage;
-  } else if (route.startsWith('/admin/users/')) {
-    Page = UserDetailsPage;
-  } else if (route === '/admin/disputes') {
-    Page = DisputesPage;
+    Page = AdminPage;
   } else if (route === '/terms') {
     Page = TermsPage;
   } else if (route === '/privacy') {
