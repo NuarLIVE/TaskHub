@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { BoostBadge } from '@/components/ui/BoostBadge';
 import { marketOrders, marketTasks } from '@/data/marketData';
 
 const pageVariants = {
@@ -163,9 +164,12 @@ export default function MarketPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {data.map((item: any) => (
               <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer" onClick={() => openPreview(item, activeTab as 'order' | 'task')}>
+                <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer relative" onClick={() => openPreview(item, activeTab as 'order' | 'task')}>
+                  {item.isBoosted && (
+                    <BoostBadge isBoosted className="absolute top-3 right-3 z-10" />
+                  )}
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base leading-6">{item.title}</CardTitle>
+                    <CardTitle className="text-base leading-6 pr-32">{item.title}</CardTitle>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="secondary">{item.category}</Badge>
                       {activeTab === 'orders' && item.engagement && <Badge variant="outline">{item.engagement}</Badge>}

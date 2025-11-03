@@ -2,6 +2,8 @@ const categories = ['Разработка', 'Дизайн', 'Маркетинг'
 const engagements = ['Фикс-прайс', 'Почасовая'];
 const currencies = ['USD', 'EUR', 'KZT', 'RUB'];
 
+const shouldBoost = () => Math.random() < 0.15;
+
 const orderTitles = [
   'Лендинг на React для стартапа',
   'Редизайн мобильного приложения',
@@ -136,34 +138,44 @@ const getRandomDate = () => {
   return date.toISOString().split('T')[0];
 };
 
-export const marketOrders = Array.from({ length: 30 }, (_, i) => ({
-  id: i + 1,
-  title: orderTitles[i],
-  category: getRandomItem(categories),
-  priceMin: getRandomNumber(100, 800),
-  priceMax: getRandomNumber(900, 2000),
-  currency: getRandomItem(currencies),
-  engagement: getRandomItem(engagements),
-  tags: getRandomItem(allTags),
-  author: getRandomItem(authors),
-  createdAt: getRandomDate(),
-  description: getRandomItem(descriptions)
-}));
+export const marketOrders = Array.from({ length: 30 }, (_, i) => {
+  const isBoosted = shouldBoost();
+  return {
+    id: i + 1,
+    title: orderTitles[i],
+    category: getRandomItem(categories),
+    priceMin: getRandomNumber(100, 800),
+    priceMax: getRandomNumber(900, 2000),
+    currency: getRandomItem(currencies),
+    engagement: getRandomItem(engagements),
+    tags: getRandomItem(allTags),
+    author: getRandomItem(authors),
+    createdAt: getRandomDate(),
+    description: getRandomItem(descriptions),
+    isBoosted,
+    boostCommissionRate: isBoosted ? 0.10 : 0
+  };
+}).sort((a, b) => (b.isBoosted ? 1 : 0) - (a.isBoosted ? 1 : 0));
 
-export const marketTasks = Array.from({ length: 30 }, (_, i) => ({
-  id: i + 101,
-  title: taskTitles[i],
-  category: getRandomItem(categories),
-  price: getRandomNumber(200, 1500),
+export const marketTasks = Array.from({ length: 30 }, (_, i) => {
+  const isBoosted = shouldBoost();
+  return {
+    id: i + 101,
+    title: taskTitles[i],
+    category: getRandomItem(categories),
+    price: getRandomNumber(200, 1500),
+    isBoosted,
+    boostCommissionRate: isBoosted ? 0.10 : 0,
   currency: getRandomItem(currencies),
   deliveryDays: getRandomNumber(3, 21),
   tags: getRandomItem(allTags),
   author: getRandomItem(authors),
   createdAt: getRandomDate(),
   features: [
-    getRandomItem(['Дизайн по референсам', 'Адаптивная вёрстка', 'Кроссбраузерность']),
-    getRandomItem(['Интеграция с API', 'Backend разработка', 'База данных']),
-    getRandomItem(['Анимации', 'Оптимизация', 'Документация'])
-  ],
-  description: getRandomItem(descriptions)
-}));
+      getRandomItem(['Дизайн по референсам', 'Адаптивная вёрстка', 'Кроссбраузерность']),
+      getRandomItem(['Интеграция с API', 'Backend разработка', 'База данных']),
+      getRandomItem(['Анимации', 'Оптимизация', 'Документация'])
+    ],
+    description: getRandomItem(descriptions)
+  };
+}).sort((a, b) => (b.isBoosted ? 1 : 0) - (a.isBoosted ? 1 : 0));

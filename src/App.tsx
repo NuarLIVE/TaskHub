@@ -18,6 +18,9 @@ import ProposalsCreate from './pages/proposals/Create';
 import PublicProfile from './pages/users/PublicProfile';
 import PortfolioAdd from './pages/me/PortfolioAdd';
 import DealOpen from './pages/deal/Open';
+import PaymentMethodsPage from './pages/PaymentMethodsPage';
+import MediaLibraryPage from './pages/MediaLibraryPage';
+import NotificationSettingsPage from './pages/NotificationSettingsPage';
 import {
   DealPage,
   WalletPage,
@@ -117,9 +120,11 @@ function App() {
   } else if (route === '/settings/security') {
     Page = SettingsSecurityPage;
   } else if (route === '/settings/notifications') {
-    Page = NotificationsPage;
-  } else if (route === '/settings/payments') {
-    Page = WalletPage;
+    Page = NotificationSettingsPage;
+  } else if (route === '/settings/payments' || route === '/payment-methods') {
+    Page = PaymentMethodsPage;
+  } else if (route === '/media' || route === '/media-library') {
+    Page = MediaLibraryPage;
   } else if (route === '/admin') {
     Page = AdminPage;
   } else if (route === '/terms') {
