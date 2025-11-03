@@ -101,13 +101,18 @@ function Hero() {
               transition={{ type: 'spring', stiffness: 120, damping: 16, delay: 0.1 }}
               className="grid grid-cols-2 gap-4"
             >
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-[4/3] rounded-2xl bg-[#EFFFF8] overflow-hidden">
-                  <div className="h-full w-full bg-gradient-to-br from-muted to-background flex items-end p-3">
-                    <Badge variant="secondary">Работа #{i}</Badge>
-                  </div>
-                </div>
-              ))}
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+                <img src="https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg" alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+                <img src="https://images.pexels.com/photos/3184325/pexels-photo-3184325.jpeg" alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+                <img src="https://images.pexels.com/photos/3182773/pexels-photo-3182773.jpeg" alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+                <img src="https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg" alt="" className="h-full w-full object-cover" />
+              </div>
             </motion.div>
           </div>
         </div>
@@ -235,10 +240,18 @@ function About() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="aspect-[4/3] rounded-2xl bg-[#EFFFF8]" />
-          <div className="aspect-[4/3] rounded-2xl bg-[#EFFFF8]" />
-          <div className="aspect-[4/3] rounded-2xl bg-[#EFFFF8]" />
-          <div className="aspect-[4/3] rounded-2xl bg-[#EFFFF8]" />
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+            <img src="https://images.pexels.com/photos/3184357/pexels-photo-3184357.jpeg" alt="" className="h-full w-full object-cover" />
+          </div>
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+            <img src="https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg" alt="" className="h-full w-full object-cover" />
+          </div>
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+            <img src="https://images.pexels.com/photos/3184639/pexels-photo-3184639.jpeg" alt="" className="h-full w-full object-cover" />
+          </div>
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+            <img src="https://images.pexels.com/photos/3184296/pexels-photo-3184296.jpeg" alt="" className="h-full w-full object-cover" />
+          </div>
         </div>
       </div>
     </section>
