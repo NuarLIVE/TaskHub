@@ -55,10 +55,18 @@ export default function MarketPage() {
       if (!Number.isNaN(nMin) && min !== '') res = res.filter(o => (o.price || 0) >= nMin);
       if (!Number.isNaN(nMax) && max !== '') res = res.filter(o => (o.price || 0) <= nMax);
     }
-    if (sort === 'priceUp') res.sort((a, b) => ((a.priceMin ?? a.price) - (b.priceMin ?? b.price)));
-    else if (sort === 'priceDown') res.sort((a, b) => ((b.priceMax ?? b.price) - (a.priceMax ?? a.price)));
-    else if (sort === 'new') res.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return res;
+
+    const boosted = res.filter(o => o.isBoosted);
+    const regular = res.filter(o => !o.isBoosted);
+
+    const sortItems = (items: any[]) => {
+      if (sort === 'priceUp') return items.sort((a, b) => ((a.priceMin ?? a.price) - (b.priceMin ?? b.price)));
+      else if (sort === 'priceDown') return items.sort((a, b) => ((b.priceMax ?? b.price) - (a.priceMax ?? a.price)));
+      else if (sort === 'new') return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return items;
+    };
+
+    return [...sortItems(boosted), ...sortItems(regular)];
   };
 
   const allData = activeTab === 'orders' ? applyFilters(marketOrders) : applyFilters(marketTasks);
