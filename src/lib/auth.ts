@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8080/api/v1';
+import { supabase } from './supabase';
 
 export interface User {
   id: string;
@@ -13,12 +13,6 @@ export interface User {
     avatarUrl?: string;
     location?: string;
   };
-}
-
-export interface AuthResponse {
-  user: User;
-  accessToken: string;
-  refreshToken: string;
 }
 
 export interface AuthState {
@@ -37,7 +31,7 @@ class AuthService {
   private listeners: Set<(state: AuthState) => void> = new Set();
 
   private constructor() {
-    this.loadFromStorage();
+    this.initializeAuth();
   }
 
   static getInstance(): AuthService {
@@ -56,23 +50,60 @@ class AuthService {
     this.listeners.forEach(listener => listener(this.authState));
   }
 
-  private loadFromStorage() {
-    try {
-      const stored = localStorage.getItem('auth');
-      if (stored) {
-        this.authState = JSON.parse(stored);
+  private async initializeAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      await this.loadUserProfile(session.user.id, session.user.email || '');
+    }
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await this.loadUserProfile(session.user.id, session.user.email || '');
+      } else if (event === 'SIGNED_OUT') {
+        this.authState = {
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+        };
         this.notify();
       }
-    } catch (error) {
-      console.error('Failed to load auth from storage:', error);
-    }
+    });
   }
 
-  private saveToStorage() {
+  private async loadUserProfile(userId: string, email: string) {
     try {
-      localStorage.setItem('auth', JSON.stringify(this.authState));
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        this.authState = {
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+        };
+        this.notify();
+        return;
+      }
+
+      this.authState = {
+        user: {
+          id: userId,
+          email: email,
+          role: 'FREELANCER',
+          profile: {
+            id: userId,
+            slug: email.split('@')[0],
+            name: email.split('@')[0],
+            skills: [],
+          }
+        },
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token || null,
+      };
+
+      this.notify();
     } catch (error) {
-      console.error('Failed to save auth to storage:', error);
+      console.error('Failed to load user profile:', error);
     }
   }
 
@@ -87,35 +118,26 @@ class AuthService {
     role: 'CLIENT' | 'FREELANCER';
   }): Promise<{ success: boolean; error?: string }> {
     try {
-      const slug = data.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
-
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          name: data.name,
-          role: data.role,
-          slug,
-        }),
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            role: data.role,
+          }
+        }
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        return { success: false, error: error.error || 'Ошибка регистрации' };
+      if (signUpError) {
+        return { success: false, error: signUpError.message };
       }
 
-      const result: AuthResponse = await response.json();
+      if (!authData.user) {
+        return { success: false, error: 'Ошибка регистрации' };
+      }
 
-      this.authState = {
-        user: result.user,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      };
-
-      this.saveToStorage();
-      this.notify();
+      await this.loadUserProfile(authData.user.id, authData.user.email || '');
 
       return { success: true };
     } catch (error) {
@@ -126,27 +148,20 @@ class AuthService {
 
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        return { success: false, error: error.error || 'Неверный email или пароль' };
+      if (signInError) {
+        return { success: false, error: signInError.message };
       }
 
-      const result: AuthResponse = await response.json();
+      if (!data.user) {
+        return { success: false, error: 'Ошибка входа' };
+      }
 
-      this.authState = {
-        user: result.user,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      };
-
-      this.saveToStorage();
-      this.notify();
+      await this.loadUserProfile(data.user.id, data.user.email || '');
 
       return { success: true };
     } catch (error) {
@@ -156,75 +171,55 @@ class AuthService {
   }
 
   async logout() {
+    await supabase.auth.signOut();
+
     this.authState = {
       user: null,
       accessToken: null,
       refreshToken: null,
     };
 
-    localStorage.removeItem('auth');
     this.notify();
 
     window.location.hash = '/';
   }
 
   async refreshAccessToken(): Promise<boolean> {
-    if (!this.authState.refreshToken) {
-      return false;
-    }
-
     try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.authState.refreshToken }),
-      });
+      const { data, error } = await supabase.auth.refreshSession();
 
-      if (!response.ok) {
-        this.logout();
+      if (error || !data.session) {
         return false;
       }
 
-      const result = await response.json();
-
-      this.authState.accessToken = result.accessToken;
-      this.saveToStorage();
+      this.authState.accessToken = data.session.access_token;
+      this.authState.refreshToken = data.session.refresh_token || null;
       this.notify();
 
       return true;
     } catch (error) {
       console.error('Refresh token error:', error);
-      this.logout();
       return false;
     }
   }
 
   async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-    if (!this.authState.accessToken) {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
       throw new Error('Not authenticated');
     }
 
     const headers = {
       ...options.headers,
-      'Authorization': `Bearer ${this.authState.accessToken}`,
+      'Authorization': `Bearer ${session.access_token}`,
     };
 
-    let response = await fetch(url, { ...options, headers });
-
-    if (response.status === 401) {
-      const refreshed = await this.refreshAccessToken();
-
-      if (refreshed) {
-        headers['Authorization'] = `Bearer ${this.authState.accessToken}`;
-        response = await fetch(url, { ...options, headers });
-      }
-    }
-
-    return response;
+    return fetch(url, { ...options, headers });
   }
 
   isAuthenticated(): boolean {
-    return !!this.authState.accessToken && !!this.authState.user;
+    return !!this.authState.user && !!this.authState.accessToken;
   }
 
   getUser(): User | null {
