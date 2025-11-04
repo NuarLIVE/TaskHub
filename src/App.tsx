@@ -30,7 +30,6 @@ import {
   NotificationsPage,
   SavedPage,
   DisputesPage,
-  MyOrdersPage,
   MyDealsPage,
   SettingsProfilePage,
   SettingsSecurityPage,
