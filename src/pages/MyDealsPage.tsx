@@ -52,20 +52,21 @@ export default function MyDealsPage() {
   }, [user]);
 
   const loadDeals = async () => {
-    if (!user) return;
-
     setLoading(true);
     try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
-        .eq('client_id', user.id)
+        .eq('user_id', authUser.id)
         .order('created_at', { ascending: false });
 
       const { data: tasksData } = await supabase
         .from('tasks')
         .select('*')
-        .eq('freelancer_id', user.id)
+        .eq('user_id', authUser.id)
         .order('created_at', { ascending: false });
 
       setOrders(ordersData || []);

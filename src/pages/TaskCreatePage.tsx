@@ -37,7 +37,7 @@ export default function TaskCreatePage() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated) {
       alert('Войдите в систему для создания объявления');
       window.location.hash = '#/login';
       return;
@@ -62,10 +62,17 @@ export default function TaskCreatePage() {
       }
     }
 
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      alert('Ошибка аутентификации');
+      window.location.hash = '#/login';
+      return;
+    }
+
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        user_id: user.id,
+        user_id: authUser.id,
         title: String(fd.get('title')),
         description: String(fd.get('description') || ''),
         category: String(fd.get('category')),

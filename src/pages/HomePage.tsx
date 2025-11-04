@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -153,7 +154,9 @@ function Featured() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
         <div className="flex items-end justify-between mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Горячие проекты</h2>
-          <Button variant="secondary" className="hidden sm:inline-flex">Опубликовать задачу</Button>
+          <Button variant="secondary" className="hidden sm:inline-flex" asChild>
+            <a href="#/task/new">Опубликовать задачу</a>
+          </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {featured.map((f, idx) => (
@@ -282,6 +285,8 @@ function CTA() {
 }
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <AnimatePresence mode="wait">
       <motion.main
@@ -299,7 +304,7 @@ export default function HomePage() {
         <Featured />
         <HowItWorks />
         <About />
-        <CTA />
+        {!isAuthenticated && <CTA />}
       </motion.main>
     </AnimatePresence>
   );

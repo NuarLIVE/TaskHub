@@ -37,7 +37,7 @@ export default function OrderCreatePage() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated) {
       alert('Войдите в систему для создания заказа');
       window.location.hash = '#/login';
       return;
@@ -48,10 +48,17 @@ export default function OrderCreatePage() {
 
     const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
 
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      alert('Ошибка аутентификации');
+      window.location.hash = '#/login';
+      return;
+    }
+
     const { data, error } = await supabase
       .from('orders')
       .insert({
-        user_id: user.id,
+        user_id: authUser.id,
         title: String(fd.get('title')),
         description: String(fd.get('description') || ''),
         category: String(fd.get('category')),
