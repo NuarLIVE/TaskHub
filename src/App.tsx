@@ -7,6 +7,8 @@ import ProfilePage from './pages/ProfilePage';
 import OrderCreatePage from './pages/OrderCreatePage';
 import TaskCreatePage from './pages/TaskCreatePage';
 import MarketPage from './pages/MarketPage';
+import MyOrdersPage from './pages/MyOrdersPage';
+import MyTasksPage from './pages/MyTasksPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import OrderDetailPage from './pages/OrderDetailPage';
@@ -135,8 +137,12 @@ function App() {
     Page = FAQPage;
   } else if (route === '/contact') {
     Page = ContactPage;
-  } else if (route === '/market') {
+  } else if (route === '/market' || route.startsWith('/market?')) {
     Page = MarketPage;
+  } else if (route === '/my-orders') {
+    Page = MyOrdersPage;
+  } else if (route === '/my-tasks') {
+    Page = MyTasksPage;
   } else if (route === '/404') {
     Page = NotFound;
   } else {

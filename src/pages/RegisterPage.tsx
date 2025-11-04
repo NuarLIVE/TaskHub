@@ -101,6 +101,8 @@ export default function RegisterPage() {
                       className="pl-9 h-11"
                       required
                       disabled={loading}
+                      pattern="[A-Za-zА-Яа-яЁё\s\-]+"
+                      title="Имя может содержать только буквы (латиница и кириллица), пробелы и дефисы"
                     />
                   </div>
                 </div>

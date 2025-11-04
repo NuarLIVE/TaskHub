@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
+import { Sparkles, Menu, X, User, LogOut, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 
+const CATEGORIES = [
+  { slug: 'dev', label: 'Разработка' },
+  { slug: 'design', label: 'Дизайн' },
+  { slug: 'marketing', label: 'Маркетинг' },
+  { slug: 'localization', label: 'Локализация' },
+  { slug: 'copywriting', label: 'Копирайт' },
+  { slug: 'qa', label: 'QA / Безопасность' }
+];
+
 const NAV_LINKS = [
   { href: '#/market', label: 'Биржа', public: true },
+  { href: '#/my-orders', label: 'Мои заказы', public: false },
+  { href: '#/my-tasks', label: 'Мои объявления', public: false },
   { href: '#/talents', label: 'Исполнители', public: false },
   { href: '#/proposals', label: 'Отклики', public: false },
   { href: '#/messages', label: 'Сообщения', public: false },
@@ -16,6 +27,7 @@ const NAV_LINKS = [
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
@@ -50,19 +62,56 @@ export default function NavBar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-6 text-sm">
-          {NAV_LINKS.filter(link => link.public || isAuthenticated).map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={`transition-colors font-medium ${
-                isActiveLink(link.href)
-                  ? 'text-[#6FE7C8]'
-                  : 'text-[#3F7F6E] hover:text-foreground'
-              }`}
-            >
-              {link.label}
-            </a>
-          ))}
+          {NAV_LINKS.filter(link => link.public || isAuthenticated).map((link) => {
+            if (link.href === '#/market') {
+              return (
+                <div key={link.href} className="relative">
+                  <button
+                    onMouseEnter={() => setCategoriesOpen(true)}
+                    onMouseLeave={() => setCategoriesOpen(false)}
+                    className={`transition-colors font-medium flex items-center gap-1 ${
+                      isActiveLink(link.href)
+                        ? 'text-[#6FE7C8]'
+                        : 'text-[#3F7F6E] hover:text-foreground'
+                    }`}
+                  >
+                    <a href={link.href}>{link.label}</a>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                  {categoriesOpen && (
+                    <div
+                      className="absolute top-full left-0 mt-2 w-48 bg-background border border-[#6FE7C8] rounded-lg shadow-lg py-2 z-50"
+                      onMouseEnter={() => setCategoriesOpen(true)}
+                      onMouseLeave={() => setCategoriesOpen(false)}
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <a
+                          key={cat.slug}
+                          href={`#/market?category=${encodeURIComponent(cat.label)}`}
+                          className="block px-4 py-2 text-sm text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground transition-colors"
+                        >
+                          {cat.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                className={`transition-colors font-medium ${
+                  isActiveLink(link.href)
+                    ? 'text-[#6FE7C8]'
+                    : 'text-[#3F7F6E] hover:text-foreground'
+                }`}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">

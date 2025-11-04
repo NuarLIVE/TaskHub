@@ -38,6 +38,12 @@ export default function MarketPage() {
 
   useEffect(() => {
     loadData();
+
+    const params = new URLSearchParams(window.location.hash.split('?')[1]);
+    const categoryParam = params.get('category');
+    if (categoryParam) {
+      setCategory(categoryParam);
+    }
   }, []);
 
   useEffect(() => {

@@ -131,13 +131,15 @@ function Categories() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories.map((c, idx) => (
           <motion.div key={c.title} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.04 }}>
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                <div className="p-2 rounded-xl bg-[#EFFFF8]">{c.icon}</div>
-                <CardTitle className="text-lg">{c.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="px-6 pb-6 text-[#3F7F6E]">{c.desc}</CardContent>
-            </Card>
+            <a href={`#/market?category=${encodeURIComponent(c.title)}`}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                  <div className="p-2 rounded-xl bg-[#EFFFF8]">{c.icon}</div>
+                  <CardTitle className="text-lg">{c.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 pb-6 text-[#3F7F6E]">{c.desc}</CardContent>
+              </Card>
+            </a>
           </motion.div>
         ))}
       </div>
