@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -29,12 +31,52 @@ function TwoCol({ left, right }: { left: React.ReactNode; right: React.ReactNode
 }
 
 export default function OrderCreatePage() {
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const { user, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!isAuthenticated || !user) {
+      alert('Войдите в систему для создания заказа');
+      window.location.hash = '#/login';
+      return;
+    }
+
+    setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd.entries());
-    console.log('create-order', payload);
-    alert('Заказ сохранён (демо). См. console.log()');
+
+    const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        title: String(fd.get('title')),
+        description: String(fd.get('description') || ''),
+        category: String(fd.get('category')),
+        price_min: Number(fd.get('budget_min')),
+        price_max: Number(fd.get('budget_max')),
+        currency: String(fd.get('currency')),
+        engagement: String(fd.get('engagement')),
+        deadline: fd.get('deadline') ? String(fd.get('deadline')) : null,
+        tags,
+        use_escrow: fd.get('escrow') === 'on',
+        status: 'open'
+      })
+      .select()
+      .single();
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error creating order:', error);
+      alert('Ошибка при создании заказа: ' + error.message);
+      return;
+    }
+
+    alert('Заказ успешно опубликован!');
+    window.location.hash = '#/market';
   };
 
   return (
@@ -123,7 +165,7 @@ export default function OrderCreatePage() {
                   <div className="text-sm text-[#3F7F6E]">Черновик автоматически сохраняется (демо)</div>
                   <div className="flex gap-3">
                     <Button type="button" variant="ghost" asChild><a href="#/">Отменить</a></Button>
-                    <Button type="submit">Опубликовать</Button>
+                    <Button type="submit" disabled={loading}>{loading ? 'Публикация...' : 'Опубликовать'}</Button>
                   </div>
                 </div>
               </CardContent>

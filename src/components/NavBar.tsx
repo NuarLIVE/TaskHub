@@ -5,13 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_LINKS = [
-  { href: '#/orders', label: 'Заказы' },
-  { href: '#/tasks', label: 'Объявления' },
-  { href: '#/talents', label: 'Исполнители' },
-  { href: '#/proposals', label: 'Отклики' },
-  { href: '#/messages', label: 'Сообщения' },
-  { href: '#/wallet', label: 'Кошелёк' },
-  { href: '#/me', label: 'Профиль' }
+  { href: '#/market', label: 'Биржа', public: true },
+  { href: '#/talents', label: 'Исполнители', public: false },
+  { href: '#/proposals', label: 'Отклики', public: false },
+  { href: '#/messages', label: 'Сообщения', public: false },
+  { href: '#/wallet', label: 'Кошелёк', public: false },
+  { href: '#/me', label: 'Профиль', public: false }
 ];
 
 export default function NavBar() {
@@ -51,7 +50,7 @@ export default function NavBar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-6 text-sm">
-          {NAV_LINKS.map((link) => (
+          {NAV_LINKS.filter(link => link.public || isAuthenticated).map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -115,7 +114,7 @@ export default function NavBar() {
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-[#6FE7C8] bg-background">
           <div className="px-4 py-3 space-y-1">
-            {NAV_LINKS.map((link) => (
+            {NAV_LINKS.filter(link => link.public || isAuthenticated).map((link) => (
               <a
                 key={link.href}
                 href={link.href}

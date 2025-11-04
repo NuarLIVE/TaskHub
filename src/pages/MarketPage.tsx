@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BoostBadge } from '@/components/ui/BoostBadge';
-import { marketOrders, marketTasks } from '@/data/marketData';
+import { supabase } from '@/lib/supabase';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -32,10 +32,37 @@ export default function MarketPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [previewType, setPreviewType] = useState<'order' | 'task'>('order');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, q, category, currency, engagement, min, max, sort]);
+
+  const loadData = async () => {
+    setLoading(true);
+
+    const { data: ordersData } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+
+    const { data: tasksData } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    setOrders(ordersData || []);
+    setTasks(tasksData || []);
+    setLoading(false);
+  };
 
   const applyFilters = (arr: any[]) => {
     let res = [...arr];
@@ -49,27 +76,27 @@ export default function MarketPage() {
     const nMin = Number(min);
     const nMax = Number(max);
     if (activeTab === 'orders') {
-      if (!Number.isNaN(nMin) && min !== '') res = res.filter(o => (o.priceMax || 0) >= nMin);
-      if (!Number.isNaN(nMax) && max !== '') res = res.filter(o => (o.priceMin || 0) <= nMax);
+      if (!Number.isNaN(nMin) && min !== '') res = res.filter(o => (o.price_max || 0) >= nMin);
+      if (!Number.isNaN(nMax) && max !== '') res = res.filter(o => (o.price_min || 0) <= nMax);
     } else {
       if (!Number.isNaN(nMin) && min !== '') res = res.filter(o => (o.price || 0) >= nMin);
       if (!Number.isNaN(nMax) && max !== '') res = res.filter(o => (o.price || 0) <= nMax);
     }
 
-    const boosted = res.filter(o => o.isBoosted);
-    const regular = res.filter(o => !o.isBoosted);
+    const boosted = res.filter(o => o.is_boosted);
+    const regular = res.filter(o => !o.is_boosted);
 
     const sortItems = (items: any[]) => {
-      if (sort === 'priceUp') return items.sort((a, b) => ((a.priceMin ?? a.price) - (b.priceMin ?? b.price)));
-      else if (sort === 'priceDown') return items.sort((a, b) => ((b.priceMax ?? b.price) - (a.priceMax ?? a.price)));
-      else if (sort === 'new') return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      if (sort === 'priceUp') return items.sort((a, b) => ((a.price_min ?? a.price) - (b.price_min ?? b.price)));
+      else if (sort === 'priceDown') return items.sort((a, b) => ((b.price_max ?? b.price) - (a.price_max ?? a.price)));
+      else if (sort === 'new') return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       return items;
     };
 
     return [...sortItems(boosted), ...sortItems(regular)];
   };
 
-  const allData = activeTab === 'orders' ? applyFilters(marketOrders) : applyFilters(marketTasks);
+  const allData = activeTab === 'orders' ? applyFilters(orders) : applyFilters(tasks);
   const totalPages = Math.ceil(allData.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -169,46 +196,54 @@ export default function MarketPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {data.map((item: any) => (
-              <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer relative" onClick={() => openPreview(item, activeTab as 'order' | 'task')}>
-                  {item.isBoosted && (
-                    <BoostBadge isBoosted className="absolute top-3 right-3 z-10" />
-                  )}
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base leading-6 pr-32">{item.title}</CardTitle>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="secondary">{item.category}</Badge>
-                      {activeTab === 'orders' && item.engagement && <Badge variant="outline">{item.engagement}</Badge>}
-                      {activeTab === 'tasks' && item.deliveryDays && (
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {item.deliveryDays}д
-                        </Badge>
-                      )}
+          {loading ? (
+            <div className="text-center py-16">
+              <p className="text-[#3F7F6E]">Загрузка...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {data.map((item: any) => (
+                <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                  <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer relative" onClick={() => openPreview(item, activeTab as 'order' | 'task')}>
+                    {item.is_boosted && (
+                      <BoostBadge isBoosted className="absolute top-3 right-3 z-10" />
+                    )}
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base leading-6 pr-32">{item.title}</CardTitle>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="secondary">{item.category}</Badge>
+                        {activeTab === 'orders' && item.engagement && <Badge variant="outline">{item.engagement}</Badge>}
+                        {activeTab === 'tasks' && item.delivery_days && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> {item.delivery_days}д
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 px-6">
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {(item.tags || []).map((t: string) => (
+                          <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                        ))}
+                      </div>
+                      <div className="text-sm text-[#3F7F6E] line-clamp-2">{item.description}</div>
+                    </CardContent>
+                    <div className="flex items-center justify-between px-6 py-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium">
+                          {item.user_id?.substring(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-sm">Пользователь</span>
+                      </div>
+                      <div className="font-semibold">
+                        {activeTab === 'orders' ? `${item.currency} ${item.price_min}–${item.price_max}` : `${item.currency} ${item.price}`}
+                      </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 px-6">
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {item.tags.map((t: string) => (
-                        <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                      ))}
-                    </div>
-                    <div className="text-sm text-[#3F7F6E] line-clamp-2">{item.description}</div>
-                  </CardContent>
-                  <div className="flex items-center justify-between px-6 py-4 border-t">
-                    <a href={`#/u/${item.author.name.toLowerCase()}`} className="flex items-center gap-2 hover:opacity-80 transition">
-                      <img src={item.author.avatar} alt={item.author.name} className="h-7 w-7 rounded-full object-cover" />
-                      <span className="text-sm">{item.author.name}</span>
-                    </a>
-                    <div className="font-semibold">
-                      {activeTab === 'orders' ? `$${item.priceMin}–${item.priceMax}` : `$${item.price}`}
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           {data.length === 0 && (
             <div className="text-center py-16">
@@ -273,9 +308,9 @@ export default function MarketPage() {
                   <DialogDescription className="flex items-center gap-2 mt-2">
                     <Badge variant="secondary">{previewItem.category}</Badge>
                     {previewType === 'order' && previewItem.engagement && <Badge variant="outline">{previewItem.engagement}</Badge>}
-                    {previewType === 'task' && previewItem.deliveryDays && (
+                    {previewType === 'task' && previewItem.delivery_days && (
                       <Badge variant="outline" className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {previewItem.deliveryDays} дней
+                        <Clock className="h-3 w-3" /> {previewItem.delivery_days} дней
                       </Badge>
                     )}
                   </DialogDescription>
@@ -288,7 +323,7 @@ export default function MarketPage() {
                   <div>
                     <div className="text-sm font-medium mb-2">Теги</div>
                     <div className="flex flex-wrap gap-2">
-                      {previewItem.tags.map((t: string) => (
+                      {(previewItem.tags || []).map((t: string) => (
                         <Badge key={t} variant="outline">{t}</Badge>
                       ))}
                     </div>
@@ -304,15 +339,17 @@ export default function MarketPage() {
                     </div>
                   )}
                   <div className="flex items-center justify-between pt-3 border-t">
-                    <a href={`#/u/${previewItem.author.name.toLowerCase()}`} className="flex items-center gap-3 hover:opacity-80 transition">
-                      <img src={previewItem.author.avatar} alt={previewItem.author.name} className="h-10 w-10 rounded-full object-cover" />
-                      <div>
-                        <div className="font-medium">{previewItem.author.name}</div>
-                        <div className="text-xs text-[#3F7F6E]">Опубликовано: {previewItem.createdAt}</div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
+                        {previewItem.user_id?.substring(0, 2).toUpperCase()}
                       </div>
-                    </a>
+                      <div>
+                        <div className="font-medium">Пользователь</div>
+                        <div className="text-xs text-[#3F7F6E]">Опубликовано: {new Date(previewItem.created_at).toLocaleDateString()}</div>
+                      </div>
+                    </div>
                     <div className="text-xl font-semibold">
-                      {previewType === 'order' ? `$${previewItem.priceMin}–${previewItem.priceMax}` : `$${previewItem.price}`}
+                      {previewType === 'order' ? `${previewItem.currency} ${previewItem.price_min}–${previewItem.price_max}` : `${previewItem.currency} ${previewItem.price}`}
                     </div>
                   </div>
                 </div>

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -15,7 +17,10 @@ const pageVariants = {
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function ProfilePage() {
+  const { user } = useAuth();
   const [tab, setTab] = useState('portfolio');
+  const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [userTasks, setUserTasks] = useState<any[]>([]);
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -33,6 +38,31 @@ export default function ProfilePage() {
       avatar: 'https://i.pravatar.cc/120?img=49'
     };
   });
+
+  useEffect(() => {
+    if (user && tab === 'market') {
+      loadUserMarketItems();
+    }
+  }, [user, tab]);
+
+  const loadUserMarketItems = async () => {
+    if (!user) return;
+
+    const { data: ordersData } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    const { data: tasksData } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    setUserOrders(ordersData || []);
+    setUserTasks(tasksData || []);
+  };
 
   const saveProfile = (p: typeof profile) => {
     setProfile(p);
@@ -111,7 +141,7 @@ export default function ProfilePage() {
             <div className="grid gap-6">
               <Card>
                 <CardContent className="p-6 flex flex-wrap items-center gap-3">
-                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }, { id: 'edit', label: 'Редактировать' }].map(t => (
+                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }, { id: 'edit', label: 'Редактировать' }].map(t => (
                     <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
                   ))}
                 </CardContent>
@@ -134,6 +164,87 @@ export default function ProfilePage() {
                         </CardContent>
                       </Card>
                     ))}
+                  </div>
+                </>
+              )}
+
+              {tab === 'market' && (
+                <>
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">Мои заказы</h3>
+                    {userOrders.length === 0 ? (
+                      <Card>
+                        <CardContent className="p-6 text-center text-[#3F7F6E]">
+                          Вы ещё не создали ни одного заказа
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {userOrders.map((order) => (
+                          <Card key={order.id}>
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base">{order.title}</CardTitle>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="secondary">{order.category}</Badge>
+                                <Badge variant="outline">{order.status}</Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="px-6">
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {(order.tags || []).map((t: string) => (
+                                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                ))}
+                              </div>
+                              <div className="text-sm text-[#3F7F6E] line-clamp-2">{order.description}</div>
+                              <div className="mt-3 font-semibold">
+                                {order.currency} {order.price_min}–{order.price_max}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">Мои объявления</h3>
+                    {userTasks.length === 0 ? (
+                      <Card>
+                        <CardContent className="p-6 text-center text-[#3F7F6E]">
+                          Вы ещё не создали ни одного объявления
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {userTasks.map((task) => (
+                          <Card key={task.id}>
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-base">{task.title}</CardTitle>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="secondary">{task.category}</Badge>
+                                <Badge variant="outline">{task.status}</Badge>
+                                {task.delivery_days && (
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" /> {task.delivery_days}д
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="px-6">
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {(task.tags || []).map((t: string) => (
+                                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                ))}
+                              </div>
+                              <div className="text-sm text-[#3F7F6E] line-clamp-2">{task.description}</div>
+                              <div className="mt-3 font-semibold">
+                                {task.currency} {task.price}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
