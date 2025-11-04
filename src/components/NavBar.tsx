@@ -4,21 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 
-const NAV_LINKS = [
-  { href: '#/market', label: 'Биржа', public: true },
-  { href: '#/market?category=Разработка', label: 'Разработка', public: true },
-  { href: '#/market?category=Дизайн', label: 'Дизайн', public: true },
-  { href: '#/market?category=Маркетинг', label: 'Маркетинг', public: true },
-  { href: '#/market?category=Локализация', label: 'Локализация', public: true },
-  { href: '#/market?category=Копирайт', label: 'Копирайт', public: true },
-  { href: '#/market?category=QA / Безопасность', label: 'QA', public: true },
-  { href: '#/my-orders', label: 'Мои заказы', public: false },
-  { href: '#/my-tasks', label: 'Мои объявления', public: false },
-  { href: '#/talents', label: 'Исполнители', public: false },
-  { href: '#/proposals', label: 'Отклики', public: false },
-  { href: '#/messages', label: 'Сообщения', public: false },
-  { href: '#/wallet', label: 'Кошелёк', public: false },
-  { href: '#/me', label: 'Профиль', public: false }
+const PUBLIC_LINKS = [
+  { href: '#/market', label: 'Биржа' },
+  { href: '#/market?category=Разработка', label: 'Разработка' },
+  { href: '#/market?category=Дизайн', label: 'Дизайн' },
+  { href: '#/market?category=Маркетинг', label: 'Маркетинг' },
+  { href: '#/market?category=Локализация', label: 'Локализация' },
+  { href: '#/market?category=Копирайт', label: 'Копирайт' },
+  { href: '#/market?category=QA / Безопасность', label: 'QA' }
+];
+
+const PRIVATE_LINKS = [
+  { href: '#/market', label: 'Биржа' },
+  { href: '#/my-deals', label: 'Мои сделки' },
+  { href: '#/proposals', label: 'Отклики' },
+  { href: '#/messages', label: 'Сообщения' },
+  { href: '#/wallet', label: 'Кошелёк' },
+  { href: '#/me', label: 'Профиль' }
 ];
 
 export default function NavBar() {
@@ -58,7 +60,7 @@ export default function NavBar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-6 text-sm">
-          {NAV_LINKS.filter(link => link.public || isAuthenticated).map((link) => (
+          {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -122,7 +124,7 @@ export default function NavBar() {
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-[#6FE7C8] bg-background">
           <div className="px-4 py-3 space-y-1">
-            {NAV_LINKS.filter(link => link.public || isAuthenticated).map((link) => (
+            {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => (
               <a
                 key={link.href}
                 href={link.href}

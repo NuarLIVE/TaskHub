@@ -7,8 +7,7 @@ import ProfilePage from './pages/ProfilePage';
 import OrderCreatePage from './pages/OrderCreatePage';
 import TaskCreatePage from './pages/TaskCreatePage';
 import MarketPage from './pages/MarketPage';
-import MyOrdersPage from './pages/MyOrdersPage';
-import MyTasksPage from './pages/MyTasksPage';
+import MyDealsPage from './pages/MyDealsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import OrderDetailPage from './pages/OrderDetailPage';
@@ -26,11 +25,9 @@ import NotificationSettingsPage from './pages/NotificationSettingsPage';
 import {
   DealPage,
   WalletPage,
-  TalentsPage,
   NotificationsPage,
   SavedPage,
   DisputesPage,
-  MyDealsPage,
   SettingsProfilePage,
   SettingsSecurityPage,
   OnboardingPage,
@@ -68,9 +65,7 @@ function App() {
     Page = ProfilePage;
   } else if (route === '/me/edit') {
     Page = ProfilePage;
-  } else if (route === '/me/orders') {
-    Page = MyOrdersPage;
-  } else if (route === '/me/deals') {
+  } else if (route === '/my-deals') {
     Page = MyDealsPage;
   } else if (route === '/me/portfolio') {
     Page = ProfilePage;
@@ -104,8 +99,6 @@ function App() {
     Page = WalletPage;
   } else if (route === '/reviews') {
     Page = ProfilePage;
-  } else if (route === '/talents') {
-    Page = TalentsPage;
   } else if (route.startsWith('/u/')) {
     Page = PublicProfile;
   } else if (route === '/notifications') {
@@ -138,10 +131,6 @@ function App() {
     Page = ContactPage;
   } else if (route === '/market' || route.startsWith('/market?')) {
     Page = MarketPage;
-  } else if (route === '/my-orders') {
-    Page = MyOrdersPage;
-  } else if (route === '/my-tasks') {
-    Page = MyTasksPage;
   } else if (route === '/404') {
     Page = NotFound;
   } else {
