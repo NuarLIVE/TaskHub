@@ -78,6 +78,29 @@ export default function PortfolioAdd() {
 
     setLoading(true);
     try {
+      // First, ensure profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw new Error('Не удалось создать профиль пользователя');
+        }
+      }
+
       let uploadedImageUrl = imageUrl.trim() || null;
 
       // Upload image if file is selected
