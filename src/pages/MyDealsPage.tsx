@@ -144,12 +144,6 @@ export default function MyDealsPage() {
   const handlePauseResume = async (itemId: string, currentStatus: string, type: 'order' | 'task') => {
     const isPausing = currentStatus === 'open' || currentStatus === 'active';
 
-    if (isPausing) {
-      if (!confirm(`Вы уверены, что хотите приостановить это ${type === 'order' ? 'заказ' : 'объявление'}? Оно перестанет отображаться на бирже.`)) {
-        return;
-      }
-    }
-
     const newStatus = isPausing
       ? 'paused'
       : type === 'order' ? 'open' : 'active';
