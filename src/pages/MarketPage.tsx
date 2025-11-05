@@ -34,6 +34,7 @@ export default function MarketPage() {
   const [previewType, setPreviewType] = useState<'order' | 'task'>('order');
   const [orders, setOrders] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,6 +68,24 @@ export default function MarketPage() {
 
     setOrders(ordersData || []);
     setTasks(tasksData || []);
+
+    const allUserIds = new Set<string>();
+    (ordersData || []).forEach((o: any) => allUserIds.add(o.user_id));
+    (tasksData || []).forEach((t: any) => allUserIds.add(t.user_id));
+
+    if (allUserIds.size > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url')
+        .in('id', Array.from(allUserIds));
+
+      const profilesMap: Record<string, any> = {};
+      (profilesData || []).forEach((p: any) => {
+        profilesMap[p.id] = p;
+      });
+      setProfiles(profilesMap);
+    }
+
     setLoading(false);
   };
 
@@ -236,10 +255,14 @@ export default function MarketPage() {
                     </CardContent>
                     <div className="flex items-center justify-between px-6 py-4 border-t">
                       <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium">
-                          {item.user_id?.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="text-sm">Пользователь</span>
+                        {profiles[item.user_id]?.avatar_url ? (
+                          <img src={profiles[item.user_id].avatar_url} alt={profiles[item.user_id].name} className="h-7 w-7 rounded-full object-cover" />
+                        ) : (
+                          <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium">
+                            {profiles[item.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
+                          </div>
+                        )}
+                        <span className="text-sm">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                       </div>
                       <div className="font-semibold">
                         {activeTab === 'orders' ? `${item.currency} ${item.price_min}–${item.price_max}` : `${item.currency} ${item.price}`}
@@ -346,11 +369,15 @@ export default function MarketPage() {
                   )}
                   <div className="flex items-center justify-between pt-3 border-t">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
-                        {previewItem.user_id?.substring(0, 2).toUpperCase()}
-                      </div>
+                      {profiles[previewItem.user_id]?.avatar_url ? (
+                        <img src={profiles[previewItem.user_id].avatar_url} alt={profiles[previewItem.user_id].name} className="h-10 w-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
+                          {profiles[previewItem.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                      )}
                       <div>
-                        <div className="font-medium">Пользователь</div>
+                        <div className="font-medium">{profiles[previewItem.user_id]?.name || 'Пользователь'}</div>
                         <div className="text-xs text-[#3F7F6E]">Опубликовано: {new Date(previewItem.created_at).toLocaleDateString()}</div>
                       </div>
                     </div>
