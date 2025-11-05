@@ -179,7 +179,7 @@ export default function PortfolioAdd() {
           <CardHeader>
             <CardTitle>Информация о проекте</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="grid gap-6">
               <div>
                 <label className="text-sm font-medium mb-1 block">
@@ -263,7 +263,7 @@ export default function PortfolioAdd() {
                 {!imagePreview ? (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-[#6FE7C8] transition-colors"
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-[#6FE7C8] transition-colors"
                   >
                     <Upload className="h-12 w-12 mx-auto mb-3 text-[#3F7F6E]" />
                     <p className="text-sm text-[#3F7F6E] mb-1">Нажмите для загрузки изображения</p>
@@ -277,7 +277,7 @@ export default function PortfolioAdd() {
                       variant="destructive"
                       size="sm"
                       onClick={handleRemoveImage}
-                      className="absolute top-2 right-2"
+                      className="absolute top-3 right-3"
                     >
                       <X className="h-4 w-4" />
                     </Button>
