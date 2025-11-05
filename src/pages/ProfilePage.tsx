@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,6 +25,9 @@ export default function ProfilePage() {
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [helpfulVotes, setHelpfulVotes] = useState<Set<number>>(new Set());
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState<any>(null);
+  const [previewType, setPreviewType] = useState<'order' | 'task'>('order');
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -113,6 +117,12 @@ export default function ProfilePage() {
         });
     }
     setHelpfulVotes(newVotes);
+  };
+
+  const openPreview = (item: any, type: 'order' | 'task') => {
+    setPreviewItem(item);
+    setPreviewType(type);
+    setPreviewOpen(true);
   };
 
   const saveProfile = (p: typeof profile) => {
@@ -272,7 +282,7 @@ export default function ProfilePage() {
                     ) : (
                       <div className="grid grid-cols-1 gap-4">
                         {userOrders.map((order) => (
-                          <Card key={order.id}>
+                          <Card key={order.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openPreview(order, 'order')}>
                             <CardContent className="p-6">
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
@@ -291,12 +301,6 @@ export default function ProfilePage() {
                                     {order.currency} {order.price_min}–{order.price_max}
                                   </div>
                                 </div>
-                                <Button asChild size="sm" variant="outline">
-                                  <a href={`#/order/${order.id}`}>
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    Просмотр
-                                  </a>
-                                </Button>
                               </div>
                             </CardContent>
                           </Card>
@@ -323,7 +327,7 @@ export default function ProfilePage() {
                     ) : (
                       <div className="grid grid-cols-1 gap-4">
                         {userTasks.map((task) => (
-                          <Card key={task.id}>
+                          <Card key={task.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openPreview(task, 'task')}>
                             <CardContent className="p-6">
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex-1">
@@ -347,12 +351,6 @@ export default function ProfilePage() {
                                     {task.currency} {task.price}
                                   </div>
                                 </div>
-                                <Button asChild size="sm" variant="outline">
-                                  <a href={`#/task/${task.id}`}>
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    Просмотр
-                                  </a>
-                                </Button>
                               </div>
                             </CardContent>
                           </Card>
@@ -624,6 +622,77 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-2xl">
+            {previewItem && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{previewItem.title}</DialogTitle>
+                  <DialogDescription className="flex items-center gap-2 mt-2">
+                    <Badge variant="secondary">{previewItem.category}</Badge>
+                    {previewType === 'order' && previewItem.engagement && <Badge variant="outline">{previewItem.engagement}</Badge>}
+                    {previewType === 'task' && previewItem.delivery_days && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {previewItem.delivery_days} дней
+                      </Badge>
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4">
+                  <div>
+                    <div className="text-sm font-medium mb-2">Описание</div>
+                    <p className="text-sm text-[#3F7F6E] leading-relaxed whitespace-pre-wrap">{previewItem.description}</p>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Теги</div>
+                    <div className="flex flex-wrap gap-2">
+                      {(previewItem.tags || []).map((t: string) => (
+                        <Badge key={t} variant="outline">{t}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  {previewType === 'task' && previewItem.features && (
+                    <div>
+                      <div className="text-sm font-medium mb-2">Что входит</div>
+                      <ul className="list-disc list-inside text-sm text-[#3F7F6E]">
+                        {previewItem.features.map((f: string, i: number) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="flex items-center gap-3">
+                      {profile?.avatar ? (
+                        <img src={profile.avatar} alt={profile.name} className="h-10 w-10 rounded-full object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
+                          {profile?.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium">{profile?.name || 'Пользователь'}</div>
+                        <div className="text-xs text-[#3F7F6E]">Опубликовано: {new Date(previewItem.created_at).toLocaleDateString()}</div>
+                      </div>
+                    </div>
+                    <div className="text-xl font-semibold text-[#6FE7C8]">
+                      {previewType === 'order' ? `${previewItem.currency} ${previewItem.price_min}–${previewItem.price_max}` : `${previewItem.currency} ${previewItem.price}`}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Закрыть</Button>
+                  <Button asChild>
+                    <a href={`#/${previewType}/${previewItem.id}`}>
+                      Открыть полностью
+                    </a>
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </AnimatePresence>
   );
