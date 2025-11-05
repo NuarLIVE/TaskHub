@@ -68,6 +68,11 @@ export default function OrderDetailPage() {
 
       setOrder(orderData);
 
+      await supabase
+        .from('orders')
+        .update({ views_count: (orderData.views_count || 0) + 1 })
+        .eq('id', orderId);
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('name, avatar_url, email')

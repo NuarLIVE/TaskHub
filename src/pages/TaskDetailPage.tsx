@@ -64,6 +64,11 @@ export default function TaskDetailPage() {
 
       setTask(taskData);
 
+      await supabase
+        .from('tasks')
+        .update({ views_count: (taskData.views_count || 0) + 1 })
+        .eq('id', taskId);
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('name, avatar_url, email')
