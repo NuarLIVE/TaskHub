@@ -92,12 +92,13 @@ export default function PortfolioAdd() {
           .insert({
             id: user.id,
             email: user.email || '',
-            name: user.email?.split('@')[0] || 'User'
+            name: user.email?.split('@')[0] || 'User',
+            role: 'freelancer'
           });
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
-          throw new Error('Не удалось создать профиль пользователя');
+          throw new Error(`Не удалось создать профиль: ${profileError.message}`);
         }
       }
 
@@ -118,7 +119,7 @@ export default function PortfolioAdd() {
 
         if (uploadError) {
           console.error('Upload error:', uploadError);
-          throw new Error('Ошибка при загрузке изображения');
+          throw new Error(`Ошибка при загрузке изображения: ${uploadError.message}`);
         }
 
         const { data: { publicUrl } } = supabase.storage
@@ -141,7 +142,7 @@ export default function PortfolioAdd() {
 
       if (error) {
         console.error('Insert error:', error);
-        throw error;
+        throw new Error(`Ошибка при добавлении проекта: ${error.message}`);
       }
 
       alert('Проект успешно добавлен в портфолио!');
