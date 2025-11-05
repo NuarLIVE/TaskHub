@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import FavoriteButton from '@/components/ui/FavoriteButton';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/currency';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -40,11 +41,13 @@ interface Profile {
 }
 
 export default function OrderDetailPage() {
+  const { user } = useAuth();
   const [proposalText, setProposalText] = useState('');
   const [proposalPrice, setProposalPrice] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isOwner = user && order && user.id === order.user_id;
 
   useEffect(() => {
     loadOrder();
@@ -125,8 +128,8 @@ export default function OrderDetailPage() {
         transition={pageTransition}
         className="min-h-screen bg-background"
       >
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid gap-6">
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
@@ -161,37 +164,40 @@ export default function OrderDetailPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3 pt-4">
-                    <Button asChild>
-                      <a href={`#/proposals/create?type=order&id=${order.id}`}>
-                        <Send className="h-4 w-4 mr-2" />
-                        Откликнуться
-                      </a>
-                    </Button>
-                    <Button asChild variant="outline">
-                      <a href={`#/deal/open?type=order&id=${order.id}`}>
-                        <Handshake className="h-4 w-4 mr-2" />
-                        Открыть сделку
-                      </a>
-                    </Button>
-                    {profile && (
-                      <Button asChild variant="outline">
-                        <a href={`#/messages?to=${profile.email}`}>
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Написать
+                  {!isOwner && (
+                    <div className="flex flex-wrap gap-3 pt-4">
+                      <Button asChild>
+                        <a href={`#/proposals/create?type=order&id=${order.id}`}>
+                          <Send className="h-4 w-4 mr-2" />
+                          Откликнуться
                         </a>
                       </Button>
-                    )}
-                  </div>
+                      <Button asChild variant="outline">
+                        <a href={`#/deal/open?type=order&id=${order.id}`}>
+                          <Handshake className="h-4 w-4 mr-2" />
+                          Открыть сделку
+                        </a>
+                      </Button>
+                      {profile && (
+                        <Button asChild variant="outline">
+                          <a href={`#/messages?to=${profile.email}`}>
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Написать
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Отправить отклик</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmitProposal} className="grid gap-4">
+              {!isOwner && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Отправить отклик</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSubmitProposal} className="grid gap-4">
                     <div>
                       <label className="text-sm font-medium mb-1 block">Ваше предложение</label>
                       <textarea
@@ -229,12 +235,14 @@ export default function OrderDetailPage() {
                       <Send className="h-4 w-4 mr-2" />
                       Отправить отклик
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
-            <div className="grid gap-6 self-start sticky top-24">
+            {profile && (
+            <div className="mt-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Заказчик</CardTitle>
@@ -277,6 +285,7 @@ export default function OrderDetailPage() {
                 </CardContent>
               </Card>
             </div>
+            )}
           </div>
         </section>
       </motion.div>

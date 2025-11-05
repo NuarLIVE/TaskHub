@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import FavoriteButton from '@/components/ui/FavoriteButton';
 import { supabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/currency';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -38,9 +39,11 @@ interface Profile {
 }
 
 export default function TaskDetailPage() {
+  const { user } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isOwner = user && task && user.id === task.user_id;
 
   useEffect(() => {
     loadTask();
@@ -115,8 +118,8 @@ export default function TaskDetailPage() {
         transition={pageTransition}
         className="min-h-screen bg-background"
       >
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid gap-6">
             <div className="grid gap-6">
               <Card>
                 <CardHeader>
@@ -160,27 +163,30 @@ export default function TaskDetailPage() {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap gap-3 pt-4">
-                    <Button asChild>
-                      <a href={`#/deal/open?type=task&id=${task.id}`}>
-                        <Handshake className="h-4 w-4 mr-2" />
-                        Открыть сделку
-                      </a>
-                    </Button>
-                    {profile && (
-                      <Button asChild variant="outline">
-                        <a href={`#/messages?to=${profile.email}`}>
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Написать
+                  {!isOwner && (
+                    <div className="flex flex-wrap gap-3 pt-4">
+                      <Button asChild>
+                        <a href={`#/deal/open?type=task&id=${task.id}`}>
+                          <Handshake className="h-4 w-4 mr-2" />
+                          Открыть сделку
                         </a>
                       </Button>
-                    )}
-                  </div>
+                      {profile && (
+                        <Button asChild variant="outline">
+                          <a href={`#/messages?to=${profile.email}`}>
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Написать
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid gap-6 self-start sticky top-24">
+            {profile && (
+            <div className="mt-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Исполнитель</CardTitle>
@@ -231,6 +237,7 @@ export default function TaskDetailPage() {
                 </CardContent>
               </Card>
             </div>
+            )}
           </div>
         </section>
       </motion.div>

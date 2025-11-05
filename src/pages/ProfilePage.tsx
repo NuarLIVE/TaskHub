@@ -30,6 +30,7 @@ export default function ProfilePage() {
       headline: 'Web/Unity',
       role: 'Full‑stack / Game Dev',
       about: 'Full‑stack разработчик и Unity‑инженер. Люблю аккуратные интерфейсы и предсказуемый неткод.',
+      bio: 'Занимаюсь разработкой уже более 5 лет. Специализируюсь на создании веб-приложений и игр. Работал над множеством проектов от стартапов до крупных корпораций. Всегда открыт к новым вызовам и интересным задачам. Предпочитаю чистый код и современные технологии.',
       skills: ['React', 'Tailwind', 'Node', 'PostgreSQL', 'Unity', 'Photon'],
       rateMin: 20,
       rateMax: 35,
@@ -116,11 +117,17 @@ export default function ProfilePage() {
   const onEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const bioText = String(fd.get('bio') || '');
+    if (bioText.length > 700) {
+      alert('Текст "О себе" не должен превышать 700 символов');
+      return;
+    }
     const next = {
       name: String(fd.get('name') || ''),
       headline: String(fd.get('headline') || ''),
       role: String(fd.get('role') || ''),
       about: String(fd.get('about') || ''),
+      bio: bioText,
       skills: String(fd.get('skills') || '').split(',').map(s => s.trim()).filter(Boolean),
       rateMin: Number(fd.get('rateMin') || 0),
       rateMax: Number(fd.get('rateMax') || 0),
@@ -185,7 +192,7 @@ export default function ProfilePage() {
             <div className="grid gap-6">
               <Card>
                 <CardContent className="p-6 flex flex-wrap items-center gap-3">
-                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }, { id: 'edit', label: 'Редактировать' }].map(t => (
+                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
                     <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
                   ))}
                 </CardContent>
@@ -345,7 +352,13 @@ export default function ProfilePage() {
                     <CardContent className="p-6 pt-0 grid gap-6">
                       <div>
                         <h3 className="font-semibold text-lg mb-2">{profile.headline}</h3>
-                        <p className="text-[#3F7F6E] leading-relaxed">{profile.about}</p>
+                        <p className="text-[#3F7F6E] leading-relaxed mb-4">{profile.about}</p>
+                        {profile.bio && (
+                          <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-[#EFFFF8] to-white border">
+                            <h4 className="font-medium mb-2 text-sm text-[#3F7F6E]">Подробнее обо мне</h4>
+                            <p className="text-sm leading-relaxed">{profile.bio}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -525,8 +538,22 @@ export default function ProfilePage() {
                         </label>
                       </div>
                       <label className="grid gap-1">
-                        <span className="text-sm font-medium">О себе</span>
-                        <textarea name="about" defaultValue={profile.about} rows={5} className="rounded-md border px-3 py-2 bg-background" />
+                        <span className="text-sm font-medium">О себе (краткое описание)</span>
+                        <textarea name="about" defaultValue={profile.about} rows={3} className="rounded-md border px-3 py-2 bg-background" />
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-sm font-medium">Подробнее обо мне (до 700 символов)</span>
+                        <textarea
+                          name="bio"
+                          defaultValue={profile.bio || ''}
+                          rows={6}
+                          maxLength={700}
+                          className="rounded-md border px-3 py-2 bg-background"
+                          placeholder="Расскажите подробнее о своём опыте, навыках и интересах..."
+                        />
+                        <div className="text-xs text-[#3F7F6E] text-right">
+                          {profile.bio?.length || 0} / 700
+                        </div>
                       </label>
                       <label className="grid gap-1">
                         <span className="text-sm font-medium">Навыки (через запятую)</span>
