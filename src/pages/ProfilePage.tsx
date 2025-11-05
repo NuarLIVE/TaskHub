@@ -241,39 +241,104 @@ export default function ProfilePage() {
       >
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
-            <Card className="sticky top-24 self-start">
-              <CardContent className="p-6 grid gap-4">
-                <div className="flex items-center gap-4">
-                  <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
-                  <div>
-                    <div className="font-semibold">{profile.name} • {profile.headline}</div>
-                    <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
+            <div className="grid gap-6 sticky top-24 self-start">
+              <Card>
+                <CardContent className="p-6 grid gap-4">
+                  <div className="flex items-center gap-4">
+                    <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
+                    <div>
+                      <div className="font-semibold">{profile.name} • {profile.headline}</div>
+                      <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl border p-2">
-                    <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
-                    <div className="font-semibold flex items-center justify-center gap-1"><Star className="h-4 w-4" />4.9</div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-xl border p-2">
+                      <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
+                      <div className="font-semibold flex items-center justify-center gap-1"><Star className="h-4 w-4" />4.9</div>
+                    </div>
+                    <div className="rounded-xl border p-2">
+                      <div className="text-xs text-[#3F7F6E]">Проекты</div>
+                      <div className="font-semibold">27</div>
+                    </div>
+                    <div className="rounded-xl border p-2">
+                      <div className="text-xs text-[#3F7F6E]">Онлайн</div>
+                      <div className="font-semibold text-emerald-600">сейчас</div>
+                    </div>
                   </div>
-                  <div className="rounded-xl border p-2">
-                    <div className="text-xs text-[#3F7F6E]">Проекты</div>
-                    <div className="font-semibold">27</div>
+                  <div className="grid gap-2">
+                    <Button asChild><a href="#/task/new">Создать Task</a></Button>
+                    <Button asChild variant="secondary"><a href="#/order/new">Создать заказ</a></Button>
                   </div>
-                  <div className="rounded-xl border p-2">
-                    <div className="text-xs text-[#3F7F6E]">Онлайн</div>
-                    <div className="font-semibold text-emerald-600">сейчас</div>
+                  <div className="flex items-center justify-between text-sm text-[#3F7F6E]">
+                    <a className="underline" href="#">Поделиться профилем</a>
+                    <button className="underline" onClick={() => setTab('edit')}>Редактировать</button>
                   </div>
-                </div>
-                <div className="grid gap-2">
-                  <Button asChild><a href="#/task/new">Создать Task</a></Button>
-                  <Button asChild variant="secondary"><a href="#/order/new">Создать заказ</a></Button>
-                </div>
-                <div className="flex items-center justify-between text-sm text-[#3F7F6E]">
-                  <a className="underline" href="#">Поделиться профилем</a>
-                  <button className="underline" onClick={() => setTab('edit')}>Редактировать</button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-[#EFFFF8] to-white border-[#6FE7C8]/30">
+                <CardContent className="p-6 grid gap-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-8 w-8 rounded-lg bg-[#6FE7C8] flex items-center justify-center">
+                      <Star className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-lg">Советы фрилансеру</h3>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <div className="flex gap-3 items-start">
+                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-semibold text-[#3F7F6E]">1</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          <span className="font-medium">Пополните портфолио</span> — добавьте минимум 3 проекта, чтобы увеличить доверие клиентов
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 items-start">
+                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-semibold text-[#3F7F6E]">2</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          <span className="font-medium">Быстро отвечайте</span> — ответ в течение часа повышает шансы получить заказ на 40%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 items-start">
+                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-semibold text-[#3F7F6E]">3</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          <span className="font-medium">Обновляйте профиль</span> — детальное описание и актуальные навыки привлекают больше клиентов
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 items-start">
+                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-semibold text-[#3F7F6E]">4</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          <span className="font-medium">Собирайте отзывы</span> — попросите клиентов оставить отзыв после завершения проекта
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 pt-3 border-t border-[#6FE7C8]/20">
+                    <p className="text-xs text-[#3F7F6E] text-center">
+                      Следуйте этим советам, чтобы получать больше заказов
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="grid gap-6">
               <Card>
