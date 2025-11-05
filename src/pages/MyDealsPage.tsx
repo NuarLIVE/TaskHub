@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -226,7 +226,12 @@ export default function MyDealsPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-[#3F7F6E]">Загрузка...</div>
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+              <p className="text-[#3F7F6E]">Загрузка...</p>
+            </CardContent>
+          </Card>
         ) : activeTab === 'orders' ? (
           <div className="space-y-4">
             <div className="flex justify-end mb-4">

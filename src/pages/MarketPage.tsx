@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, X, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -222,9 +222,12 @@ export default function MarketPage() {
           </Card>
 
           {loading ? (
-            <div className="text-center py-16">
-              <p className="text-[#3F7F6E]">Загрузка...</p>
-            </div>
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Loader2 className="h-10 w-10 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                <p className="text-[#3F7F6E]">Загрузка...</p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {data.map((item: any) => (

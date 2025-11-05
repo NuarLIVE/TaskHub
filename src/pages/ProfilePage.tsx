@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [userTasks, setUserTasks] = useState<any[]>([]);
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [helpfulVotes, setHelpfulVotes] = useState<Set<number>>(new Set());
+  const [loadingMarket, setLoadingMarket] = useState(false);
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -55,20 +56,25 @@ export default function ProfilePage() {
   const loadUserMarketItems = async () => {
     if (!user) return;
 
-    const { data: ordersData } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    setLoadingMarket(true);
+    try {
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-    const { data: tasksData } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      const { data: tasksData } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-    setUserOrders(ordersData || []);
-    setUserTasks(tasksData || []);
+      setUserOrders(ordersData || []);
+      setUserTasks(tasksData || []);
+    } finally {
+      setLoadingMarket(false);
+    }
   };
 
   const loadPortfolioProjects = async () => {
@@ -250,7 +256,14 @@ export default function ProfilePage() {
                 <>
                   <div>
                     <h3 className="text-xl font-bold mb-4">Мои заказы</h3>
-                    {userOrders.length === 0 ? (
+                    {loadingMarket ? (
+                      <Card>
+                        <CardContent className="p-12 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                          <p className="text-[#3F7F6E]">Загрузка...</p>
+                        </CardContent>
+                      </Card>
+                    ) : userOrders.length === 0 ? (
                       <Card>
                         <CardContent className="p-6 text-center text-[#3F7F6E]">
                           Вы ещё не создали ни одного заказа
@@ -294,7 +307,14 @@ export default function ProfilePage() {
 
                   <div>
                     <h3 className="text-xl font-bold mb-4">Мои объявления</h3>
-                    {userTasks.length === 0 ? (
+                    {loadingMarket ? (
+                      <Card>
+                        <CardContent className="p-12 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                          <p className="text-[#3F7F6E]">Загрузка...</p>
+                        </CardContent>
+                      </Card>
+                    ) : userTasks.length === 0 ? (
                       <Card>
                         <CardContent className="p-6 text-center text-[#3F7F6E]">
                           Вы ещё не создали ни одного объявления

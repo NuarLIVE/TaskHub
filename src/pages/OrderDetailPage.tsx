@@ -128,7 +128,7 @@ export default function OrderDetailPage() {
         transition={pageTransition}
         className="min-h-screen bg-background"
       >
-        <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+        <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid gap-6">
             <div className="grid gap-6">
               <Card>
@@ -150,7 +150,7 @@ export default function OrderDetailPage() {
                 <CardContent className="grid gap-6">
                   <div>
                     <h3 className="font-semibold mb-2">Описание</h3>
-                    <p className="text-[#3F7F6E]">{order.description}</p>
+                    <p className="text-[#3F7F6E] leading-relaxed whitespace-pre-wrap">{order.description}</p>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
@@ -164,30 +164,40 @@ export default function OrderDetailPage() {
                     </div>
                   </div>
 
-                  {!isOwner && (
-                    <div className="flex flex-wrap gap-3 pt-4">
-                      <Button asChild>
-                        <a href={`#/proposals/create?type=order&id=${order.id}`}>
-                          <Send className="h-4 w-4 mr-2" />
-                          Откликнуться
-                        </a>
-                      </Button>
+                  <div className="flex flex-wrap gap-3 pt-4">
+                    {profile && (
                       <Button asChild variant="outline">
-                        <a href={`#/deal/open?type=order&id=${order.id}`}>
-                          <Handshake className="h-4 w-4 mr-2" />
-                          Открыть сделку
+                        <a href={`#/users/${order.user_id}`}>
+                          <User className="h-4 w-4 mr-2" />
+                          Профиль
                         </a>
                       </Button>
-                      {profile && (
-                        <Button asChild variant="outline">
-                          <a href={`#/messages?to=${profile.email}`}>
-                            <MessageCircle className="h-4 w-4 mr-2" />
-                            Написать
+                    )}
+                    {!isOwner && (
+                      <>
+                        <Button asChild>
+                          <a href={`#/proposals/create?type=order&id=${order.id}`}>
+                            <Send className="h-4 w-4 mr-2" />
+                            Откликнуться
                           </a>
                         </Button>
-                      )}
-                    </div>
-                  )}
+                        <Button asChild variant="outline">
+                          <a href={`#/deal/open?type=order&id=${order.id}`}>
+                            <Handshake className="h-4 w-4 mr-2" />
+                            Открыть сделку
+                          </a>
+                        </Button>
+                        {profile && (
+                          <Button asChild variant="outline">
+                            <a href={`#/messages?to=${profile.email}`}>
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                              Написать
+                            </a>
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
