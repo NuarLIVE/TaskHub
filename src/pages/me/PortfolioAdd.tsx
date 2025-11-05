@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Save, X, Plus, Image as ImageIcon, Upload } from 'lucide-react';
+import { Save, X, Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ export default function PortfolioAdd() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [link, setLink] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +92,7 @@ export default function PortfolioAdd() {
           .insert({
             id: user.id,
             email: user.email || '',
-            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
+            name: user.email?.split('@')[0] || 'User'
           });
 
         if (profileError) {
