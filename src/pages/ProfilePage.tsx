@@ -27,7 +27,9 @@ export default function ProfilePage() {
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
-  const [previewType, setPreviewType] = useState<'order' | 'task'>('order');
+  const [previewType, setPreviewType] = useState<'order' | 'task' | 'portfolio'>('order');
+  const [portfolioPreviewOpen, setPortfolioPreviewOpen] = useState(false);
+  const [selectedPortfolioProject, setSelectedPortfolioProject] = useState<any>(null);
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -91,6 +93,11 @@ export default function ProfilePage() {
       .order('created_at', { ascending: false });
 
     setPortfolioProjects(data || []);
+  };
+
+  const handlePortfolioProjectClick = (project: any) => {
+    setSelectedPortfolioProject(project);
+    setPortfolioPreviewOpen(true);
   };
 
   const toggleHelpful = async (reviewId: number) => {
@@ -233,7 +240,11 @@ export default function ProfilePage() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {portfolioProjects.map((project) => (
-                        <Card key={project.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                        <Card
+                          key={project.id}
+                          className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                          onClick={() => handlePortfolioProjectClick(project)}
+                        >
                           {project.image_url ? (
                             <img src={project.image_url} alt={project.title} className="aspect-[16/10] object-cover" />
                           ) : (
@@ -248,12 +259,10 @@ export default function ProfilePage() {
                               {project.tags?.slice(0, 3).map((tag: string) => (
                                 <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
                               ))}
+                              {project.tags?.length > 3 && (
+                                <Badge variant="outline" className="text-xs">+{project.tags.length - 3}</Badge>
+                              )}
                             </div>
-                            {project.project_url && (
-                              <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#6FE7C8] hover:underline mt-2 inline-block">
-                                Посмотреть проект →
-                              </a>
-                            )}
                           </CardContent>
                         </Card>
                       ))}
@@ -711,6 +720,80 @@ export default function ProfilePage() {
                 </div>
                 <DialogFooter>
                   <Button onClick={() => setPreviewOpen(false)}>Закрыть</Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Portfolio Preview Dialog */}
+        <Dialog open={portfolioPreviewOpen} onOpenChange={setPortfolioPreviewOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            {selectedPortfolioProject && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-2xl">{selectedPortfolioProject.title}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-6">
+                  {selectedPortfolioProject.image_url && (
+                    <div className="relative w-full overflow-hidden rounded-lg">
+                      <img
+                        src={selectedPortfolioProject.image_url}
+                        alt={selectedPortfolioProject.title}
+                        className="w-full h-auto object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid gap-4">
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Описание проекта</h3>
+                      <p className="text-[#3F7F6E] whitespace-pre-wrap">{selectedPortfolioProject.description}</p>
+                    </div>
+
+                    {selectedPortfolioProject.tags && selectedPortfolioProject.tags.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">Технологии</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedPortfolioProject.tags.map((tag: string) => (
+                            <Badge key={tag} variant="outline">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPortfolioProject.project_url && (
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">Ссылка на проект</h3>
+                        <a
+                          href={selectedPortfolioProject.project_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-[#6FE7C8] hover:underline"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          {selectedPortfolioProject.project_url}
+                        </a>
+                      </div>
+                    )}
+
+                    {selectedPortfolioProject.created_at && (
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">Дата добавления</h3>
+                        <div className="flex items-center gap-2 text-[#3F7F6E]">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(selectedPortfolioProject.created_at).toLocaleDateString('ru-RU', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setPortfolioPreviewOpen(false)}>Закрыть</Button>
                 </DialogFooter>
               </>
             )}
