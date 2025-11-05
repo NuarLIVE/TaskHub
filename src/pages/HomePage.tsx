@@ -78,7 +78,7 @@ function Hero() {
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <div className="relative w-full sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
-                <Input placeholder='Найдите задачу или навыки (напр. "React", "Unity")' className="pl-9 h-11" />
+                <Input placeholder='Найдите задачу или навыки' className="pl-9 h-11" />
                 <div className="absolute right-1 top-1/2 -translate-y-1/2">
                   <Button className="h-9 px-3">Искать</Button>
                 </div>
