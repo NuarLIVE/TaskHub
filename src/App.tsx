@@ -5,7 +5,9 @@ import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import OrderCreatePage from './pages/OrderCreatePage';
+import OrderEditPage from './pages/OrderEditPage';
 import TaskCreatePage from './pages/TaskCreatePage';
+import TaskEditPage from './pages/TaskEditPage';
 import MarketPage from './pages/MarketPage';
 import MyDealsPage from './pages/MyDealsPage';
 import LoginPage from './pages/LoginPage';
@@ -75,12 +77,20 @@ function App() {
     Page = MarketPage;
   } else if (route === '/orders/create' || route === '/order/new') {
     Page = OrderCreatePage;
+  } else if (route.match(/^\/order\/[^\/]+\/edit$/)) {
+    Page = OrderEditPage;
+  } else if (route.startsWith('/order/')) {
+    Page = OrderDetailPage;
   } else if (route.startsWith('/orders/')) {
     Page = OrderDetailPage;
   } else if (route === '/tasks') {
     Page = MarketPage;
   } else if (route === '/tasks/create' || route === '/task/new') {
     Page = TaskCreatePage;
+  } else if (route.match(/^\/task\/[^\/]+\/edit$/)) {
+    Page = TaskEditPage;
+  } else if (route.startsWith('/task/')) {
+    Page = TaskDetailPage;
   } else if (route.startsWith('/tasks/')) {
     Page = TaskDetailPage;
   } else if (route === '/proposals') {
