@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Save, X, Plus, Image as ImageIcon } from 'lucide-react';
+import { Save, X, Plus, Image as ImageIcon, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,9 @@ export default function PortfolioAdd() {
   const [description, setDescription] = useState('');
   const [link, setLink] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,6 +33,34 @@ export default function PortfolioAdd() {
 
   const handleRemoveTag = (tag: string) => {
     setTags(tags.filter(t => t !== tag));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Файл слишком большой. Максимальный размер: 5 МБ');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert('Пожалуйста, выберите изображение');
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
 
@@ -47,20 +78,31 @@ export default function PortfolioAdd() {
 
     setLoading(true);
     try {
-      // First, ensure the user has a profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
+      let uploadedImageUrl = imageUrl.trim() || null;
 
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        throw new Error('Не удалось найти профиль пользователя');
-      }
+      // Upload image if file is selected
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `portfolio/${fileName}`;
 
-      if (!profileData) {
-        throw new Error('Профиль не найден. Пожалуйста, создайте профиль сначала.');
+        const { error: uploadError } = await supabase.storage
+          .from('portfolio-images')
+          .upload(filePath, imageFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error('Ошибка при загрузке изображения');
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('portfolio-images')
+          .getPublicUrl(filePath);
+
+        uploadedImageUrl = publicUrl;
       }
 
       const { error } = await supabase
@@ -70,7 +112,7 @@ export default function PortfolioAdd() {
           title: title.trim(),
           description: description.trim(),
           project_url: link.trim() || null,
-          image_url: imageUrl.trim() || null,
+          image_url: uploadedImageUrl,
           tags
         });
 
@@ -137,7 +179,7 @@ export default function PortfolioAdd() {
                   onChange={(e) => setDescription(e.target.value)}
                   rows={6}
                   placeholder="Расскажите о проекте: какую задачу решали, какие технологии использовали, какого результата достигли..."
-                  className="w-full rounded-md border px-3 py-2 bg-background"
+                  className="w-full rounded-md border px-3 py-2 bg-background resize-none"
                   required
                 />
                 <p className="text-xs text-[#3F7F6E] mt-1">
@@ -187,15 +229,36 @@ export default function PortfolioAdd() {
 
               <div>
                 <label className="text-sm font-medium mb-1 block">Изображение проекта (необязательно)</label>
-                <Input
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://i.imgur.com/example.png"
-                  className="h-11"
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
                 />
-                <p className="text-xs text-[#3F7F6E] mt-1">
-                  Прямая ссылка на скриншот или обложку проекта. Можно загрузить на <a href="https://imgur.com" target="_blank" rel="noopener noreferrer" className="text-[#6FE7C8] hover:underline">imgur.com</a>
-                </p>
+                {!imagePreview ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-[#6FE7C8] transition-colors"
+                  >
+                    <Upload className="h-12 w-12 mx-auto mb-3 text-[#3F7F6E]" />
+                    <p className="text-sm text-[#3F7F6E] mb-1">Нажмите для загрузки изображения</p>
+                    <p className="text-xs text-[#3F7F6E]">PNG, JPG, GIF до 5 МБ</p>
+                  </div>
+                ) : (
+                  <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden">
+                    <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
