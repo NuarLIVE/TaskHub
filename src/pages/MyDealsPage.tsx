@@ -249,12 +249,7 @@ export default function MyDealsPage() {
               </Card>
             ) : (
               orders.map((order) => (
-                <Card key={order.id} className="hover:shadow-lg transition-shadow relative overflow-hidden">
-                  {order.status === 'paused' && (
-                    <div className="absolute top-4 -right-10 bg-yellow-500 text-white text-xs font-bold px-12 py-1 rotate-45 shadow-md z-10">
-                      ПРИОСТАНОВЛЕНО
-                    </div>
-                  )}
+                <Card key={order.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
@@ -379,12 +374,7 @@ export default function MyDealsPage() {
               </Card>
             ) : (
               tasks.map((task) => (
-                <Card key={task.id} className="hover:shadow-lg transition-shadow relative overflow-hidden">
-                  {task.status === 'paused' && (
-                    <div className="absolute top-4 -right-10 bg-yellow-500 text-white text-xs font-bold px-12 py-1 rotate-45 shadow-md z-10">
-                      ПРИОСТАНОВЛЕНО
-                    </div>
-                  )}
+                <Card key={task.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
