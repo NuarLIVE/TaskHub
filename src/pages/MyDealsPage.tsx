@@ -182,10 +182,10 @@ export default function MyDealsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+    const variants: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'warning' }> = {
       open: { label: 'Открыт', variant: 'default' },
       active: { label: 'Активно', variant: 'default' },
-      paused: { label: 'Приостановлен', variant: 'secondary' },
+      paused: { label: 'Приостановлено', variant: 'warning' },
       closed: { label: 'Закрыт', variant: 'outline' },
     };
     const config = variants[status] || { label: status, variant: 'outline' };
