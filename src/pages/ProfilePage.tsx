@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,9 @@ export default function ProfilePage() {
   const [previewType, setPreviewType] = useState<'order' | 'task' | 'portfolio'>('order');
   const [portfolioPreviewOpen, setPortfolioPreviewOpen] = useState(false);
   const [selectedPortfolioProject, setSelectedPortfolioProject] = useState<any>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -137,7 +140,31 @@ export default function ProfilePage() {
     if (typeof window !== 'undefined') localStorage.setItem('fh_profile', JSON.stringify(p));
   };
 
-  const onEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Размер файла не должен превышать 5 МБ');
+        return;
+      }
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview('');
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
+  };
+
+  const onEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const bioText = String(fd.get('bio') || '');
@@ -145,6 +172,42 @@ export default function ProfilePage() {
       alert('Текст "О себе" не должен превышать 700 символов');
       return;
     }
+
+    let uploadedAvatarUrl = String(fd.get('avatar') || '');
+
+    if (avatarFile && user) {
+      try {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}-avatar-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('portfolio-images')
+          .upload(filePath, avatarFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          alert(`Ошибка при загрузке аватара: ${uploadError.message}`);
+          return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('portfolio-images')
+          .getPublicUrl(filePath);
+
+        uploadedAvatarUrl = publicUrl;
+        setAvatarFile(null);
+        setAvatarPreview('');
+      } catch (error: any) {
+        console.error('Avatar upload error:', error);
+        alert(`Ошибка при загрузке аватара: ${error.message}`);
+        return;
+      }
+    }
+
     const next = {
       name: String(fd.get('name') || ''),
       headline: String(fd.get('headline') || ''),
@@ -158,7 +221,7 @@ export default function ProfilePage() {
       location: String(fd.get('location') || ''),
       contactEmail: String(fd.get('contactEmail') || ''),
       contactTelegram: String(fd.get('contactTelegram') || ''),
-      avatar: String(fd.get('avatar') || '')
+      avatar: uploadedAvatarUrl
     };
     saveProfile(next);
     alert('Профиль обновлён');
@@ -223,7 +286,8 @@ export default function ProfilePage() {
 
               {tab === 'portfolio' && (
                 <>
-                  <div className="flex justify-end mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold">Портфолио</h2>
                     <Button asChild>
                       <a href="#/me/portfolio/add">+ Добавить проект</a>
                     </Button>
@@ -274,7 +338,7 @@ export default function ProfilePage() {
               {tab === 'market' && (
                 <>
                   <div>
-                    <h3 className="text-xl font-bold mb-4">Мои заказы</h3>
+                    <h2 className="text-2xl font-bold mb-4">Мои заказы</h2>
                     {loadingMarket ? (
                       <Card>
                         <CardContent className="p-12 text-center">
@@ -333,7 +397,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold mb-4">Мои объявления</h3>
+                    <h2 className="text-2xl font-bold mb-4">Мои объявления</h2>
                     {loadingMarket ? (
                       <Card>
                         <CardContent className="p-12 text-center">
@@ -522,11 +586,7 @@ export default function ProfilePage() {
 
               {tab === 'reviews' && (
                 <div className="grid gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Отзывы клиентов</CardTitle>
-                    </CardHeader>
-                  </Card>
+                  <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[1, 2, 3].map((i) => (
                       <Card key={i} className="hover:shadow-md transition-shadow">
@@ -574,6 +634,65 @@ export default function ProfilePage() {
                 <Card>
                   <CardContent className="p-6">
                     <form className="grid gap-4" onSubmit={onEditSubmit}>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Фото профиля</label>
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                        />
+                        {!avatarPreview ? (
+                          <div className="flex items-center gap-4">
+                            {profile.avatar && (
+                              <img
+                                src={profile.avatar}
+                                alt="Current avatar"
+                                className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
+                              />
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => avatarInputRef.current?.click()}
+                              className="flex items-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              Загрузить новое фото
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={avatarPreview}
+                              alt="Avatar preview"
+                              className="h-24 w-24 rounded-full object-cover border-2 border-[#6FE7C8]"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => avatarInputRef.current?.click()}
+                              >
+                                Изменить
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                onClick={handleRemoveAvatar}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-[#3F7F6E] mt-2">
+                          PNG, JPG, GIF до 5 МБ. Рекомендуемый размер: 400x400 пикселей
+                        </p>
+                      </div>
+
                       <div className="grid sm:grid-cols-2 gap-4">
                         <label className="grid gap-1">
                           <span className="text-sm font-medium">Имя</span>
@@ -589,7 +708,7 @@ export default function ProfilePage() {
                         </label>
                         <label className="grid gap-1">
                           <span className="text-sm font-medium">Аватар (URL)</span>
-                          <Input name="avatar" defaultValue={profile.avatar} className="h-11" />
+                          <Input name="avatar" defaultValue={profile.avatar} className="h-11" placeholder="Или укажите URL изображения" />
                         </label>
                       </div>
                       <label className="grid gap-1">
