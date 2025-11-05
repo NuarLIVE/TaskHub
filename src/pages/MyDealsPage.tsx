@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatPrice } from '@/lib/currency';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -22,8 +23,9 @@ interface Order {
   title: string;
   description: string;
   category: string;
-  budget_min: number;
-  budget_max: number;
+  price_min: number;
+  price_max: number;
+  currency: string;
   deadline: string;
   status: string;
   created_at: string;
@@ -35,7 +37,8 @@ interface Task {
   description: string;
   category: string;
   price: number;
-  delivery_time: number;
+  currency: string;
+  delivery_days: number;
   status: string;
   created_at: string;
 }
@@ -181,12 +184,12 @@ export default function MyDealsPage() {
                     <div className="flex justify-between items-center text-sm">
                       <div className="text-[#3F7F6E]">
                         Бюджет: <span className="font-medium text-foreground">
-                          ${order.budget_min} - ${order.budget_max}
+                          {formatPrice(order.price_min, order.currency)} - {formatPrice(order.price_max, order.currency)}
                         </span>
                       </div>
                       <div className="text-[#3F7F6E]">
                         Срок: <span className="font-medium text-foreground">
-                          {new Date(order.deadline).toLocaleDateString('ru-RU')}
+                          {order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : 'Не указан'}
                         </span>
                       </div>
                     </div>
@@ -236,11 +239,13 @@ export default function MyDealsPage() {
                     <p className="text-[#3F7F6E] mb-4 line-clamp-2">{task.description}</p>
                     <div className="flex justify-between items-center text-sm">
                       <div className="text-[#3F7F6E]">
-                        Цена: <span className="font-medium text-foreground">${task.price}</span>
+                        Цена: <span className="font-medium text-foreground">
+                          {formatPrice(task.price, task.currency)}
+                        </span>
                       </div>
                       <div className="text-[#3F7F6E]">
                         Срок выполнения: <span className="font-medium text-foreground">
-                          {task.delivery_time} дней
+                          {task.delivery_days} дней
                         </span>
                       </div>
                     </div>

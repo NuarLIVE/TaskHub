@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Star, CheckCircle, Send, Handshake, MessageCircle } from 'lucide-react';
+import { Clock, Star, CheckCircle, Send, Handshake, MessageCircle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import { supabase } from '@/lib/supabase';
+import { formatPrice } from '@/lib/currency';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -14,20 +16,88 @@ const pageVariants = {
 
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  currency: string;
+  delivery_days: number;
+  tags: string[];
+  features: string[];
+  status: string;
+  created_at: string;
+  user_id: string;
+}
+
+interface Profile {
+  name: string;
+  avatar_url: string | null;
+  email: string;
+}
+
 export default function TaskDetailPage() {
-  const task = {
-    id: 101,
-    title: 'Сделаю адаптивный лендинг (Next/React)',
-    category: 'Разработка',
-    price: 450,
-    currency: 'USD',
-    deliveryDays: 7,
-    tags: ['React', 'Next', 'SEO'],
-    author: { name: 'Mickey', avatar: 'https://i.pravatar.cc/64?img=49', rating: 4.9, completedJobs: 27 },
-    createdAt: '2025-10-22',
-    features: ['Дизайн по референсам', 'Интеграция с API', 'Анимации', 'Адаптивная верстка', 'Базовое SEO', 'Настройка деплоя'],
-    description: 'От прототипа до деплоя, аккуратный UI, Lighthouse 90+. Работаю с современным стеком: Next.js 14, React, TypeScript, Tailwind CSS. Включаю базовую оптимизацию и SEO.'
+  const [task, setTask] = useState<Task | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTask();
+  }, []);
+
+  const loadTask = async () => {
+    const taskId = window.location.hash.split('/').pop();
+    if (!taskId) return;
+
+    try {
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId)
+        .maybeSingle();
+
+      if (taskError || !taskData) {
+        console.error('Error loading task:', taskError);
+        return;
+      }
+
+      setTask(taskData);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('name, avatar_url, email')
+        .eq('id', taskData.user_id)
+        .maybeSingle();
+
+      if (!profileError && profileData) {
+        setProfile(profileData);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-[#3F7F6E]">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!task) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Объявление не найдено</h2>
+          <Button asChild><a href="#/market">Вернуться на биржу</a></Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -57,6 +127,13 @@ export default function TaskDetailPage() {
                     </div>
                     <FavoriteButton itemId={task.id} itemType="task" />
                   </div>
+                  <div className="flex items-center gap-4 text-sm mt-3">
+                    <div className="flex items-center gap-1 text-[#3F7F6E]">
+                      <Clock className="h-4 w-4" />
+                      <span>{task.delivery_days} дней</span>
+                    </div>
+                    <div className="text-xl font-bold text-[#6FE7C8]">{formatPrice(task.price, task.currency)}</div>
+                  </div>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                   <div>
@@ -64,54 +141,35 @@ export default function TaskDetailPage() {
                     <p className="text-[#3F7F6E]">{task.description}</p>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold mb-2">Что входит в услугу</h3>
-                    <div className="grid gap-2">
-                      {task.features.map((feature) => (
-                        <div key={feature} className="flex items-center gap-2 text-[#3F7F6E]">
-                          <CheckCircle className="h-4 w-4 text-[#6FE7C8]" />
-                          <span>{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid sm:grid-cols-3 gap-4 p-4 rounded-lg bg-[#EFFFF8]">
+                  {task.features && task.features.length > 0 && (
                     <div>
-                      <div className="text-sm text-[#3F7F6E] mb-1">Цена</div>
-                      <div className="text-xl font-bold">${task.price}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-[#3F7F6E] mb-1">Срок</div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span className="font-semibold">{task.deliveryDays} дней</span>
+                      <h3 className="font-semibold mb-2">Что входит</h3>
+                      <div className="grid gap-2">
+                        {task.features.map((feature, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-[#6FE7C8] mt-0.5 flex-shrink-0" />
+                            <span className="text-[#3F7F6E]">{feature}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-sm text-[#3F7F6E] mb-1">Валюта</div>
-                      <div className="font-semibold">{task.currency}</div>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="flex flex-wrap gap-3 pt-4">
                     <Button asChild>
                       <a href={`#/deal/open?type=task&id=${task.id}`}>
                         <Handshake className="h-4 w-4 mr-2" />
-                        Заказать услугу
+                        Открыть сделку
                       </a>
                     </Button>
-                    <Button asChild variant="outline">
-                      <a href={`#/messages?to=${task.author.name.toLowerCase()}`}>
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Написать
-                      </a>
-                    </Button>
-                    <Button asChild variant="outline">
-                      <a href={`#/u/${task.author.name.toLowerCase()}`}>
-                        Посмотреть профиль
-                      </a>
-                    </Button>
+                    {profile && (
+                      <Button asChild variant="outline">
+                        <a href={`#/messages?to=${profile.email}`}>
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Написать
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -124,36 +182,47 @@ export default function TaskDetailPage() {
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div className="flex items-center gap-3">
-                    <img src={task.author.avatar} alt={task.author.name} className="h-12 w-12 rounded-full object-cover" />
-                    <div>
-                      <div className="font-semibold">{task.author.name}</div>
-                      <div className="text-sm text-[#3F7F6E] flex items-center gap-1">
-                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        {task.author.rating}
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile.name} className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                        <User className="h-6 w-6 text-[#3F7F6E]" />
                       </div>
+                    )}
+                    <div>
+                      <div className="font-semibold">{profile?.name || 'Пользователь'}</div>
+                      <div className="text-sm text-[#3F7F6E]">{profile?.email}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-center text-sm">
-                    <div className="rounded-lg border p-2">
-                      <div className="text-[#3F7F6E]">Проектов</div>
-                      <div className="font-semibold">{task.author.completedJobs}</div>
-                    </div>
-                    <div className="rounded-lg border p-2">
-                      <div className="text-[#3F7F6E]">Рейтинг</div>
-                      <div className="font-semibold">{task.author.rating}</div>
-                    </div>
+                  {profile && (
+                    <Button variant="secondary" className="w-full" asChild>
+                      <a href={`#/messages?to=${profile.email}`}>Написать сообщение</a>
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Информация</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-[#3F7F6E]">Опубликовано</span>
+                    <span className="font-medium">{new Date(task.created_at).toLocaleDateString('ru-RU')}</span>
                   </div>
-                  <Button asChild className="w-full">
-                    <a href={`#/deal/open?type=task&id=${task.id}`}>
-                      <Send className="h-4 w-4 mr-2" />
-                      Заказать услугу
-                    </a>
-                  </Button>
-                  <Button asChild variant="secondary" className="w-full">
-                    <a href={`#/messages?to=${task.author.name.toLowerCase()}`}>
-                      Написать сообщение
-                    </a>
-                  </Button>
+                  <div className="flex justify-between">
+                    <span className="text-[#3F7F6E]">Статус</span>
+                    <Badge variant="secondary">{task.status === 'active' ? 'Активно' : task.status}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#3F7F6E]">Цена</span>
+                    <span className="font-semibold text-[#6FE7C8]">{formatPrice(task.price, task.currency)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#3F7F6E]">Срок выполнения</span>
+                    <span className="font-medium">{task.delivery_days} дней</span>
+                  </div>
                 </CardContent>
               </Card>
             </div>

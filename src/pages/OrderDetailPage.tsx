@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, MapPin, DollarSign, Calendar, Send, Handshake, MessageCircle } from 'lucide-react';
+import { Clock, MapPin, DollarSign, Calendar, Send, Handshake, MessageCircle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import { supabase } from '@/lib/supabase';
+import { formatPrice } from '@/lib/currency';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -15,25 +17,71 @@ const pageVariants = {
 
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
+interface Order {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price_min: number;
+  price_max: number;
+  currency: string;
+  engagement: string;
+  deadline: string | null;
+  tags: string[];
+  status: string;
+  created_at: string;
+  user_id: string;
+}
+
+interface Profile {
+  name: string;
+  avatar_url: string | null;
+  email: string;
+}
+
 export default function OrderDetailPage() {
   const [proposalText, setProposalText] = useState('');
   const [proposalPrice, setProposalPrice] = useState('');
+  const [order, setOrder] = useState<Order | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const order = {
-    id: 1,
-    title: 'Лендинг на React для стартапа',
-    category: 'Разработка',
-    priceMin: 500,
-    priceMax: 900,
-    currency: 'USD',
-    engagement: 'Фикс-прайс',
-    deadline: '2025-11-15',
-    tags: ['React', 'Tailwind', 'Framer'],
-    author: { name: 'NovaTech', avatar: 'https://i.pravatar.cc/64?img=12', location: 'Алматы, Казахстан' },
-    createdAt: '2025-10-21',
-    description: 'Нужен лендинг из 3 экранов с интеграцией форм и анимациями. Дизайн уже готов в Figma. Требуется адаптивная верстка, интеграция с API для форм обратной связи, анимации при скролле. Хостинг на Vercel.',
-    proposals: 12,
-    views: 245
+  useEffect(() => {
+    loadOrder();
+  }, []);
+
+  const loadOrder = async () => {
+    const orderId = window.location.hash.split('/').pop();
+    if (!orderId) return;
+
+    try {
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (orderError || !orderData) {
+        console.error('Error loading order:', orderError);
+        return;
+      }
+
+      setOrder(orderData);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('name, avatar_url, email')
+        .eq('id', orderData.user_id)
+        .maybeSingle();
+
+      if (!profileError && profileData) {
+        setProfile(profileData);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmitProposal = (e: React.FormEvent) => {
@@ -41,6 +89,25 @@ export default function OrderDetailPage() {
     console.log('Proposal submitted:', { proposalText, proposalPrice });
     alert('Отклик отправлен (демо)');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-[#3F7F6E]">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Заказ не найден</h2>
+          <Button asChild><a href="#/market">Вернуться на биржу</a></Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -81,18 +148,11 @@ export default function OrderDetailPage() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2 text-[#3F7F6E]">
                       <DollarSign className="h-4 w-4" />
-                      <span>Бюджет: ${order.priceMin}–${order.priceMax}</span>
+                      <span>Бюджет: {formatPrice(order.price_min, order.currency)}–{formatPrice(order.price_max, order.currency)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-[#3F7F6E]">
                       <Calendar className="h-4 w-4" />
-                      <span>Дедлайн: {order.deadline}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[#3F7F6E]">
-                      <Clock className="h-4 w-4" />
-                      <span>{order.proposals} откликов</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[#3F7F6E]">
-                      <span>{order.views} просмотров</span>
+                      <span>Дедлайн: {order.deadline ? new Date(order.deadline).toLocaleDateString('ru-RU') : 'Не указан'}</span>
                     </div>
                   </div>
 
@@ -109,12 +169,14 @@ export default function OrderDetailPage() {
                         Открыть сделку
                       </a>
                     </Button>
-                    <Button asChild variant="outline">
-                      <a href={`#/messages?to=${order.author.name.toLowerCase()}`}>
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Написать
-                      </a>
-                    </Button>
+                    {profile && (
+                      <Button asChild variant="outline">
+                        <a href={`#/messages?to=${profile.email}`}>
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Написать
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -138,7 +200,7 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium mb-1 block">Ваша цена (USD)</label>
+                        <label className="text-sm font-medium mb-1 block">Ваша цена ({order.currency})</label>
                         <Input
                           type="number"
                           value={proposalPrice}
@@ -174,26 +236,23 @@ export default function OrderDetailPage() {
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div className="flex items-center gap-3">
-                    <img src={order.author.avatar} alt={order.author.name} className="h-12 w-12 rounded-full object-cover" />
-                    <div>
-                      <div className="font-semibold">{order.author.name}</div>
-                      <div className="text-sm text-[#3F7F6E] flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {order.author.location}
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile.name} className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                        <User className="h-6 w-6 text-[#3F7F6E]" />
                       </div>
+                    )}
+                    <div>
+                      <div className="font-semibold">{profile?.name || 'Пользователь'}</div>
+                      <div className="text-sm text-[#3F7F6E]">{profile?.email}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-center text-sm">
-                    <div className="rounded-lg border p-2">
-                      <div className="text-[#3F7F6E]">Проектов</div>
-                      <div className="font-semibold">24</div>
-                    </div>
-                    <div className="rounded-lg border p-2">
-                      <div className="text-[#3F7F6E]">Рейтинг</div>
-                      <div className="font-semibold">4.8</div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" className="w-full">Написать сообщение</Button>
+                  {profile && (
+                    <Button variant="secondary" className="w-full" asChild>
+                      <a href={`#/messages?to=${profile.email}`}>Написать сообщение</a>
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
 
@@ -204,15 +263,11 @@ export default function OrderDetailPage() {
                 <CardContent className="grid gap-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-[#3F7F6E]">Опубликовано</span>
-                    <span className="font-medium">{order.createdAt}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#3F7F6E]">ID заказа</span>
-                    <span className="font-medium">#{order.id}</span>
+                    <span className="font-medium">{new Date(order.created_at).toLocaleDateString('ru-RU')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#3F7F6E]">Статус</span>
-                    <Badge variant="secondary">Открыт</Badge>
+                    <Badge variant="secondary">{order.status === 'open' ? 'Открыт' : order.status}</Badge>
                   </div>
                 </CardContent>
               </Card>
