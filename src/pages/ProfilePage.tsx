@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,8 @@ export default function ProfilePage() {
   const [tab, setTab] = useState('portfolio');
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userTasks, setUserTasks] = useState<any[]>([]);
+  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [helpfulVotes, setHelpfulVotes] = useState<Set<number>>(new Set());
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -40,8 +42,12 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (user && tab === 'market') {
-      loadUserMarketItems();
+    if (user) {
+      if (tab === 'market') {
+        loadUserMarketItems();
+      } else if (tab === 'portfolio') {
+        loadPortfolioProjects();
+      }
     }
   }, [user, tab]);
 
@@ -62,6 +68,44 @@ export default function ProfilePage() {
 
     setUserOrders(ordersData || []);
     setUserTasks(tasksData || []);
+  };
+
+  const loadPortfolioProjects = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('portfolio_projects')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    setPortfolioProjects(data || []);
+  };
+
+  const toggleHelpful = async (reviewId: number) => {
+    if (!user) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+
+    const newVotes = new Set(helpfulVotes);
+    if (newVotes.has(reviewId)) {
+      newVotes.delete(reviewId);
+      await supabase
+        .from('review_helpful_votes')
+        .delete()
+        .eq('review_id', reviewId)
+        .eq('user_id', user.id);
+    } else {
+      newVotes.add(reviewId);
+      await supabase
+        .from('review_helpful_votes')
+        .insert({
+          review_id: reviewId,
+          user_id: user.id
+        });
+    }
+    setHelpfulVotes(newVotes);
   };
 
   const saveProfile = (p: typeof profile) => {
@@ -154,17 +198,44 @@ export default function ProfilePage() {
                       <a href="#/me/portfolio/add">+ Добавить проект</a>
                     </Button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <Card key={i} className="overflow-hidden">
-                        <div className="aspect-[16/10] bg-[#EFFFF8]" />
-                        <CardContent className="p-4">
-                          <div className="font-medium">Проект #{i}</div>
-                          <div className="text-sm text-[#3F7F6E]">React · Node · PostgreSQL</div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                  {portfolioProjects.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <p className="text-[#3F7F6E] mb-4">У вас пока нет проектов в портфолио</p>
+                        <Button asChild>
+                          <a href="#/me/portfolio/add">Добавить первый проект</a>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {portfolioProjects.map((project) => (
+                        <Card key={project.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                          {project.image_url ? (
+                            <img src={project.image_url} alt={project.title} className="aspect-[16/10] object-cover" />
+                          ) : (
+                            <div className="aspect-[16/10] bg-gradient-to-br from-[#EFFFF8] to-[#6FE7C8]/20 flex items-center justify-center">
+                              <ImageIcon className="h-12 w-12 text-[#3F7F6E]/30" />
+                            </div>
+                          )}
+                          <CardContent className="p-4">
+                            <div className="font-medium mb-1">{project.title}</div>
+                            <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{project.description}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {project.tags?.slice(0, 3).map((tag: string) => (
+                                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                              ))}
+                            </div>
+                            {project.project_url && (
+                              <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#6FE7C8] hover:underline mt-2 inline-block">
+                                Посмотреть проект →
+                              </a>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -179,25 +250,33 @@ export default function ProfilePage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {userOrders.map((order) => (
                           <Card key={order.id}>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-base">{order.title}</CardTitle>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="secondary">{order.category}</Badge>
-                                <Badge variant="outline">{order.status}</Badge>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="px-6">
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                {(order.tags || []).map((t: string) => (
-                                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                ))}
-                              </div>
-                              <div className="text-sm text-[#3F7F6E] line-clamp-2">{order.description}</div>
-                              <div className="mt-3 font-semibold">
-                                {order.currency} {order.price_min}–{order.price_max}
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-lg mb-2">{order.title}</h4>
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Badge variant="secondary">{order.category}</Badge>
+                                    <Badge variant="outline">{order.status}</Badge>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 mb-3">
+                                    {(order.tags || []).map((t: string) => (
+                                      <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                    ))}
+                                  </div>
+                                  <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{order.description}</p>
+                                  <div className="font-semibold text-[#6FE7C8]">
+                                    {order.currency} {order.price_min}–{order.price_max}
+                                  </div>
+                                </div>
+                                <Button asChild size="sm" variant="outline">
+                                  <a href={`#/order/${order.id}`}>
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    Просмотр
+                                  </a>
+                                </Button>
                               </div>
                             </CardContent>
                           </Card>
@@ -215,30 +294,38 @@ export default function ProfilePage() {
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         {userTasks.map((task) => (
                           <Card key={task.id}>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-base">{task.title}</CardTitle>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="secondary">{task.category}</Badge>
-                                <Badge variant="outline">{task.status}</Badge>
-                                {task.delivery_days && (
-                                  <Badge variant="outline" className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" /> {task.delivery_days}д
-                                  </Badge>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="px-6">
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                {(task.tags || []).map((t: string) => (
-                                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                ))}
-                              </div>
-                              <div className="text-sm text-[#3F7F6E] line-clamp-2">{task.description}</div>
-                              <div className="mt-3 font-semibold">
-                                {task.currency} {task.price}
+                            <CardContent className="p-6">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-lg mb-2">{task.title}</h4>
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Badge variant="secondary">{task.category}</Badge>
+                                    <Badge variant="outline">{task.status}</Badge>
+                                    {task.delivery_days && (
+                                      <Badge variant="outline" className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" /> {task.delivery_days}д
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 mb-3">
+                                    {(task.tags || []).map((t: string) => (
+                                      <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                    ))}
+                                  </div>
+                                  <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{task.description}</p>
+                                  <div className="font-semibold text-[#6FE7C8]">
+                                    {task.currency} {task.price}
+                                  </div>
+                                </div>
+                                <Button asChild size="sm" variant="outline">
+                                  <a href={`#/task/${task.id}`}>
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    Просмотр
+                                  </a>
+                                </Button>
                               </div>
                             </CardContent>
                           </Card>
@@ -250,51 +337,168 @@ export default function ProfilePage() {
               )}
 
               {tab === 'about' && (
-                <Card>
-                  <CardContent className="p-6 grid gap-4">
-                    <div>
-                      <div className="font-semibold">{profile.headline}</div>
-                      <div className="text-[#3F7F6E]">{profile.about}</div>
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="rounded-xl border p-4">
-                        <div className="text-sm font-medium mb-2">Навыки</div>
+                <div className="grid gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-2xl">О фрилансере</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0 grid gap-6">
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">{profile.headline}</h3>
+                        <p className="text-[#3F7F6E] leading-relaxed">{profile.about}</p>
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
+                          <div className="font-semibold">{profile.role}</div>
+                        </div>
+                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-sm text-[#3F7F6E] mb-1">Опыт работы</div>
+                          <div className="font-semibold">5+ лет</div>
+                        </div>
+                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-sm text-[#3F7F6E] mb-1">Возраст</div>
+                          <div className="font-semibold">28 лет</div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border p-6">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Star className="h-5 w-5 text-[#6FE7C8]" />
+                          Рейтинг и статистика
+                        </h4>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                            <div className="text-sm text-[#3F7F6E]">Общий рейтинг</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="text-2xl font-bold text-[#6FE7C8]">4.9</div>
+                              <div className="flex">
+                                {[1,2,3,4,5].map(i => (
+                                  <Star key={i} className="h-4 w-4 fill-[#6FE7C8] text-[#6FE7C8]" />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-[#3F7F6E]">Завершено проектов</div>
+                            <div className="text-2xl font-bold mt-1">27</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-[#3F7F6E]">Среднее время отклика</div>
+                            <div className="text-2xl font-bold mt-1 text-emerald-600">2ч</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-[#3F7F6E]">Повторных заказов</div>
+                            <div className="text-2xl font-bold mt-1">18</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border p-6">
+                        <h4 className="font-semibold mb-3">Стоимость работ</h4>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold text-[#6FE7C8]">${profile.rateMin}–${profile.rateMax}</span>
+                          <span className="text-[#3F7F6E]">/ час</span>
+                        </div>
+                        <p className="text-sm text-[#3F7F6E] mt-2">Итоговая стоимость зависит от сложности и объёма проекта</p>
+                      </div>
+
+                      <div className="rounded-xl border p-6">
+                        <h4 className="font-semibold mb-4">Навыки и технологии</h4>
                         <div className="flex flex-wrap gap-2">
-                          {profile.skills.map((s) => <Badge key={s} variant="outline">{s}</Badge>)}
+                          {profile.skills.map((s) => (
+                            <Badge key={s} variant="secondary" className="px-3 py-1.5 text-sm">
+                              {s}
+                            </Badge>
+                          ))}
                         </div>
                       </div>
-                      <div className="rounded-xl border p-4 grid gap-2">
-                        <div className="text-sm font-medium">Ставка</div>
-                        <div className="text-[#3F7F6E]">{`$${profile.rateMin}–${profile.rateMax}/час`}</div>
-                        <div className="flex items-center gap-2 text-sm text-[#3F7F6E]"><MapPin className="h-4 w-4" />{profile.location}</div>
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="flex items-center gap-2 text-[#3F7F6E]"><AtSign className="h-4 w-4" />{profile.contactTelegram}</span>
-                          <span className="flex items-center gap-2 text-[#3F7F6E]"><LinkIcon className="h-4 w-4" />{profile.contactEmail}</span>
+
+                      <div className="rounded-xl border p-6">
+                        <h4 className="font-semibold mb-4">Контактная информация</h4>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                              <MapPin className="h-5 w-5 text-[#6FE7C8]" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-[#3F7F6E]">Локация</div>
+                              <div className="font-medium">{profile.location}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                              <AtSign className="h-5 w-5 text-[#6FE7C8]" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-[#3F7F6E]">Telegram</div>
+                              <div className="font-medium">{profile.contactTelegram}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                              <LinkIcon className="h-5 w-5 text-[#6FE7C8]" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-[#3F7F6E]">Email</div>
+                              <div className="font-medium">{profile.contactEmail}</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {tab === 'reviews' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <Card key={i}>
-                      <CardContent className="p-6 grid gap-3">
-                        <div className="flex items-center gap-3">
-                          <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-9 w-9 rounded-full" />
-                          <div className="font-medium">Заказчик #{i}</div>
-                          <div className="ml-auto flex items-center gap-1 text-emerald-600"><Star className="h-4 w-4" />5.0</div>
-                        </div>
-                        <p className="text-sm text-[#3F7F6E]">Отличная коммуникация, аккуратные коммиты, демо вовремя. Рекомендую!</p>
-                        <div className="flex items-center gap-4 text-sm text-[#3F7F6E]">
-                          <span className="flex items-center gap-1"><Heart className="h-4 w-4" />Полезно</span>
-                          <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" />Ответить</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="grid gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Отзывы клиентов</CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6 grid gap-3">
+                          <div className="flex items-center gap-3">
+                            <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-10 w-10 rounded-full object-cover" alt={`Заказчик ${i}`} />
+                            <div>
+                              <div className="font-medium">Заказчик #{i}</div>
+                              <div className="text-xs text-[#3F7F6E]">2 недели назад</div>
+                            </div>
+                            <div className="ml-auto flex items-center gap-1 text-emerald-600">
+                              <Star className="h-4 w-4 fill-emerald-600" />
+                              <span className="font-semibold">5.0</span>
+                            </div>
+                          </div>
+                          <p className="text-sm text-[#3F7F6E] leading-relaxed">
+                            Отличная коммуникация, аккуратные коммиты, демо вовремя. Рекомендую!
+                          </p>
+                          <div className="flex items-center gap-4 pt-2 border-t">
+                            <button
+                              onClick={() => toggleHelpful(i)}
+                              className={`flex items-center gap-1.5 text-sm transition-colors ${
+                                helpfulVotes.has(i)
+                                  ? 'text-[#6FE7C8] font-medium'
+                                  : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
+                              }`}
+                            >
+                              <Heart
+                                className={`h-4 w-4 transition-all ${
+                                  helpfulVotes.has(i) ? 'fill-[#6FE7C8]' : ''
+                                }`}
+                              />
+                              <span>Полезно</span>
+                              {helpfulVotes.has(i) && <span className="text-xs">(1)</span>}
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               )}
 

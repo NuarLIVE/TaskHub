@@ -5,17 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function PortfolioAdd() {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [link, setLink] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [images, setImages] = useState<File[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -28,21 +32,41 @@ export default function PortfolioAdd() {
     setTags(tags.filter(t => t !== tag));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setImages([...images, ...Array.from(e.target.files)]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('portfolio_projects')
+        .insert({
+          user_id: user.id,
+          title,
+          description,
+          project_url: link || null,
+          image_url: imageUrl || null,
+          tags
+        });
+
+      if (error) throw error;
+
+      alert('Работа успешно добавлена в портфолио!');
+      window.location.hash = '/me';
+    } catch (error) {
+      console.error('Error adding portfolio project:', error);
+      alert('Ошибка при добавлении проекта');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Portfolio item:', { title, description, link, tags, images });
-    alert('Работа добавлена в портфолио (демо)');
-    window.location.hash = '/me?tab=portfolio';
-  };
-
   const handleCancel = () => {
-    window.location.hash = '/me?tab=portfolio';
+    window.location.hash = '/me';
   };
 
   return (
@@ -122,37 +146,24 @@ export default function PortfolioAdd() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Изображения</label>
-                <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <ImageIcon className="h-12 w-12 mx-auto text-[#3F7F6E] mb-2" />
-                  <p className="text-sm text-[#3F7F6E] mb-3">
-                    Перетащите изображения или выберите файлы
-                  </p>
-                  <Input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="h-10"
-                  />
-                </div>
-                {images.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {images.map((img, idx) => (
-                      <div key={idx} className="text-xs bg-[#EFFFF8] px-2 py-1 rounded">
-                        {img.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <label className="text-sm font-medium mb-1 block">URL изображения</label>
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://example.com/project-screenshot.png"
+                  className="h-11"
+                />
+                <p className="text-xs text-[#3F7F6E] mt-1">
+                  Укажите ссылку на изображение проекта
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={loading}>
                   <Save className="h-4 w-4 mr-2" />
-                  Сохранить
+                  {loading ? 'Сохранение...' : 'Сохранить'}
                 </Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
+                <Button type="button" variant="outline" onClick={handleCancel} disabled={loading}>
                   Отмена
                 </Button>
               </div>

@@ -78,10 +78,17 @@ export default function NavBar() {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
-              <div className="hidden sm:flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-[#6FE7C8]" />
-                <span className="font-medium">{user?.profile?.name}</span>
-              </div>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="hidden sm:inline-flex"
+              >
+                <a href="#/me" className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-[#6FE7C8]" />
+                  <span className="font-medium">{user?.profile?.name}</span>
+                </a>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -140,10 +147,13 @@ export default function NavBar() {
             <div className="pt-3 space-y-2 border-t border-[#6FE7C8]/20">
               {isAuthenticated ? (
                 <>
-                  <div className="px-3 py-2 text-sm font-medium text-[#3F7F6E] flex items-center gap-2">
+                  <a
+                    href="#/me"
+                    className="px-3 py-2 text-sm font-medium text-[#3F7F6E] flex items-center gap-2 hover:bg-[#EFFFF8] rounded-md"
+                  >
                     <User className="h-4 w-4 text-[#6FE7C8]" />
                     {user?.profile?.name}
-                  </div>
+                  </a>
                   <button
                     onClick={logout}
                     className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50"
