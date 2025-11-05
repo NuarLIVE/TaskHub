@@ -40,26 +40,50 @@ export default function PortfolioAdd() {
       return;
     }
 
+    if (!title.trim() || !description.trim()) {
+      alert('Заполните название и описание проекта');
+      return;
+    }
+
     setLoading(true);
     try {
+      // First, ensure the user has a profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        throw new Error('Не удалось найти профиль пользователя');
+      }
+
+      if (!profileData) {
+        throw new Error('Профиль не найден. Пожалуйста, создайте профиль сначала.');
+      }
+
       const { error } = await supabase
         .from('portfolio_projects')
         .insert({
           user_id: user.id,
-          title,
-          description,
-          project_url: link || null,
-          image_url: imageUrl || null,
+          title: title.trim(),
+          description: description.trim(),
+          project_url: link.trim() || null,
+          image_url: imageUrl.trim() || null,
           tags
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
 
-      alert('Работа успешно добавлена в портфолио!');
+      alert('Проект успешно добавлен в портфолио!');
       window.location.hash = '/me';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding portfolio project:', error);
-      alert('Ошибка при добавлении проекта');
+      alert(error.message || 'Ошибка при добавлении проекта. Проверьте подключение к базе данных.');
     } finally {
       setLoading(false);
     }
@@ -80,7 +104,10 @@ export default function PortfolioAdd() {
       className="min-h-screen bg-background"
     >
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-2xl font-bold mb-6">Добавить работу в портфолио</h1>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold mb-2">Добавить проект в портфолио</h1>
+          <p className="text-[#3F7F6E]">Покажите свои лучшие работы потенциальным клиентам</p>
+        </div>
 
         <Card>
           <CardHeader>
@@ -89,53 +116,63 @@ export default function PortfolioAdd() {
           <CardContent>
             <form onSubmit={handleSubmit} className="grid gap-6">
               <div>
-                <label className="text-sm font-medium mb-1 block">Название проекта</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Название проекта <span className="text-red-500">*</span>
+                </label>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="E-commerce платформа на React"
+                  placeholder="Например: Интернет-магазин на React и Node.js"
                   required
                   className="h-11"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Описание</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Описание проекта <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={6}
-                  placeholder="Опишите проект, использованные технологии, вашу роль и результаты..."
+                  placeholder="Расскажите о проекте: какую задачу решали, какие технологии использовали, какого результата достигли..."
                   className="w-full rounded-md border px-3 py-2 bg-background"
                   required
                 />
+                <p className="text-xs text-[#3F7F6E] mt-1">
+                  Подробное описание поможет клиентам понять ваш опыт
+                </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Ссылка / Репозиторий</label>
+                <label className="text-sm font-medium mb-1 block">Ссылка на проект (необязательно)</label>
                 <Input
                   value={link}
                   onChange={(e) => setLink(e.target.value)}
-                  placeholder="https://github.com/username/project или https://example.com"
+                  placeholder="https://example.com или https://github.com/username/repo"
                   className="h-11"
                 />
+                <p className="text-xs text-[#3F7F6E] mt-1">
+                  Ссылка на живой сайт или репозиторий GitHub
+                </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Теги</label>
+                <label className="text-sm font-medium mb-1 block">Технологии и навыки</label>
                 <div className="flex gap-2 mb-2">
                   <Input
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    placeholder="React, Node.js, TypeScript..."
+                    placeholder="Введите технологию и нажмите Enter или +"
                     className="h-10"
                   />
                   <Button type="button" onClick={handleAddTag} size="sm">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-2">
                   {tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="gap-1">
                       {tag}
@@ -143,18 +180,21 @@ export default function PortfolioAdd() {
                     </Badge>
                   ))}
                 </div>
+                <p className="text-xs text-[#3F7F6E]">
+                  Например: React, TypeScript, Node.js, PostgreSQL, Tailwind CSS
+                </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">URL изображения</label>
+                <label className="text-sm font-medium mb-1 block">Изображение проекта (необязательно)</label>
                 <Input
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/project-screenshot.png"
+                  placeholder="https://i.imgur.com/example.png"
                   className="h-11"
                 />
                 <p className="text-xs text-[#3F7F6E] mt-1">
-                  Укажите ссылку на изображение проекта
+                  Прямая ссылка на скриншот или обложку проекта. Можно загрузить на <a href="https://imgur.com" target="_blank" rel="noopener noreferrer" className="text-[#6FE7C8] hover:underline">imgur.com</a>
                 </p>
               </div>
 

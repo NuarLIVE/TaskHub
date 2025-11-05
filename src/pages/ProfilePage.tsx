@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2 } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -282,9 +282,9 @@ export default function ProfilePage() {
                     ) : (
                       <div className="grid grid-cols-1 gap-4">
                         {userOrders.map((order) => (
-                          <Card key={order.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openPreview(order, 'order')}>
+                          <Card key={order.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(order, 'order')}>
                             <CardContent className="p-6">
-                              <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start justify-between gap-6">
                                 <div className="flex-1">
                                   <h4 className="font-semibold text-lg mb-2">{order.title}</h4>
                                   <div className="flex items-center gap-2 mb-3">
@@ -299,6 +299,20 @@ export default function ProfilePage() {
                                   <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{order.description}</p>
                                   <div className="font-semibold text-[#6FE7C8]">
                                     {order.currency} {order.price_min}–{order.price_max}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>{new Date(order.created_at).toLocaleDateString('ru-RU')}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Eye className="h-4 w-4" />
+                                    <span>{order.views_count || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Heart className="h-4 w-4" />
+                                    <span>{order.likes_count || 0}</span>
                                   </div>
                                 </div>
                               </div>
@@ -327,9 +341,9 @@ export default function ProfilePage() {
                     ) : (
                       <div className="grid grid-cols-1 gap-4">
                         {userTasks.map((task) => (
-                          <Card key={task.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => openPreview(task, 'task')}>
+                          <Card key={task.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(task, 'task')}>
                             <CardContent className="p-6">
-                              <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start justify-between gap-6">
                                 <div className="flex-1">
                                   <h4 className="font-semibold text-lg mb-2">{task.title}</h4>
                                   <div className="flex items-center gap-2 mb-3">
@@ -349,6 +363,20 @@ export default function ProfilePage() {
                                   <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{task.description}</p>
                                   <div className="font-semibold text-[#6FE7C8]">
                                     {task.currency} {task.price}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>{new Date(task.created_at).toLocaleDateString('ru-RU')}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Eye className="h-4 w-4" />
+                                    <span>{task.views_count || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Heart className="h-4 w-4" />
+                                    <span>{task.likes_count || 0}</span>
                                   </div>
                                 </div>
                               </div>
@@ -682,12 +710,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Закрыть</Button>
-                  <Button asChild>
-                    <a href={`#/${previewType}/${previewItem.id}`}>
-                      Открыть полностью
-                    </a>
-                  </Button>
+                  <Button onClick={() => setPreviewOpen(false)}>Закрыть</Button>
                 </DialogFooter>
               </>
             )}
