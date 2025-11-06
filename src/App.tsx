@@ -46,10 +46,13 @@ function App() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      setRoute(window.location.hash.slice(1) || '/');
+      const hash = window.location.hash.slice(1) || '/';
+      const routeWithoutQuery = hash.split('?')[0];
+      setRoute(routeWithoutQuery);
     };
 
     window.addEventListener('hashchange', handleHashChange);
+    handleHashChange();
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 

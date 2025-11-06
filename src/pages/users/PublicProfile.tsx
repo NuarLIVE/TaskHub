@@ -26,17 +26,19 @@ export default function PublicProfile() {
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userTasks, setUserTasks] = useState<any[]>([]);
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewLikes, setReviewLikes] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMarket, setLoadingMarket] = useState(false);
-  const [reviewLikes, setReviewLikes] = useState<Record<string, { count: number; liked: boolean }>>({
-    'review-1': { count: 5, liked: false },
-    'review-2': { count: 3, liked: false },
-    'review-3': { count: 8, liked: false }
-  });
 
   useEffect(() => {
-    loadProfile();
-    loadPortfolio();
+    if (userId) {
+      Promise.all([
+        loadProfile(),
+        loadPortfolio(),
+        loadReviews()
+      ]);
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -47,50 +49,40 @@ export default function PublicProfile() {
 
   const loadProfile = async () => {
     if (!userId) {
-      console.error('No userId provided');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('Loading profile for userId:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      console.log('Profile data:', data);
-      console.log('Profile error:', error);
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (data) {
         setProfile({
           name: data.name,
           email: data.email,
-          headline: 'Фрилансер',
+          headline: data.headline || 'Фрилансер',
           role: data.role || 'freelancer',
-          about: data.bio || '',
+          about: data.about || '',
           bio: data.bio || '',
-          skills: [],
-          rateMin: 20,
-          rateMax: 35,
-          currency: 'USD',
-          location: 'Алматы',
+          skills: data.skills || [],
+          rateMin: data.rate_min || 0,
+          rateMax: data.rate_max || 0,
+          currency: data.currency || 'USD',
+          location: data.location || '',
           contactEmail: data.email,
-          contactTelegram: '',
+          contactTelegram: data.contact_telegram || '',
           avatar: data.avatar_url || 'https://i.pravatar.cc/150?img=49'
         });
       } else {
-        console.error('No profile found for userId:', userId);
         setProfile(null);
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
       setProfile(null);
     } finally {
       setLoading(false);
@@ -108,7 +100,7 @@ export default function PublicProfile() {
       if (error) throw error;
       setPortfolioProjects(data || []);
     } catch (error) {
-      console.error('Error loading portfolio:', error);
+      setPortfolioProjects([]);
     }
   };
 
@@ -134,9 +126,40 @@ export default function PublicProfile() {
       setUserOrders(ordersRes.data || []);
       setUserTasks(tasksRes.data || []);
     } catch (error) {
-      console.error('Error loading market data:', error);
+      setUserOrders([]);
+      setUserTasks([]);
     } finally {
       setLoadingMarket(false);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('reviewee_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setReviews(data || []);
+
+      if (currentUser && data && data.length > 0) {
+        const reviewIds = data.map((r: any) => r.id);
+        const { data: votesData } = await supabase
+          .from('review_helpful_votes')
+          .select('review_id')
+          .in('review_id', reviewIds)
+          .eq('user_id', currentUser.id);
+
+        const likesMap: Record<string, boolean> = {};
+        (votesData || []).forEach((vote: any) => {
+          likesMap[vote.review_id] = true;
+        });
+        setReviewLikes(likesMap);
+      }
+    } catch (error) {
+      setReviews([]);
     }
   };
 
@@ -170,28 +193,57 @@ export default function PublicProfile() {
         window.location.hash = `/messages?chat=${newChat.id}`;
       }
     } catch (error) {
-      console.error('Error creating chat:', error);
       alert('Ошибка при создании чата');
     }
   };
 
-  const handleReviewLike = (reviewId: string) => {
+  const handleReviewLike = async (reviewId: string) => {
     if (!currentUser) {
       alert('Войдите, чтобы поставить лайк');
       window.location.hash = '/login';
       return;
     }
 
-    setReviewLikes(prev => {
-      const current = prev[reviewId];
-      return {
-        ...prev,
-        [reviewId]: {
-          liked: !current.liked,
-          count: current.liked ? current.count - 1 : current.count + 1
-        }
-      };
-    });
+    const isLiked = reviewLikes[reviewId];
+
+    try {
+      if (isLiked) {
+        const { error } = await supabase
+          .from('review_helpful_votes')
+          .delete()
+          .eq('review_id', reviewId)
+          .eq('user_id', currentUser.id);
+
+        if (error) throw error;
+
+        setReviewLikes(prev => {
+          const newLikes = { ...prev };
+          delete newLikes[reviewId];
+          return newLikes;
+        });
+
+        setReviews(prev => prev.map(r =>
+          r.id === reviewId ? { ...r, likes_count: r.likes_count - 1 } : r
+        ));
+      } else {
+        const { error } = await supabase
+          .from('review_helpful_votes')
+          .insert({
+            review_id: reviewId,
+            user_id: currentUser.id
+          });
+
+        if (error) throw error;
+
+        setReviewLikes(prev => ({ ...prev, [reviewId]: true }));
+
+        setReviews(prev => prev.map(r =>
+          r.id === reviewId ? { ...r, likes_count: r.likes_count + 1 } : r
+        ));
+      }
+    } catch (error) {
+      alert('Ошибка при добавлении лайка');
+    }
   };
 
   if (loading) {
@@ -519,18 +571,24 @@ export default function PublicProfile() {
                     </div>
 
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                        <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
-                        <div className="font-semibold">{profile.role}</div>
-                      </div>
-                      <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                        <div className="text-sm text-[#3F7F6E] mb-1">Локация</div>
-                        <div className="font-semibold">{profile.location}</div>
-                      </div>
-                      <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                        <div className="text-sm text-[#3F7F6E] mb-1">Ставка</div>
-                        <div className="font-semibold">{profile.currency} {profile.rateMin}–{profile.rateMax}/час</div>
-                      </div>
+                      {profile.role && (
+                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
+                          <div className="font-semibold">{profile.role}</div>
+                        </div>
+                      )}
+                      {profile.location && (
+                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-sm text-[#3F7F6E] mb-1">Локация</div>
+                          <div className="font-semibold">{profile.location}</div>
+                        </div>
+                      )}
+                      {profile.rateMin > 0 && profile.rateMax > 0 && (
+                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-sm text-[#3F7F6E] mb-1">Ставка</div>
+                          <div className="font-semibold">{profile.currency} {profile.rateMin}–{profile.rateMax}/час</div>
+                        </div>
+                      )}
                     </div>
 
                     {profile.skills && profile.skills.length > 0 && (
@@ -571,41 +629,51 @@ export default function PublicProfile() {
             {tab === 'reviews' && (
               <div className="grid gap-6">
                 <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3].map((i) => {
-                    const reviewId = `review-${i}`;
-                    const likesData = reviewLikes[reviewId];
-                    return (
-                      <Card key={i} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6 grid gap-3">
-                          <div className="flex items-center gap-3">
-                            <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-10 w-10 rounded-full object-cover" alt={`Заказчик ${i}`} />
-                            <div>
-                              <div className="font-medium">Заказчик #{i}</div>
-                              <div className="text-xs text-[#3F7F6E]">2 недели назад</div>
+                {reviews.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <p className="text-[#3F7F6E]">У пользователя пока нет отзывов</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {reviews.map((review) => {
+                      const isLiked = reviewLikes[review.id];
+                      const timeAgo = new Date(review.created_at).toLocaleDateString('ru-RU');
+                      return (
+                        <Card key={review.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-6 grid gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">👤</span>
+                              </div>
+                              <div>
+                                <div className="font-medium">Заказчик</div>
+                                <div className="text-xs text-[#3F7F6E]">{timeAgo}</div>
+                              </div>
+                              <div className="ml-auto flex items-center gap-1 text-emerald-600">
+                                <Star className="h-4 w-4 fill-emerald-600" />
+                                <span className="font-semibold">{review.rating}.0</span>
+                              </div>
                             </div>
-                            <div className="ml-auto flex items-center gap-1 text-emerald-600">
-                              <Star className="h-4 w-4 fill-emerald-600" />
-                              <span className="font-semibold">5.0</span>
+                            <p className="text-sm text-[#3F7F6E] whitespace-pre-wrap">{review.comment}</p>
+                            <div className="flex items-center justify-between pt-2 border-t">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleReviewLike(review.id)}
+                                className={`h-8 px-3 ${isLiked ? 'text-[#6FE7C8]' : 'text-[#3F7F6E]'}`}
+                              >
+                                <ThumbsUp className={`h-4 w-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
+                                Полезно ({review.likes_count})
+                              </Button>
                             </div>
-                          </div>
-                          <p className="text-sm text-[#3F7F6E]">Отличная работа! Проект выполнен качественно и в срок. Рекомендую этого исполнителя.</p>
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleReviewLike(reviewId)}
-                              className={`h-8 px-3 ${likesData.liked ? 'text-[#6FE7C8]' : 'text-[#3F7F6E]'}`}
-                            >
-                              <ThumbsUp className={`h-4 w-4 mr-1 ${likesData.liked ? 'fill-current' : ''}`} />
-                              Полезно ({likesData.count})
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

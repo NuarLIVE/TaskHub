@@ -70,14 +70,18 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedChatId) {
       loadMessages(selectedChatId);
-      const interval = setInterval(() => loadMessages(selectedChatId), 3000);
+      const interval = setInterval(() => loadMessages(selectedChatId), 5000);
       return () => clearInterval(interval);
     }
   }, [selectedChatId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    }
+  }, [messages.length]);
 
   const loadChats = async () => {
     if (!user) return;
@@ -111,7 +115,7 @@ export default function MessagesPage() {
         setProfiles(profilesMap);
       }
     } catch (error) {
-      console.error('Error loading chats:', error);
+      setChats([]);
     } finally {
       setLoading(false);
     }
@@ -127,7 +131,7 @@ export default function MessagesPage() {
 
       setMessages(data || []);
     } catch (error) {
-      console.error('Error loading messages:', error);
+      setMessages([]);
     }
   };
 
@@ -181,7 +185,6 @@ export default function MessagesPage() {
       await loadMessages(selectedChatId);
       await loadChats();
     } catch (error) {
-      console.error('Error sending message:', error);
       alert('Ошибка при отправке сообщения');
     }
   };
@@ -202,7 +205,6 @@ export default function MessagesPage() {
       setSelectedChatId(null);
       await loadChats();
     } catch (error) {
-      console.error('Error deleting chat:', error);
       alert('Ошибка при удалении чата');
     }
   };
