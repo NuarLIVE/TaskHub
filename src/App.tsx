@@ -26,9 +26,9 @@ const BlockedUsersPage = lazy(() => import('./pages/BlockedUsersPage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
+import WalletPage from './pages/WalletPage';
 import {
   DealPage,
-  WalletPage,
   NotificationsPage,
   SavedPage,
   DisputesPage,
