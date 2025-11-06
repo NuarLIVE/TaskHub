@@ -35,70 +35,66 @@ export default function NavBar() {
       setCurrentHash(window.location.hash);
       setMobileMenuOpen(false);
     };
-
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   useEffect(() => {
-    if (user) {
-      loadUnreadCount();
-      const interval = setInterval(loadUnreadCount, 15000);
-
-      const chatsSubscription = supabase
-        .channel('chats-unread-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chats'
-          },
-          () => {
-            loadUnreadCount();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        clearInterval(interval);
-        chatsSubscription.unsubscribe();
-      };
-    }
-  }, [user]);
-
-  const loadUnreadCount = async () => {
     if (!user) return;
 
-    try {
-      const { data } = await supabase
-        .from('chats')
-        .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
-        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
+    const loadUnreadCount = async () => {
+      try {
+        const { data } = await supabase
+          .from('chats')
+          .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
+          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
 
-      if (data) {
-        const total = data.reduce((sum, chat) => {
-          if (chat.participant1_id === user.id) {
-            return sum + (chat.unread_count_p1 || 0);
-          } else if (chat.participant2_id === user.id) {
-            return sum + (chat.unread_count_p2 || 0);
-          }
-          return sum;
-        }, 0);
-        setUnreadCount(total);
+        if (data) {
+          const total = data.reduce((sum, chat) => {
+            if (chat.participant1_id === user.id) return sum + (chat.unread_count_p1 || 0);
+            if (chat.participant2_id === user.id) return sum + (chat.unread_count_p2 || 0);
+            return sum;
+          }, 0);
+          setUnreadCount(total);
+        }
+      } catch {
+        setUnreadCount(0);
       }
-    } catch (error) {
-      setUnreadCount(0);
-    }
-  };
+    };
+
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 15000);
+
+    const chatsChannel = supabase
+      .channel('navbar-chats')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chats' },
+        () => loadUnreadCount()
+      )
+      .subscribe();
+
+    const messagesChannel = supabase
+      .channel('navbar-messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => loadUnreadCount()
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      chatsChannel.unsubscribe();
+      messagesChannel.unsubscribe();
+    };
+  }, [user]);
 
   const isActiveLink = (href: string) => {
     const path = href.replace('#', '');
     const current = currentHash.replace('#', '') || '/';
-
     if (path === '/' && current === '/') return true;
     if (path !== '/' && current.startsWith(path)) return true;
-
     return false;
   };
 
@@ -119,9 +115,7 @@ export default function NavBar() {
               key={link.href}
               href={link.href}
               className={`transition-colors font-medium relative ${
-                isActiveLink(link.href)
-                  ? 'text-[#6FE7C8]'
-                  : 'text-[#3F7F6E] hover:text-foreground'
+                isActiveLink(link.href) ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-foreground'
               }`}
             >
               {link.label}
@@ -137,40 +131,23 @@ export default function NavBar() {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="hidden sm:inline-flex"
-              >
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
                 <a href="#/me" className="flex items-center gap-2">
                   <User className="h-4 w-4 text-[#6FE7C8]" />
                   <span className="font-medium">{user?.profile?.name}</span>
                 </a>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={logout}
-                className="hidden sm:inline-flex"
-              >
+              <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:inline-flex">
                 <LogOut className="h-4 w-4 mr-2" />
                 Выход
               </Button>
             </>
           ) : (
             <>
-              <Button
-                asChild
-                variant="ghost"
-                className="hidden sm:inline-flex"
-              >
+              <Button asChild variant="ghost" className="hidden sm:inline-flex">
                 <a href="#/login">Войти</a>
               </Button>
-              <Button
-                asChild
-                className="hidden sm:inline-flex"
-              >
+              <Button asChild className="hidden sm:inline-flex">
                 <a href="#/register">Зарегистрироваться</a>
               </Button>
             </>
