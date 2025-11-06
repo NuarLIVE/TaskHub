@@ -82,6 +82,7 @@ export default function MessagesPage() {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -134,21 +135,37 @@ export default function MessagesPage() {
 
     let retryCount = 0;
     const maxRetries = 3;
+    let isMounted = true;
 
     const loadWithRetry = async () => {
+      if (!isMounted) return;
+
       try {
         setError(null);
         await loadChats();
       } catch (error) {
         console.error('Failed to load chats:', error);
-        if (retryCount < maxRetries) {
+        if (retryCount < maxRetries && isMounted) {
           retryCount++;
-          setTimeout(loadWithRetry, 1000 * retryCount);
-        } else {
-          setError('Не удалось загрузить чаты. Обновите страницу.');
+          setTimeout(() => {
+            if (isMounted) loadWithRetry();
+          }, 1000 * retryCount);
+        } else if (isMounted) {
+          setError('Не удалось загрузить чаты. Попробуйте ещё раз.');
+          setLoading(false);
         }
       }
     };
+
+    const safetyTimeout = setTimeout(() => {
+      if (loading && isMounted) {
+        console.warn('Force stopping loading state after 15 seconds');
+        setLoading(false);
+        if (chats.length === 0) {
+          setError('Загрузка заняла слишком много времени. Попробуйте обновить страницу.');
+        }
+      }
+    }, 15000);
 
     loadWithRetry();
     updateOnlineStatus(true);
@@ -156,6 +173,12 @@ export default function MessagesPage() {
     const interval = setInterval(() => {
       updateOnlineStatus(true);
     }, 30_000);
+
+    const chatsRefreshInterval = setInterval(() => {
+      if (!document.hidden && isMounted) {
+        loadChats(false);
+      }
+    }, 60_000);
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -214,7 +237,10 @@ export default function MessagesPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
       clearInterval(interval);
+      clearInterval(chatsRefreshInterval);
       updateOnlineStatus(false);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       userChatsSubscription.unsubscribe();
@@ -231,15 +257,22 @@ export default function MessagesPage() {
 
     let retryCount = 0;
     const maxRetries = 3;
+    let isMounted = true;
 
     const loadMessagesWithRetry = async (chatId: string) => {
+      if (!isMounted) return;
+
       try {
         await loadMessages(chatId);
       } catch (error) {
         console.error('Failed to load messages:', error);
-        if (retryCount < maxRetries) {
+        if (retryCount < maxRetries && isMounted) {
           retryCount++;
-          setTimeout(() => loadMessagesWithRetry(chatId), 1000 * retryCount);
+          setTimeout(() => {
+            if (isMounted) loadMessagesWithRetry(chatId);
+          }, 1000 * retryCount);
+        } else if (isMounted) {
+          setMessages([]);
         }
       }
     };
@@ -317,6 +350,7 @@ export default function MessagesPage() {
       .subscribe();
 
     return () => {
+      isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       messagesSubscription.unsubscribe();
       typingSubscription.unsubscribe();
@@ -366,12 +400,25 @@ export default function MessagesPage() {
     if (!user) return;
     if (showLoading) setLoading(true);
 
+    const timeoutId = setTimeout(() => {
+      if (showLoading) {
+        console.warn('Chats loading timeout, but continuing...');
+      }
+    }, 10000);
+
     try {
-      const { data: chatsData, error: chatsError } = await supabase
-        .from('chats')
-        .select('*')
-        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-        .order('updated_at', { ascending: false });
+      const { data: chatsData, error: chatsError } = await Promise.race([
+        supabase
+          .from('chats')
+          .select('*')
+          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+          .order('updated_at', { ascending: false }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Chats query timeout')), 8000)
+        )
+      ]);
+
+      clearTimeout(timeoutId);
 
       if (chatsError) throw chatsError;
 
@@ -384,10 +431,15 @@ export default function MessagesPage() {
       });
 
       if (userIds.size > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, name, avatar_url, is_online, last_seen_at')
-          .in('id', Array.from(userIds));
+        const { data: profilesData, error: profilesError } = await Promise.race([
+          supabase
+            .from('profiles')
+            .select('id, name, avatar_url, is_online, last_seen_at')
+            .in('id', Array.from(userIds)),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Profiles query timeout')), 8000)
+          )
+        ]);
 
         if (profilesError) throw profilesError;
 
@@ -399,7 +451,8 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Error loading chats:', error);
-      setChats([]);
+      clearTimeout(timeoutId);
+      throw error;
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -422,12 +475,23 @@ export default function MessagesPage() {
   };
 
   const loadMessages = async (chatId: string) => {
+    const timeoutId = setTimeout(() => {
+      console.warn('Messages loading timeout, but continuing...');
+    }, 10000);
+
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await Promise.race([
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('chat_id', chatId)
+          .order('created_at', { ascending: true }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Messages query timeout')), 8000)
+        )
+      ]);
+
+      clearTimeout(timeoutId);
 
       if (error) throw error;
 
@@ -436,7 +500,8 @@ export default function MessagesPage() {
       await markMessagesAsRead(chatId);
     } catch (error) {
       console.error('Error loading messages:', error);
-      setMessages([]);
+      clearTimeout(timeoutId);
+      throw error;
     }
   };
 
@@ -796,7 +861,20 @@ export default function MessagesPage() {
           <div className="flex flex-col justify-center items-center h-[600px]">
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>Обновить страницу</Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setError(null);
+                    setLoading(true);
+                    loadChats();
+                  }}
+                >
+                  Попробовать снова
+                </Button>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Обновить страницу
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
