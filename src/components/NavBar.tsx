@@ -65,6 +65,14 @@ export default function NavBar() {
     loadUnreadCount();
     const interval = setInterval(loadUnreadCount, 15000);
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadUnreadCount();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const chatsChannel = supabase
       .channel('navbar-chats')
       .on(
@@ -85,6 +93,7 @@ export default function NavBar() {
 
     return () => {
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       chatsChannel.unsubscribe();
       messagesChannel.unsubscribe();
     };

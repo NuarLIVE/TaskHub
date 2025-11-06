@@ -70,6 +70,19 @@ export default function WalletPage() {
     if (user) {
       loadWalletData();
       loadTransactions();
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadWalletData();
+          loadTransactions();
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [user]);
 

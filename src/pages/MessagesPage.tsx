@@ -138,6 +138,15 @@ export default function MessagesPage() {
       updateOnlineStatus(true);
     }, 30_000);
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        updateOnlineStatus(true);
+        loadChats(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const userChatsSubscription = supabase
       .channel('user-chats')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
@@ -176,6 +185,7 @@ export default function MessagesPage() {
     return () => {
       clearInterval(interval);
       updateOnlineStatus(false);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       userChatsSubscription.unsubscribe();
       profilesSubscription.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -188,6 +198,14 @@ export default function MessagesPage() {
     isInitialLoadRef.current = true;
     shouldScrollRef.current = true;
     loadMessages(selectedChatId);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && selectedChatId) {
+        loadMessages(selectedChatId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const messagesSubscription = supabase
       .channel(`messages:${selectedChatId}`)
@@ -244,6 +262,7 @@ export default function MessagesPage() {
       .subscribe();
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       messagesSubscription.unsubscribe();
       typingSubscription.unsubscribe();
       setIsOtherUserTyping(false);
