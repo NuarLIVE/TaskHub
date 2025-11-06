@@ -43,6 +43,8 @@ interface Profile {
   id: string;
   name: string;
   avatar_url: string | null;
+  is_online?: boolean;
+  last_seen_at?: string;
 }
 
 export default function MessagesPage() {
@@ -67,8 +69,10 @@ export default function MessagesPage() {
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [imageViewerImages, setImageViewerImages] = useState<Array<{ url: string; name?: string }>>([]);
   const [isUserBlocked, setIsUserBlocked] = useState(false);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const shouldScrollRef = useRef(true);
@@ -83,8 +87,12 @@ export default function MessagesPage() {
   useEffect(() => {
     if (user) {
       loadChats();
+      updateOnlineStatus(true);
 
-      // Subscribe to chat list updates for current user
+      const interval = setInterval(() => {
+        updateOnlineStatus(true);
+      }, 30000);
+
       const userChatsSubscription = supabase
         .channel('user-chats')
         .on(
@@ -100,14 +108,47 @@ export default function MessagesPage() {
         )
         .subscribe();
 
+      const profilesSubscription = supabase
+        .channel('profiles-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+          },
+          (payload) => {
+            const updatedProfile = payload.new as Profile;
+            setProfiles(prev => ({
+              ...prev,
+              [updatedProfile.id]: {
+                ...prev[updatedProfile.id],
+                is_online: updatedProfile.is_online,
+                last_seen_at: updatedProfile.last_seen_at
+              }
+            }));
+          }
+        )
+        .subscribe();
+
       const params = new URLSearchParams(window.location.hash.split('?')[1]);
       const chatId = params.get('chat');
       if (chatId) {
         setSelectedChatId(chatId);
       }
 
+      const handleBeforeUnload = () => {
+        updateOnlineStatus(false);
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
       return () => {
+        clearInterval(interval);
+        updateOnlineStatus(false);
         userChatsSubscription.unsubscribe();
+        profilesSubscription.unsubscribe();
+        window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
   }, [user]);
@@ -150,8 +191,40 @@ export default function MessagesPage() {
         )
         .subscribe();
 
+      const typingSubscription = supabase
+        .channel(`typing:${selectedChatId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'typing_indicators',
+            filter: `chat_id=eq.${selectedChatId}`
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const typingData = payload.new as { user_id: string; updated_at: string };
+              if (typingData.user_id !== user?.id) {
+                setIsOtherUserTyping(true);
+                const timeDiff = Date.now() - new Date(typingData.updated_at).getTime();
+                if (timeDiff < 3000) {
+                  setTimeout(() => setIsOtherUserTyping(false), 3000 - timeDiff);
+                }
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const typingData = payload.old as { user_id: string };
+              if (typingData.user_id !== user?.id) {
+                setIsOtherUserTyping(false);
+              }
+            }
+          }
+        )
+        .subscribe();
+
       return () => {
         messagesSubscription.unsubscribe();
+        typingSubscription.unsubscribe();
+        setIsOtherUserTyping(false);
       };
     }
   }, [selectedChatId, user]);
@@ -198,7 +271,7 @@ export default function MessagesPage() {
       if (userIds.size > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, name, avatar_url')
+          .select('id, name, avatar_url, is_online, last_seen_at')
           .in('id', Array.from(userIds));
 
         const profilesMap: Record<string, Profile> = {};
@@ -442,8 +515,6 @@ export default function MessagesPage() {
       if (error) throw error;
 
       setIsUserBlocked(false);
-      alert('Пользователь разблокирован.');
-      await loadChats();
     } catch {
       alert('Ошибка при разблокировке пользователя');
     }
@@ -504,7 +575,76 @@ export default function MessagesPage() {
     return chat.participant1_id === user.id ? chat.participant2_id : chat.participant1_id;
   };
 
-  const getLastSeenText = () => 'был(а) в сети недавно';
+  const updateOnlineStatus = async (isOnline: boolean) => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          is_online: isOnline,
+          last_seen_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Error updating online status:', error);
+    }
+  };
+
+  const sendTypingIndicator = async () => {
+    if (!selectedChatId || !user) return;
+
+    try {
+      await supabase
+        .from('typing_indicators')
+        .upsert({
+          chat_id: selectedChatId,
+          user_id: user.id,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'chat_id,user_id'
+        });
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      typingTimeoutRef.current = setTimeout(async () => {
+        await supabase
+          .from('typing_indicators')
+          .delete()
+          .eq('chat_id', selectedChatId)
+          .eq('user_id', user.id);
+      }, 3000);
+    } catch (error) {
+      console.error('Error sending typing indicator:', error);
+    }
+  };
+
+  const getLastSeenText = (profile: Profile | undefined): string => {
+    if (!profile) return 'был(а) в сети недавно';
+
+    if (profile.is_online) {
+      return 'В сети';
+    }
+
+    if (!profile.last_seen_at) return 'был(а) в сети недавно';
+
+    const lastSeen = new Date(profile.last_seen_at);
+    const now = new Date();
+    const diffMs = now.getTime() - lastSeen.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'только что';
+    if (diffMins < 60) return `был(а) в сети ${diffMins} мин. назад`;
+    if (diffHours < 24) return `был(а) в сети ${diffHours} ч. назад`;
+    if (diffDays === 1) return 'был(а) в сети вчера';
+    if (diffDays < 7) return `был(а) в сети ${diffDays} дн. назад`;
+
+    return `был(а) в сети ${lastSeen.toLocaleDateString('ru-RU')}`;
+  };
 
   const filteredChats = chats.filter(chat => {
     if (!searchQuery) return true;
@@ -631,7 +771,23 @@ export default function MessagesPage() {
                       )}
                       <div>
                         <div className="font-semibold">{currentProfile.name}</div>
-                        <div className="text-xs text-[#3F7F6E]">{getLastSeenText()}</div>
+                        <div className="text-xs text-[#3F7F6E] flex items-center gap-1">
+                          {isOtherUserTyping ? (
+                            <>
+                              <span>Печатает</span>
+                              <span className="flex gap-0.5">
+                                <span className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                <span className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                <span className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              {currentProfile.is_online && <span className="w-2 h-2 bg-green-500 rounded-full"></span>}
+                              {getLastSeenText(currentProfile)}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -732,6 +888,17 @@ export default function MessagesPage() {
                       );
                     })
                   )}
+                  {isOtherUserTyping && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[70%] rounded-lg bg-gray-100 px-4 py-3">
+                        <div className="flex gap-1.5">
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 border-t">
@@ -804,7 +971,12 @@ export default function MessagesPage() {
                       </Button>
                       <Input
                         value={message}
-                        onChange={(e) => setMessage(e.target.value)}
+                        onChange={(e) => {
+                          setMessage(e.target.value);
+                          if (e.target.value.trim()) {
+                            sendTypingIndicator();
+                          }
+                        }}
                         placeholder="Введите сообщение..."
                         className="h-11"
                         disabled={uploading}
