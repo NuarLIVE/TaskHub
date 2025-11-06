@@ -14,13 +14,14 @@ import { ImageViewer } from '@/components/ImageViewer';
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
 
+const ONLINE_WINDOW_MS = 60_000;
+
 interface Chat {
   id: string;
   participant1_id: string;
   participant2_id: string;
   created_at: string;
   updated_at: string;
-  // опциональные поля, если есть в представлении
   last_message_at?: string;
   last_message_text?: string;
   unread_count_p1?: number;
@@ -78,10 +79,29 @@ export default function MessagesPage() {
   const shouldScrollRef = useRef(true);
   const isInitialLoadRef = useRef(true);
 
+  // Для "Печатает" без дёрганий и возврата скролла
+  const otherTypingHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const otherTypingShownAtRef = useRef<number>(0);
+  const wasTypingRef = useRef<boolean>(false);
+  const prevScrollTopRef = useRef<number>(0);
+
+  // Чтобы last seen текст сам "старился" без перезагрузки
+  const [nowTick, setNowTick] = useState<number>(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
     const el = messagesContainerRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
+  const smoothScrollTo = (top: number) => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top, behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -97,14 +117,8 @@ export default function MessagesPage() {
         .channel('user-chats')
         .on(
           'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chats',
-          },
-          () => {
-            loadChats(false);
-          }
+          { event: '*', schema: 'public', table: 'chats' },
+          () => { loadChats(false); }
         )
         .subscribe();
 
@@ -112,11 +126,7 @@ export default function MessagesPage() {
         .channel('profiles-changes')
         .on(
           'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-          },
+          { event: 'UPDATE', schema: 'public', table: 'profiles' },
           (payload) => {
             const updatedProfile = payload.new as Profile;
             setProfiles(prev => ({
@@ -133,14 +143,9 @@ export default function MessagesPage() {
 
       const params = new URLSearchParams(window.location.hash.split('?')[1]);
       const chatId = params.get('chat');
-      if (chatId) {
-        setSelectedChatId(chatId);
-      }
+      if (chatId) setSelectedChatId(chatId);
 
-      const handleBeforeUnload = () => {
-        updateOnlineStatus(false);
-      };
-
+      const handleBeforeUnload = () => updateOnlineStatus(false);
       window.addEventListener('beforeunload', handleBeforeUnload);
 
       return () => {
@@ -159,32 +164,19 @@ export default function MessagesPage() {
       shouldScrollRef.current = true;
       loadMessages(selectedChatId);
 
-      // Subscribe to real-time updates for messages in this chat
       const messagesSubscription = supabase
         .channel(`messages:${selectedChatId}`)
         .on(
           'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `chat_id=eq.${selectedChatId}`
-          },
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${selectedChatId}` },
           (payload) => {
             const newMessage = payload.new as Message;
-
-            // Only add if it's not from current user (to avoid duplication with optimistic update)
             if (newMessage.sender_id !== user?.id) {
               setMessages(prev => {
-                // Check if message already exists
-                if (prev.some(m => m.id === newMessage.id)) {
-                  return prev;
-                }
+                if (prev.some(m => m.id === newMessage.id)) return prev;
                 shouldScrollRef.current = true;
                 return [...prev, newMessage];
               });
-
-              // Mark as read and update chat
               markMessagesAsRead(selectedChatId);
             }
           }
@@ -195,26 +187,32 @@ export default function MessagesPage() {
         .channel(`typing:${selectedChatId}`)
         .on(
           'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'typing_indicators',
-            filter: `chat_id=eq.${selectedChatId}`
-          },
+          { event: '*', schema: 'public', table: 'typing_indicators', filter: `chat_id=eq.${selectedChatId}` },
           (payload) => {
+            if (!user) return;
+
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               const typingData = payload.new as { user_id: string; updated_at: string };
-              if (typingData.user_id !== user?.id) {
+              if (typingData.user_id !== user.id) {
+                const now = Date.now();
+                otherTypingShownAtRef.current = now;
                 setIsOtherUserTyping(true);
-                const timeDiff = Date.now() - new Date(typingData.updated_at).getTime();
-                if (timeDiff < 3000) {
-                  setTimeout(() => setIsOtherUserTyping(false), 3000 - timeDiff);
-                }
+
+                if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
+                // Прячем только если 1 секунда прошла без новых апдейтов
+                otherTypingHideTimeoutRef.current = setTimeout(() => {
+                  setIsOtherUserTyping(false);
+                }, 1000);
               }
             } else if (payload.eventType === 'DELETE') {
               const typingData = payload.old as { user_id: string };
-              if (typingData.user_id !== user?.id) {
-                setIsOtherUserTyping(false);
+              if (typingData.user_id !== user.id) {
+                const elapsed = Date.now() - otherTypingShownAtRef.current;
+                const remain = Math.max(0, 1000 - elapsed);
+                if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
+                otherTypingHideTimeoutRef.current = setTimeout(() => {
+                  setIsOtherUserTyping(false);
+                }, remain);
               }
             }
           }
@@ -225,9 +223,27 @@ export default function MessagesPage() {
         messagesSubscription.unsubscribe();
         typingSubscription.unsubscribe();
         setIsOtherUserTyping(false);
+        if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
       };
     }
   }, [selectedChatId, user]);
+
+  // Реакция скролла на смену статуса "Печатает"
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+
+    if (isOtherUserTyping && !wasTypingRef.current) {
+      wasTypingRef.current = true;
+      prevScrollTopRef.current = el.scrollTop;
+      scrollToBottom('smooth');
+    }
+
+    if (!isOtherUserTyping && wasTypingRef.current) {
+      wasTypingRef.current = false;
+      smoothScrollTo(prevScrollTopRef.current);
+    }
+  }, [isOtherUserTyping]);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -275,9 +291,7 @@ export default function MessagesPage() {
           .in('id', Array.from(userIds));
 
         const profilesMap: Record<string, Profile> = {};
-        (profilesData || []).forEach((p: Profile) => {
-          profilesMap[p.id] = p;
-        });
+        (profilesData || []).forEach((p: Profile) => { profilesMap[p.id] = p; });
         setProfiles(profilesMap);
       }
     } catch {
@@ -289,19 +303,15 @@ export default function MessagesPage() {
 
   const checkIfUserBlocked = async (chatId: string) => {
     if (!user) return;
-
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return;
-
     const otherUserId = getOtherParticipant(chat);
-
     const { data } = await supabase
       .from('blocked_users')
       .select('id')
       .eq('blocker_id', user.id)
       .eq('blocked_id', otherUserId)
       .maybeSingle();
-
     setIsUserBlocked(!!data);
   };
 
@@ -314,7 +324,6 @@ export default function MessagesPage() {
         .order('created_at', { ascending: true });
 
       setMessages(data || []);
-
       await checkIfUserBlocked(chatId);
 
       if (user) {
@@ -343,7 +352,6 @@ export default function MessagesPage() {
     if (!selectedChat) return;
 
     const otherUserId = getOtherParticipant(selectedChat);
-
     const { data: isBlockedByOther } = await supabase
       .from('blocked_users')
       .select('id')
@@ -379,7 +387,6 @@ export default function MessagesPage() {
     try {
       let fileUrl: string | null = null;
       let fileName: string | null = null;
-
       let fileType: 'image' | 'video' | 'file' | null = null;
 
       if (selectedFile) {
@@ -390,7 +397,6 @@ export default function MessagesPage() {
         const { error: uploadError } = await supabase.storage
           .from('message-attachments')
           .upload(filePath, selectedFile);
-
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
@@ -400,13 +406,9 @@ export default function MessagesPage() {
         fileUrl = publicUrl;
         fileName = selectedFile.name;
 
-        if (selectedFile.type.startsWith('image/')) {
-          fileType = 'image';
-        } else if (selectedFile.type.startsWith('video/')) {
-          fileType = 'video';
-        } else {
-          fileType = 'file';
-        }
+        if (selectedFile.type.startsWith('image/')) fileType = 'image';
+        else if (selectedFile.type.startsWith('video/')) fileType = 'video';
+        else fileType = 'file';
 
         setUploading(false);
       }
@@ -436,15 +438,9 @@ export default function MessagesPage() {
 
   const handleDeleteChat = async () => {
     if (!selectedChatId) return;
-
     try {
-      const { error } = await supabase
-        .from('chats')
-        .delete()
-        .eq('id', selectedChatId);
-
+      const { error } = await supabase.from('chats').delete().eq('id', selectedChatId);
       if (error) throw error;
-
       alert('Чат удален');
       setDeleteDialogOpen(false);
       setSelectedChatId(null);
@@ -456,35 +452,23 @@ export default function MessagesPage() {
 
   const handleBlockUser = async () => {
     if (!selectedChatId || !user) return;
-
     const selectedChat = chats.find(c => c.id === selectedChatId);
     if (!selectedChat) return;
-
     const otherUserId = getOtherParticipant(selectedChat);
 
     try {
       const { error } = await supabase
         .from('blocked_users')
-        .insert({
-          blocker_id: user.id,
-          blocked_id: otherUserId
-        });
+        .insert({ blocker_id: user.id, blocked_id: otherUserId });
 
       if (error) {
-        if (error.code === '23505') {
-          alert('Этот пользователь уже заблокирован');
-        } else {
-          throw error;
-        }
+        if ((error as any).code === '23505') alert('Этот пользователь уже заблокирован');
+        else throw error;
         return;
       }
 
       if (deleteAlsoChat) {
-        await supabase
-          .from('chats')
-          .delete()
-          .eq('id', selectedChatId);
-
+        await supabase.from('chats').delete().eq('id', selectedChatId);
         setSelectedChatId(null);
       }
 
@@ -499,10 +483,8 @@ export default function MessagesPage() {
 
   const handleUnblockUser = async () => {
     if (!selectedChatId || !user) return;
-
     const selectedChat = chats.find(c => c.id === selectedChatId);
     if (!selectedChat) return;
-
     const otherUserId = getOtherParticipant(selectedChat);
 
     try {
@@ -511,9 +493,7 @@ export default function MessagesPage() {
         .delete()
         .eq('blocker_id', user.id)
         .eq('blocked_id', otherUserId);
-
       if (error) throw error;
-
       setIsUserBlocked(false);
     } catch {
       alert('Ошибка при разблокировке пользователя');
@@ -528,7 +508,6 @@ export default function MessagesPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
       setFileToEdit(file);
       setShowMediaEditor(true);
@@ -546,16 +525,12 @@ export default function MessagesPage() {
   const handleMediaCancel = () => {
     setShowMediaEditor(false);
     setFileToEdit(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeSelectedFile = () => {
     setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleImageClick = (imageUrl: string, imageName?: string) => {
@@ -564,7 +539,6 @@ export default function MessagesPage() {
       .map(m => ({ url: m.file_url!, name: m.file_name }));
 
     const clickedIndex = chatImages.findIndex(img => img.url === imageUrl);
-
     setImageViewerImages(chatImages);
     setImageViewerIndex(clickedIndex >= 0 ? clickedIndex : 0);
     setShowImageViewer(true);
@@ -577,14 +551,10 @@ export default function MessagesPage() {
 
   const updateOnlineStatus = async (isOnline: boolean) => {
     if (!user) return;
-
     try {
       await supabase
         .from('profiles')
-        .update({
-          is_online: isOnline,
-          last_seen_at: new Date().toISOString()
-        })
+        .update({ is_online: isOnline, last_seen_at: new Date().toISOString() })
         .eq('id', user.id);
     } catch (error) {
       console.error('Error updating online status:', error);
@@ -593,7 +563,6 @@ export default function MessagesPage() {
 
   const sendTypingIndicator = async () => {
     if (!selectedChatId || !user) return;
-
     try {
       await supabase
         .from('typing_indicators')
@@ -601,14 +570,9 @@ export default function MessagesPage() {
           chat_id: selectedChatId,
           user_id: user.id,
           updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'chat_id,user_id'
-        });
+        }, { onConflict: 'chat_id,user_id' });
 
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(async () => {
         await supabase
           .from('typing_indicators')
@@ -624,15 +588,14 @@ export default function MessagesPage() {
   const getLastSeenText = (profile: Profile | undefined): string => {
     if (!profile) return 'был(а) в сети недавно';
 
-    if (profile.is_online) {
-      return 'В сети';
-    }
+    const lastSeen = profile.last_seen_at ? new Date(profile.last_seen_at).getTime() : null;
+    const fresh = lastSeen ? (nowTick - lastSeen) <= ONLINE_WINDOW_MS : false;
 
-    if (!profile.last_seen_at) return 'был(а) в сети недавно';
+    if (fresh) return 'В сети';
 
-    const lastSeen = new Date(profile.last_seen_at);
-    const now = new Date();
-    const diffMs = now.getTime() - lastSeen.getTime();
+    if (!lastSeen) return 'был(а) в сети недавно';
+
+    const diffMs = nowTick - lastSeen;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -642,8 +605,7 @@ export default function MessagesPage() {
     if (diffHours < 24) return `был(а) в сети ${diffHours} ч. назад`;
     if (diffDays === 1) return 'был(а) в сети вчера';
     if (diffDays < 7) return `был(а) в сети ${diffDays} дн. назад`;
-
-    return `был(а) в сети ${lastSeen.toLocaleDateString('ru-RU')}`;
+    return `был(а) в сети ${new Date(lastSeen).toLocaleDateString('ru-RU')}`;
   };
 
   const filteredChats = chats.filter(chat => {
@@ -783,7 +745,6 @@ export default function MessagesPage() {
                             </>
                           ) : (
                             <>
-                              {currentProfile.is_online && <span className="w-2 h-2 bg-green-500 rounded-full"></span>}
                               {getLastSeenText(currentProfile)}
                             </>
                           )}
@@ -847,20 +808,14 @@ export default function MessagesPage() {
                               </div>
                             )}
                             {msg.file_type === 'video' && msg.file_url && (
-                              <video
-                                src={msg.file_url}
-                                controls
-                                className="w-full max-w-sm"
-                              />
+                              <video src={msg.file_url} controls className="w-full max-w-sm" />
                             )}
                             {msg.file_type === 'file' && msg.file_url && (
                               <a
                                 href={msg.file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`flex items-center gap-2 p-3 hover:opacity-80 transition ${
-                                  isOwn ? 'bg-white/10' : 'bg-[#3F7F6E]/5'
-                                }`}
+                                className={`flex items-center gap-2 p-3 hover:opacity-80 transition ${isOwn ? 'bg-white/10' : 'bg-[#3F7F6E]/5'}`}
                               >
                                 <div className={`p-2 rounded ${isOwn ? 'bg-white/20' : 'bg-[#3F7F6E]/10'}`}>
                                   <FileText className={`h-5 w-5 ${isOwn ? 'text-white' : 'text-[#3F7F6E]'}`} />
@@ -907,11 +862,7 @@ export default function MessagesPage() {
                       <div className="flex items-start gap-3">
                         {selectedFile.type.startsWith('image/') ? (
                           <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0">
-                            <img
-                              src={URL.createObjectURL(selectedFile)}
-                              alt="Preview"
-                              className="w-full h-full object-cover"
-                            />
+                            <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="w-full h-full object-cover" />
                           </div>
                         ) : selectedFile.type.startsWith('video/') ? (
                           <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
@@ -928,10 +879,7 @@ export default function MessagesPage() {
                             {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </div>
-                        <button
-                          onClick={removeSelectedFile}
-                          className="flex-shrink-0 hover:opacity-70 transition p-1"
-                        >
+                        <button onClick={removeSelectedFile} className="flex-shrink-0 hover:opacity-70 transition p-1">
                           <X className="h-5 w-5 text-[#3F7F6E]" />
                         </button>
                       </div>
@@ -943,10 +891,7 @@ export default function MessagesPage() {
                         <Ban className="h-5 w-5 text-[#3F7F6E]" />
                         <span>Вы не можете отправлять сообщения данному пользователю, так как заблокировали его ранее</span>
                       </div>
-                      <Button
-                        onClick={handleUnblockUser}
-                        className="bg-[#3F7F6E] hover:bg-[#2d5f52] text-white"
-                      >
+                      <Button onClick={handleUnblockUser} className="bg-[#3F7F6E] hover:bg-[#2d5f52] text-white">
                         Разблокировать пользователя
                       </Button>
                     </div>
@@ -973,9 +918,7 @@ export default function MessagesPage() {
                         value={message}
                         onChange={(e) => {
                           setMessage(e.target.value);
-                          if (e.target.value.trim()) {
-                            sendTypingIndicator();
-                          }
+                          if (e.target.value.trim()) sendTypingIndicator();
                         }}
                         placeholder="Введите сообщение..."
                         className="h-11"
@@ -1010,9 +953,7 @@ export default function MessagesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Удалить чат?</DialogTitle>
-            <DialogDescription>
-              Все сообщения в этом чате будут удалены безвозвратно.
-            </DialogDescription>
+            <DialogDescription>Все сообщения в этом чате будут удалены безвозвратно.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>Отмена</Button>
@@ -1021,16 +962,11 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={blockDialogOpen} onOpenChange={(open) => {
-        setBlockDialogOpen(open);
-        if (!open) setDeleteAlsoChat(false);
-      }}>
+      <Dialog open={blockDialogOpen} onOpenChange={(open) => { setBlockDialogOpen(open); if (!open) setDeleteAlsoChat(false); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Заблокировать пользователя?</DialogTitle>
-            <DialogDescription>
-              Пользователь не сможет отправлять вам сообщения.
-            </DialogDescription>
+            <DialogDescription>Пользователь не сможет отправлять вам сообщения.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -1040,18 +976,11 @@ export default function MessagesPage() {
                 onChange={(e) => setDeleteAlsoChat(e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300 text-[#3F7F6E] focus:ring-[#3F7F6E]"
               />
-              <span className="text-sm text-gray-700">
-                Также удалить чат с этим пользователем
-              </span>
+              <span className="text-sm text-gray-700">Также удалить чат с этим пользователем</span>
             </label>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => {
-              setBlockDialogOpen(false);
-              setDeleteAlsoChat(false);
-            }}>
-              Отмена
-            </Button>
+            <Button variant="ghost" onClick={() => { setBlockDialogOpen(false); setDeleteAlsoChat(false); }}>Отмена</Button>
             <Button onClick={handleBlockUser}>Заблокировать</Button>
           </DialogFooter>
         </DialogContent>
@@ -1061,9 +990,7 @@ export default function MessagesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Пожаловаться на пользователя</DialogTitle>
-            <DialogDescription>
-              Опишите причину жалобы. Мы рассмотрим её в ближайшее время.
-            </DialogDescription>
+            <DialogDescription>Опишите причину жалобы. Мы рассмотрим её в ближайшее время.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setReportDialogOpen(false)}>Отмена</Button>
@@ -1073,19 +1000,11 @@ export default function MessagesPage() {
       </Dialog>
 
       {showMediaEditor && fileToEdit && (
-        <MediaEditor
-          file={fileToEdit}
-          onSave={handleMediaSave}
-          onCancel={handleMediaCancel}
-        />
+        <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />
       )}
 
       {showImageViewer && imageViewerImages.length > 0 && (
-        <ImageViewer
-          images={imageViewerImages}
-          initialIndex={imageViewerIndex}
-          onClose={() => setShowImageViewer(false)}
-        />
+        <ImageViewer images={imageViewerImages} initialIndex={imageViewerIndex} onClose={() => setShowImageViewer(false)} />
       )}
     </motion.div>
   );
