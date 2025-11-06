@@ -669,7 +669,7 @@ export default function MessagesPage() {
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className="cursor-pointer"
+                            className="cursor-pointer relative"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigateToProfile(otherUserId, user?.id);
@@ -681,6 +681,9 @@ export default function MessagesPage() {
                               <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center hover:opacity-80 transition">
                                 <span className="text-sm font-medium">{profile?.name?.charAt(0)}</span>
                               </div>
+                            )}
+                            {profile?.is_online && (
+                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">

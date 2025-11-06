@@ -44,7 +44,26 @@ export default function NavBar() {
     if (user) {
       loadUnreadCount();
       const interval = setInterval(loadUnreadCount, 15000);
-      return () => clearInterval(interval);
+
+      const chatsSubscription = supabase
+        .channel('chats-unread-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chats'
+          },
+          () => {
+            loadUnreadCount();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        clearInterval(interval);
+        chatsSubscription.unsubscribe();
+      };
     }
   }, [user]);
 
