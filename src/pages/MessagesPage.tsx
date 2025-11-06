@@ -57,6 +57,7 @@ export default function MessagesPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [deleteAlsoChat, setDeleteAlsoChat] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -397,8 +398,16 @@ export default function MessagesPage() {
         return;
       }
 
+      if (deleteAlsoChat) {
+        await supabase
+          .from('chats')
+          .delete()
+          .eq('id', selectedChatId);
+      }
+
       alert('Пользователь заблокирован. Вы больше не будете получать сообщения от него.');
       setBlockDialogOpen(false);
+      setDeleteAlsoChat(false);
       setSelectedChatId(null);
       await loadChats();
     } catch {
@@ -791,7 +800,10 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+      <Dialog open={blockDialogOpen} onOpenChange={(open) => {
+        setBlockDialogOpen(open);
+        if (!open) setDeleteAlsoChat(false);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Заблокировать пользователя?</DialogTitle>
@@ -799,8 +811,26 @@ export default function MessagesPage() {
               Пользователь не сможет отправлять вам сообщения.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deleteAlsoChat}
+                onChange={(e) => setDeleteAlsoChat(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-[#3F7F6E] focus:ring-[#3F7F6E]"
+              />
+              <span className="text-sm text-gray-700">
+                Также удалить чат с этим пользователем
+              </span>
+            </label>
+          </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setBlockDialogOpen(false)}>Отмена</Button>
+            <Button variant="ghost" onClick={() => {
+              setBlockDialogOpen(false);
+              setDeleteAlsoChat(false);
+            }}>
+              Отмена
+            </Button>
             <Button onClick={handleBlockUser}>Заблокировать</Button>
           </DialogFooter>
         </DialogContent>
