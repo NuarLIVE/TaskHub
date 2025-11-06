@@ -40,14 +40,27 @@ export default function PublicProfile() {
   }, [tab, userId]);
 
   const loadProfile = async () => {
+    if (!userId) {
+      console.error('No userId provided');
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Loading profile for userId:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) throw error;
+      console.log('Profile data:', data);
+      console.log('Profile error:', error);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       if (data) {
         setProfile({
@@ -66,9 +79,13 @@ export default function PublicProfile() {
           contactTelegram: '',
           avatar: data.avatar_url || 'https://i.pravatar.cc/150?img=49'
         });
+      } else {
+        console.error('No profile found for userId:', userId);
+        setProfile(null);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
@@ -152,7 +169,7 @@ export default function PublicProfile() {
     }
   };
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <motion.div
         key="public-profile-loading"
@@ -166,6 +183,28 @@ export default function PublicProfile() {
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-[#6FE7C8] mx-auto mb-4" />
           <p className="text-[#3F7F6E]">Загрузка профиля...</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <motion.div
+        key="public-profile-not-found"
+        initial="initial"
+        animate="in"
+        exit="out"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="min-h-screen bg-background flex items-center justify-center"
+      >
+        <div className="text-center">
+          <p className="text-xl font-semibold mb-2">Профиль не найден</p>
+          <p className="text-[#3F7F6E] mb-4">Пользователь с таким ID не существует</p>
+          <Button onClick={() => window.location.hash = '/market'}>
+            Вернуться на биржу
+          </Button>
         </div>
       </motion.div>
     );
