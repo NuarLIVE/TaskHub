@@ -66,6 +66,7 @@ export default function MessagesPage() {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [imageViewerImages, setImageViewerImages] = useState<Array<{ url: string; name?: string }>>([]);
+  const [isUserBlocked, setIsUserBlocked] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -186,24 +187,10 @@ export default function MessagesPage() {
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
         .order('updated_at', { ascending: false });
 
-      const { data: blockedData } = await supabase
-        .from('blocked_users')
-        .select('blocked_id')
-        .eq('blocker_id', user.id);
-
-      const blockedIds = new Set((blockedData || []).map(b => b.blocked_id));
-
-      const filteredChats = (chatsData || []).filter((chat: Chat) => {
-        const otherUserId = chat.participant1_id === user.id
-          ? chat.participant2_id
-          : chat.participant1_id;
-        return !blockedIds.has(otherUserId);
-      });
-
-      setChats(filteredChats);
+      setChats(chatsData || []);
 
       const userIds = new Set<string>();
-      filteredChats.forEach((chat: Chat) => {
+      (chatsData || []).forEach((chat: Chat) => {
         userIds.add(chat.participant1_id);
         userIds.add(chat.participant2_id);
       });
@@ -227,6 +214,24 @@ export default function MessagesPage() {
     }
   };
 
+  const checkIfUserBlocked = async (chatId: string) => {
+    if (!user) return;
+
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    const otherUserId = getOtherParticipant(chat);
+
+    const { data } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .eq('blocker_id', user.id)
+      .eq('blocked_id', otherUserId)
+      .maybeSingle();
+
+    setIsUserBlocked(!!data);
+  };
+
   const loadMessages = async (chatId: string) => {
     try {
       const { data } = await supabase
@@ -236,6 +241,8 @@ export default function MessagesPage() {
         .order('created_at', { ascending: true });
 
       setMessages(data || []);
+
+      await checkIfUserBlocked(chatId);
 
       if (user) {
         const chat = chats.find(c => c.id === chatId);
@@ -264,14 +271,15 @@ export default function MessagesPage() {
 
     const otherUserId = getOtherParticipant(selectedChat);
 
-    const { data: isBlocked } = await supabase
+    const { data: isBlockedByOther } = await supabase
       .from('blocked_users')
       .select('id')
-      .or(`and(blocker_id.eq.${user.id},blocked_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_id.eq.${user.id})`)
+      .eq('blocker_id', otherUserId)
+      .eq('blocked_id', user.id)
       .maybeSingle();
 
-    if (isBlocked) {
-      alert('Невозможно отправить сообщение. Один из пользователей заблокирован.');
+    if (isBlockedByOther) {
+      alert('Невозможно отправить сообщение. Пользователь заблокировал вас.');
       return;
     }
 
@@ -403,15 +411,41 @@ export default function MessagesPage() {
           .from('chats')
           .delete()
           .eq('id', selectedChatId);
+
+        setSelectedChatId(null);
       }
 
-      alert('Пользователь заблокирован. Вы больше не будете получать сообщения от него.');
+      alert('Пользователь заблокирован.');
       setBlockDialogOpen(false);
       setDeleteAlsoChat(false);
-      setSelectedChatId(null);
       await loadChats();
     } catch {
       alert('Ошибка при блокировке пользователя');
+    }
+  };
+
+  const handleUnblockUser = async () => {
+    if (!selectedChatId || !user) return;
+
+    const selectedChat = chats.find(c => c.id === selectedChatId);
+    if (!selectedChat) return;
+
+    const otherUserId = getOtherParticipant(selectedChat);
+
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', otherUserId);
+
+      if (error) throw error;
+
+      setIsUserBlocked(false);
+      alert('Пользователь разблокирован.');
+      await loadChats();
+    } catch {
+      alert('Ошибка при разблокировке пользователя');
     }
   };
 
@@ -736,35 +770,50 @@ export default function MessagesPage() {
                       </div>
                     </div>
                   )}
-                  <form onSubmit={handleSendMessage} className="flex gap-2">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="hover:bg-[#EFFFF8]"
-                    >
-                      <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
-                    </Button>
-                    <Input
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Введите сообщение..."
-                      className="h-11"
-                      disabled={uploading}
-                    />
-                    <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </form>
+                  {isUserBlocked ? (
+                    <div className="flex flex-col gap-3 p-4 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Ban className="h-5 w-5 text-[#3F7F6E]" />
+                        <span>Вы не можете отправлять сообщения данному пользователю, так как заблокировали его ранее</span>
+                      </div>
+                      <Button
+                        onClick={handleUnblockUser}
+                        className="bg-[#3F7F6E] hover:bg-[#2d5f52] text-white"
+                      >
+                        Разблокировать пользователя
+                      </Button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSendMessage} className="flex gap-2">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="hover:bg-[#EFFFF8]"
+                      >
+                        <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
+                      </Button>
+                      <Input
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="Введите сообщение..."
+                        className="h-11"
+                        disabled={uploading}
+                      />
+                      <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  )}
                 </div>
               </Card>
             ) : (
