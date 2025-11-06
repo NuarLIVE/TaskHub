@@ -109,7 +109,7 @@ function App() {
     Page = WalletPage;
   } else if (route === '/reviews') {
     Page = ProfilePage;
-  } else if (route.startsWith('/u/')) {
+  } else if (route.startsWith('/u/') || route.startsWith('/users/')) {
     Page = PublicProfile;
   } else if (route === '/notifications') {
     Page = NotificationsPage;

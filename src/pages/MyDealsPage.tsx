@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -250,7 +250,7 @@ export default function MyDealsPage() {
               activeTab === 'mywork' ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
             }`}
           >
-            <ListTodo className="inline-block h-4 w-4 mr-2" />
+            <Briefcase className="inline-block h-4 w-4 mr-2" />
             Моя работа ({deals.length})
             {activeTab === 'mywork' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6FE7C8]" />
