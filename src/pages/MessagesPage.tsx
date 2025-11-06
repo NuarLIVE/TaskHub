@@ -340,8 +340,8 @@ export default function MessagesPage() {
             <div className="text-[#3F7F6E]">Загрузка...</div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h-[600px]">
-            <Card className="overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h-[calc(100vh-200px)] max-h-[700px]">
+            <Card className="overflow-hidden h-full flex flex-col">
               <div className="p-4 border-b">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
@@ -353,7 +353,7 @@ export default function MessagesPage() {
                   />
                 </div>
               </div>
-              <div className="overflow-y-auto h-[calc(100%-73px)]">
+              <div className="overflow-y-auto flex-1">
                 {filteredChats.length === 0 ? (
                   <div className="p-4 text-center text-[#3F7F6E]">
                     {searchQuery ? 'Ничего не найдено' : 'Нет активных чатов'}
@@ -412,7 +412,7 @@ export default function MessagesPage() {
             </Card>
 
             {selectedChatId && currentProfile ? (
-              <Card className="flex flex-col">
+              <Card className="flex flex-col h-full">
                 <div className="p-4 border-b flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
@@ -543,7 +543,7 @@ export default function MessagesPage() {
                 </div>
               </Card>
             ) : (
-              <Card className="flex items-center justify-center">
+              <Card className="flex items-center justify-center h-full">
                 <div className="text-center text-[#3F7F6E] p-8">
                   {filteredChats.length === 0 ? (
                     <div>
