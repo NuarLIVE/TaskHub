@@ -81,6 +81,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -131,7 +132,25 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user) return;
 
-    loadChats();
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const loadWithRetry = async () => {
+      try {
+        setError(null);
+        await loadChats();
+      } catch (error) {
+        console.error('Failed to load chats:', error);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(loadWithRetry, 1000 * retryCount);
+        } else {
+          setError('Не удалось загрузить чаты. Обновите страницу.');
+        }
+      }
+    };
+
+    loadWithRetry();
     updateOnlineStatus(true);
 
     const interval = setInterval(() => {
@@ -152,7 +171,15 @@ export default function MessagesPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
         loadChats(false);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Subscribed to chats updates');
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Chats subscription error, retrying...');
+          setTimeout(() => loadChats(false), 2000);
+        }
+      });
 
     const profilesSubscription = supabase
       .channel('profiles-changes')
@@ -173,7 +200,11 @@ export default function MessagesPage() {
           }));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Subscribed to profiles updates');
+        }
+      });
 
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
     const chatId = params.get('chat');
@@ -197,7 +228,23 @@ export default function MessagesPage() {
 
     isInitialLoadRef.current = true;
     shouldScrollRef.current = true;
-    loadMessages(selectedChatId);
+
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const loadMessagesWithRetry = async (chatId: string) => {
+      try {
+        await loadMessages(chatId);
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => loadMessagesWithRetry(chatId), 1000 * retryCount);
+        }
+      }
+    };
+
+    loadMessagesWithRetry(selectedChatId);
 
     const handleVisibilityChange = () => {
       if (!document.hidden && selectedChatId) {
@@ -224,7 +271,15 @@ export default function MessagesPage() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Subscribed to messages for chat ${selectedChatId}`);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Messages subscription error, reloading...');
+          setTimeout(() => loadMessages(selectedChatId), 2000);
+        }
+      });
 
     const typingSubscription = supabase
       .channel(`typing:${selectedChatId}`)
@@ -312,11 +367,13 @@ export default function MessagesPage() {
     if (showLoading) setLoading(true);
 
     try {
-      const { data: chatsData } = await supabase
+      const { data: chatsData, error: chatsError } = await supabase
         .from('chats')
         .select('*')
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
         .order('updated_at', { ascending: false });
+
+      if (chatsError) throw chatsError;
 
       setChats(chatsData || []);
 
@@ -327,10 +384,12 @@ export default function MessagesPage() {
       });
 
       if (userIds.size > 0) {
-        const { data: profilesData } = await supabase
+        const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, name, avatar_url, is_online, last_seen_at')
           .in('id', Array.from(userIds));
+
+        if (profilesError) throw profilesError;
 
         const profilesMap: Record<string, Profile> = {};
         (profilesData || []).forEach((p: Profile) => {
@@ -338,7 +397,8 @@ export default function MessagesPage() {
         });
         setProfiles(profilesMap);
       }
-    } catch {
+    } catch (error) {
+      console.error('Error loading chats:', error);
       setChats([]);
     } finally {
       if (showLoading) setLoading(false);
@@ -363,16 +423,19 @@ export default function MessagesPage() {
 
   const loadMessages = async (chatId: string) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true });
 
+      if (error) throw error;
+
       setMessages(data || []);
       await checkIfUserBlocked(chatId);
       await markMessagesAsRead(chatId);
-    } catch {
+    } catch (error) {
+      console.error('Error loading messages:', error);
       setMessages([]);
     }
   };
@@ -724,7 +787,17 @@ export default function MessagesPage() {
 
         {loading ? (
           <div className="flex justify-center items-center h-[600px]">
-            <div className="text-[#3F7F6E]">Загрузка...</div>
+            <div className="text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent mb-4"></div>
+              <p className="text-[#3F7F6E]">Загрузка сообщений...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col justify-center items-center h-[600px]">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>Обновить страницу</Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[700px] min-h-0">
