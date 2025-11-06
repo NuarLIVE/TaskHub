@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 import { MediaEditor } from '@/components/MediaEditor';
+import { ImageViewer } from '@/components/ImageViewer';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -61,6 +62,9 @@ export default function MessagesPage() {
   const [uploading, setUploading] = useState(false);
   const [showMediaEditor, setShowMediaEditor] = useState(false);
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [imageViewerImages, setImageViewerImages] = useState<Array<{ url: string; name?: string }>>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -381,6 +385,17 @@ export default function MessagesPage() {
     }
   };
 
+  const handleImageClick = (imageUrl: string, imageName?: string) => {
+    const chatImages = messages
+      .filter(m => m.file_type === 'image' && m.file_url)
+      .map(m => ({ url: m.file_url!, name: m.file_name }));
+
+    const clickedIndex = chatImages.findIndex(img => img.url === imageUrl);
+
+    setImageViewerImages(chatImages);
+    setImageViewerIndex(clickedIndex >= 0 ? clickedIndex : 0);
+    setShowImageViewer(true);
+  };
 
   const getOtherParticipant = (chat: Chat): string => {
     if (!user) return '';
@@ -565,13 +580,13 @@ export default function MessagesPage() {
                         <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[70%] rounded-lg overflow-hidden ${isOwn ? 'bg-[#6FE7C8] text-white' : 'bg-gray-100'}`}>
                             {msg.file_type === 'image' && msg.file_url && (
-                              <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                              <div onClick={() => handleImageClick(msg.file_url!, msg.file_name)}>
                                 <img
                                   src={msg.file_url}
                                   alt={msg.file_name || 'Image'}
                                   className="w-full max-w-sm cursor-pointer hover:opacity-90 transition"
                                 />
-                              </a>
+                              </div>
                             )}
                             {msg.file_type === 'video' && msg.file_url && (
                               <video
@@ -752,6 +767,14 @@ export default function MessagesPage() {
           file={fileToEdit}
           onSave={handleMediaSave}
           onCancel={handleMediaCancel}
+        />
+      )}
+
+      {showImageViewer && imageViewerImages.length > 0 && (
+        <ImageViewer
+          images={imageViewerImages}
+          initialIndex={imageViewerIndex}
+          onClose={() => setShowImageViewer(false)}
         />
       )}
     </motion.div>

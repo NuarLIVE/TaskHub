@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, RotateCw, Crop, ZoomIn, ZoomOut, Check } from 'lucide-react';
+import { X, RotateCw, FlipHorizontal, Crop, Check } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface MediaEditorProps {
@@ -10,14 +10,18 @@ interface MediaEditorProps {
 
 export function MediaEditor({ file, onSave, onCancel }: MediaEditorProps) {
   const [rotation, setRotation] = useState(0);
-  const [scale, setScale] = useState(1);
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const [saturation, setSaturation] = useState(100);
+  const [flipHorizontal, setFlipHorizontal] = useState(false);
   const [cropMode, setCropMode] = useState(false);
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [imageUrl, setImageUrl] = useState<string>('');
+  const [imageLoaded, setImageLoaded] = useState(false);
   const isVideo = file.type.startsWith('video/');
 
   useEffect(() => {
@@ -27,41 +31,167 @@ export function MediaEditor({ file, onSave, onCancel }: MediaEditorProps) {
   }, [file]);
 
   useEffect(() => {
-    if (!isVideo && imageUrl && canvasRef.current && imgRef.current) {
+    if (!isVideo && imageUrl && imageLoaded) {
       drawCanvas();
     }
-  }, [rotation, scale, brightness, contrast, saturation, imageUrl, isVideo]);
+  }, [rotation, flipHorizontal, imageUrl, isVideo, imageLoaded]);
+
+  useEffect(() => {
+    if (cropMode && imageLoaded) {
+      drawCanvas();
+      drawCropOverlay();
+    }
+  }, [cropMode, cropArea]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
-    if (!canvas || !img) return;
+    if (!canvas || !img || !img.complete) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+    const rotRad = (rotation * Math.PI) / 180;
+    const isRotated90 = rotation % 180 !== 0;
 
+    canvas.width = isRotated90 ? img.naturalHeight : img.naturalWidth;
+    canvas.height = isRotated90 ? img.naturalWidth : img.naturalHeight;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(scale, scale);
-    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+    ctx.rotate(rotRad);
+    ctx.scale(flipHorizontal ? -1 : 1, 1);
     ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
     ctx.restore();
+
+    if (!cropMode) {
+      const displayCanvas = displayCanvasRef.current;
+      if (displayCanvas) {
+        const displayCtx = displayCanvas.getContext('2d');
+        if (displayCtx) {
+          displayCanvas.width = canvas.width;
+          displayCanvas.height = canvas.height;
+          displayCtx.drawImage(canvas, 0, 0);
+        }
+      }
+    }
+  };
+
+  const drawCropOverlay = () => {
+    const displayCanvas = displayCanvasRef.current;
+    const canvas = canvasRef.current;
+    if (!displayCanvas || !canvas) return;
+
+    const ctx = displayCanvas.getContext('2d');
+    if (!ctx) return;
+
+    displayCanvas.width = canvas.width;
+    displayCanvas.height = canvas.height;
+    ctx.drawImage(canvas, 0, 0);
+
+    if (cropArea.width > 0 && cropArea.height > 0) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+      ctx.drawImage(canvas, cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+                    cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+
+      ctx.strokeStyle = '#6FE7C8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!cropMode) return;
+    const canvas = displayCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    setIsDragging(true);
+    setDragStart({ x, y });
+    setCropArea({ x, y, width: 0, height: 0 });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!cropMode || !isDragging) return;
+    const canvas = displayCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const currentX = (e.clientX - rect.left) * scaleX;
+    const currentY = (e.clientY - rect.top) * scaleY;
+
+    const width = currentX - dragStart.x;
+    const height = currentY - dragStart.y;
+
+    setCropArea({
+      x: width < 0 ? currentX : dragStart.x,
+      y: height < 0 ? currentY : dragStart.y,
+      width: Math.abs(width),
+      height: Math.abs(height),
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
   };
 
   const handleRotate = () => {
     setRotation((prev) => (prev + 90) % 360);
   };
 
-  const handleZoomIn = () => {
-    setScale((prev) => Math.min(prev + 0.1, 3));
+  const handleFlip = () => {
+    setFlipHorizontal((prev) => !prev);
   };
 
-  const handleZoomOut = () => {
-    setScale((prev) => Math.max(prev - 0.1, 0.5));
+  const handleCropToggle = () => {
+    if (cropMode && cropArea.width > 0 && cropArea.height > 0) {
+      applyCrop();
+    } else {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        setCropArea({ x: 0, y: 0, width: canvas.width, height: canvas.height });
+      }
+      setCropMode(!cropMode);
+    }
+  };
+
+  const applyCrop = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || cropArea.width === 0 || cropArea.height === 0) return;
+
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = cropArea.width;
+    croppedCanvas.height = cropArea.height;
+    const ctx = croppedCanvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(
+      canvas,
+      cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+      0, 0, cropArea.width, cropArea.height
+    );
+
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      if (imgRef.current) {
+        imgRef.current.src = croppedCanvas.toDataURL();
+        setRotation(0);
+        setFlipHorizontal(false);
+        setCropMode(false);
+        setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+      }
+    };
+    tempImg.src = croppedCanvas.toDataURL();
   };
 
   const handleSave = async () => {
@@ -84,19 +214,22 @@ export function MediaEditor({ file, onSave, onCancel }: MediaEditorProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
-      <div className="flex items-center justify-between p-4 bg-black/50">
-        <h3 className="text-white text-lg font-semibold">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h3 className="text-lg font-semibold text-gray-900">
           {isVideo ? 'Предпросмотр видео' : 'Редактировать изображение'}
         </h3>
-        <Button variant="ghost" size="sm" onClick={onCancel} className="text-white hover:bg-white/10">
+        <Button variant="ghost" size="sm" onClick={onCancel} className="hover:bg-gray-100">
           <X className="h-5 w-5" />
         </Button>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+      <div
+        ref={containerRef}
+        className="flex-1 flex items-center justify-center p-4 bg-gray-50 overflow-hidden"
+      >
         {isVideo ? (
-          <video src={imageUrl} controls className="max-w-full max-h-full" />
+          <video src={imageUrl} controls className="max-w-full max-h-full rounded-lg shadow-lg" />
         ) : (
           <>
             <img
@@ -104,110 +237,66 @@ export function MediaEditor({ file, onSave, onCancel }: MediaEditorProps) {
               src={imageUrl}
               alt="Preview"
               className="hidden"
-              onLoad={drawCanvas}
-            />
-            <canvas
-              ref={canvasRef}
-              className="max-w-full max-h-full object-contain"
-              style={{
-                transform: `rotate(${rotation}deg) scale(${scale})`,
-                filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
+              onLoad={() => {
+                setImageLoaded(true);
+                drawCanvas();
               }}
             />
+            <canvas
+              ref={displayCanvasRef}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+              style={{ cursor: cropMode ? 'crosshair' : 'default' }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+            <canvas ref={canvasRef} className="hidden" />
           </>
         )}
       </div>
 
       {!isVideo && (
-        <div className="bg-black/50 p-4 space-y-4">
-          <div className="flex items-center justify-center gap-2 flex-wrap">
+        <div className="border-t bg-white p-4">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleRotate}
-              className="text-white hover:bg-white/10"
+              className="hover:bg-[#EFFFF8] hover:text-[#3F7F6E] hover:border-[#3F7F6E]"
             >
               <RotateCw className="h-4 w-4 mr-2" />
-              Повернуть
+              Повернуть вправо
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={handleZoomIn}
-              className="text-white hover:bg-white/10"
+              onClick={handleFlip}
+              className="hover:bg-[#EFFFF8] hover:text-[#3F7F6E] hover:border-[#3F7F6E]"
             >
-              <ZoomIn className="h-4 w-4 mr-2" />
-              Увеличить
+              <FlipHorizontal className="h-4 w-4 mr-2" />
+              Зеркалить
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={handleZoomOut}
-              className="text-white hover:bg-white/10"
-            >
-              <ZoomOut className="h-4 w-4 mr-2" />
-              Уменьшить
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCropMode(!cropMode)}
-              className="text-white hover:bg-white/10"
+              onClick={handleCropToggle}
+              className={`hover:bg-[#EFFFF8] hover:text-[#3F7F6E] hover:border-[#3F7F6E] ${
+                cropMode ? 'bg-[#EFFFF8] text-[#3F7F6E] border-[#3F7F6E]' : ''
+              }`}
             >
               <Crop className="h-4 w-4 mr-2" />
-              {cropMode ? 'Отмена обрезки' : 'Обрезать'}
+              {cropMode ? 'Применить обрезку' : 'Обрезать'}
             </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-            <div>
-              <label className="text-white text-sm block mb-2">
-                Яркость: {brightness}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={brightness}
-                onChange={(e) => setBrightness(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-white text-sm block mb-2">
-                Контраст: {contrast}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={contrast}
-                onChange={(e) => setContrast(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-white text-sm block mb-2">
-                Насыщенность: {saturation}%
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={saturation}
-                onChange={(e) => setSaturation(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-center gap-4 p-4 bg-black/50">
+      <div className="flex items-center justify-center gap-4 p-4 border-t bg-white">
         <Button variant="outline" onClick={onCancel} className="min-w-[120px]">
           Отмена
         </Button>
-        <Button onClick={handleSave} className="min-w-[120px] bg-[#3F7F6E] hover:bg-[#2d5f52]">
+        <Button onClick={handleSave} className="min-w-[120px] bg-[#3F7F6E] hover:bg-[#2d5f52] text-white">
           <Check className="h-4 w-4 mr-2" />
           Отправить
         </Button>
