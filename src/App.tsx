@@ -22,6 +22,7 @@ const ProposalsCreate = lazy(() => import('./pages/proposals/Create'));
 const PublicProfile = lazy(() => import('./pages/users/PublicProfile'));
 const PortfolioAdd = lazy(() => import('./pages/me/PortfolioAdd'));
 const DealOpen = lazy(() => import('./pages/deal/Open'));
+const BlockedUsersPage = lazy(() => import('./pages/BlockedUsersPage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -131,6 +132,8 @@ function App() {
     Page = NotificationSettingsPage;
   } else if (route === '/settings/payments' || route === '/payment-methods') {
     Page = PaymentMethodsPage;
+  } else if (route === '/settings/blocked' || route === '/blocked-users') {
+    Page = BlockedUsersPage;
   } else if (route === '/media' || route === '/media-library') {
     Page = MediaLibraryPage;
   } else if (route === '/admin') {

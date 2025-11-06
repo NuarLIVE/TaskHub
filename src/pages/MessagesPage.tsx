@@ -185,10 +185,24 @@ export default function MessagesPage() {
         .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
         .order('updated_at', { ascending: false });
 
-      setChats(chatsData || []);
+      const { data: blockedData } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+
+      const blockedIds = new Set((blockedData || []).map(b => b.blocked_id));
+
+      const filteredChats = (chatsData || []).filter((chat: Chat) => {
+        const otherUserId = chat.participant1_id === user.id
+          ? chat.participant2_id
+          : chat.participant1_id;
+        return !blockedIds.has(otherUserId);
+      });
+
+      setChats(filteredChats);
 
       const userIds = new Set<string>();
-      (chatsData || []).forEach((chat: Chat) => {
+      filteredChats.forEach((chat: Chat) => {
         userIds.add(chat.participant1_id);
         userIds.add(chat.participant2_id);
       });
@@ -243,6 +257,22 @@ export default function MessagesPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!message.trim() && !selectedFile) || !selectedChatId || !user) return;
+
+    const selectedChat = chats.find(c => c.id === selectedChatId);
+    if (!selectedChat) return;
+
+    const otherUserId = getOtherParticipant(selectedChat);
+
+    const { data: isBlocked } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .or(`and(blocker_id.eq.${user.id},blocked_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_id.eq.${user.id})`)
+      .maybeSingle();
+
+    if (isBlocked) {
+      alert('Невозможно отправить сообщение. Один из пользователей заблокирован.');
+      return;
+    }
 
     const messageText = message;
     const tempId = `temp-${Date.now()}`;
@@ -342,9 +372,38 @@ export default function MessagesPage() {
     }
   };
 
-  const handleBlockUser = () => {
-    alert('Функция блокировки будет реализована в следующей версии');
-    setBlockDialogOpen(false);
+  const handleBlockUser = async () => {
+    if (!selectedChatId || !user) return;
+
+    const selectedChat = chats.find(c => c.id === selectedChatId);
+    if (!selectedChat) return;
+
+    const otherUserId = getOtherParticipant(selectedChat);
+
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .insert({
+          blocker_id: user.id,
+          blocked_id: otherUserId
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          alert('Этот пользователь уже заблокирован');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      alert('Пользователь заблокирован. Вы больше не будете получать сообщения от него.');
+      setBlockDialogOpen(false);
+      setSelectedChatId(null);
+      await loadChats();
+    } catch {
+      alert('Ошибка при блокировке пользователя');
+    }
   };
 
   const handleReportUser = () => {
