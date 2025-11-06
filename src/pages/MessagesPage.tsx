@@ -54,6 +54,8 @@ export default function MessagesPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(0);
 
   useEffect(() => {
     if (user) {
@@ -92,12 +94,21 @@ export default function MessagesPage() {
   }, [selectedChatId]);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 100);
+    if (messages.length > prevMessagesLengthRef.current) {
+      const container = messagesContainerRef.current;
+      if (container) {
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        const isNewMessage = messages.length > prevMessagesLengthRef.current;
+
+        if (isAtBottom || isNewMessage) {
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 50);
+        }
+      }
     }
-  }, [messages.length]);
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages]);
 
   const loadChats = async () => {
     if (!user) return;
@@ -146,6 +157,20 @@ export default function MessagesPage() {
         .order('created_at', { ascending: true });
 
       setMessages(data || []);
+
+      if (user) {
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) {
+          const isParticipant1 = chat.participant1_id === user.id;
+          await supabase
+            .from('chats')
+            .update({
+              unread_count_p1: isParticipant1 ? 0 : chat.unread_count_p1,
+              unread_count_p2: !isParticipant1 ? 0 : chat.unread_count_p2
+            })
+            .eq('id', chatId);
+        }
+      }
     } catch (error) {
       setMessages([]);
     }
@@ -154,6 +179,24 @@ export default function MessagesPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!message.trim() && !selectedFile) || !selectedChatId || !user) return;
+
+    const messageText = message;
+    const tempId = `temp-${Date.now()}`;
+
+    const optimisticMessage = {
+      id: tempId,
+      chat_id: selectedChatId,
+      sender_id: user.id,
+      text: messageText || '',
+      created_at: new Date().toISOString(),
+      is_read: false,
+      file_url: null,
+      file_name: null
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    setMessage('');
+    setSelectedFile(null);
 
     try {
       let fileUrl = null;
@@ -184,23 +227,18 @@ export default function MessagesPage() {
         .insert({
           chat_id: selectedChatId,
           sender_id: user.id,
-          text: message || '',
+          text: messageText || '',
           file_url: fileUrl,
           file_name: fileName
         });
 
       if (error) throw error;
 
-      await supabase
-        .from('chats')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', selectedChatId);
-
-      setMessage('');
-      setSelectedFile(null);
-      await loadMessages(selectedChatId);
-      await loadChats();
+      loadMessages(selectedChatId);
+      loadChats();
     } catch (error) {
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessage(messageText);
       alert('Ошибка при отправке сообщения');
     }
   };
@@ -325,11 +363,22 @@ export default function MessagesPage() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-1">
                               <div className="font-semibold truncate">{profile?.name || 'Пользователь'}</div>
                               <span className="text-xs text-[#3F7F6E]">
-                                {new Date(chat.updated_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                {chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-[#3F7F6E] truncate">
+                                {chat.last_message_text || 'Нет сообщений'}
+                              </div>
+                              {((chat.participant1_id === user?.id && chat.unread_count_p1 > 0) ||
+                                (chat.participant2_id === user?.id && chat.unread_count_p2 > 0)) && (
+                                <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                                  {chat.participant1_id === user?.id ? chat.unread_count_p1 : chat.unread_count_p2}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -398,7 +447,7 @@ export default function MessagesPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                   {messages.length === 0 ? (
                     <div className="text-center text-[#3F7F6E] mt-8">
                       Начните разговор

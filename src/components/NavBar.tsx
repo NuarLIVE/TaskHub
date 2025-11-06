@@ -3,6 +3,7 @@ import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
@@ -26,6 +27,7 @@ const PRIVATE_LINKS = [
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
@@ -37,6 +39,39 @@ export default function NavBar() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadUnreadCount();
+      const interval = setInterval(loadUnreadCount, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const loadUnreadCount = async () => {
+    if (!user) return;
+
+    try {
+      const { data } = await supabase
+        .from('chats')
+        .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
+        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
+
+      if (data) {
+        const total = data.reduce((sum, chat) => {
+          if (chat.participant1_id === user.id) {
+            return sum + (chat.unread_count_p1 || 0);
+          } else if (chat.participant2_id === user.id) {
+            return sum + (chat.unread_count_p2 || 0);
+          }
+          return sum;
+        }, 0);
+        setUnreadCount(total);
+      }
+    } catch (error) {
+      setUnreadCount(0);
+    }
+  };
 
   const isActiveLink = (href: string) => {
     const path = href.replace('#', '');
@@ -64,13 +99,18 @@ export default function NavBar() {
             <a
               key={link.href}
               href={link.href}
-              className={`transition-colors font-medium ${
+              className={`transition-colors font-medium relative ${
                 isActiveLink(link.href)
                   ? 'text-[#6FE7C8]'
                   : 'text-[#3F7F6E] hover:text-foreground'
               }`}
             >
               {link.label}
+              {link.label === 'Сообщения' && unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </a>
           ))}
         </div>
@@ -135,13 +175,20 @@ export default function NavBar() {
               <a
                 key={link.href}
                 href={link.href}
-                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
                   isActiveLink(link.href)
                     ? 'bg-[#EFFFF8] text-[#6FE7C8]'
                     : 'text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground'
                 }`}
               >
-                {link.label}
+                <span className="flex items-center justify-between">
+                  {link.label}
+                  {link.label === 'Сообщения' && unreadCount > 0 && (
+                    <span className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </span>
               </a>
             ))}
             <div className="pt-3 space-y-2 border-t border-[#6FE7C8]/20">
