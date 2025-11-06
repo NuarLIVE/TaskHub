@@ -56,6 +56,8 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
+  const shouldScrollRef = useRef(true);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     if (user) {
@@ -71,10 +73,13 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (selectedChatId) {
+      isInitialLoadRef.current = true;
+      shouldScrollRef.current = true;
       loadMessages(selectedChatId);
 
       const handleVisibilityChange = () => {
         if (!document.hidden) {
+          shouldScrollRef.current = false;
           loadMessages(selectedChatId);
         }
       };
@@ -82,6 +87,7 @@ export default function MessagesPage() {
       document.addEventListener('visibilitychange', handleVisibilityChange);
       const interval = setInterval(() => {
         if (!document.hidden) {
+          shouldScrollRef.current = false;
           loadMessages(selectedChatId);
         }
       }, 10000);
@@ -94,19 +100,28 @@ export default function MessagesPage() {
   }, [selectedChatId]);
 
   useEffect(() => {
-    if (messages.length > prevMessagesLengthRef.current) {
-      const container = messagesContainerRef.current;
-      if (container) {
-        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-        const isNewMessage = messages.length > prevMessagesLengthRef.current;
-
-        if (isAtBottom || isNewMessage) {
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }, 50);
-        }
-      }
+    if (messages.length === 0) {
+      prevMessagesLengthRef.current = 0;
+      return;
     }
+
+    const container = messagesContainerRef.current;
+
+    if (isInitialLoadRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 100);
+      isInitialLoadRef.current = false;
+      prevMessagesLengthRef.current = messages.length;
+      return;
+    }
+
+    if (shouldScrollRef.current && messages.length > prevMessagesLengthRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
+
     prevMessagesLengthRef.current = messages.length;
   }, [messages]);
 
@@ -194,6 +209,7 @@ export default function MessagesPage() {
       file_name: null
     };
 
+    shouldScrollRef.current = true;
     setMessages(prev => [...prev, optimisticMessage]);
     setMessage('');
     setSelectedFile(null);
@@ -234,6 +250,7 @@ export default function MessagesPage() {
 
       if (error) throw error;
 
+      shouldScrollRef.current = false;
       loadMessages(selectedChatId);
       loadChats();
     } catch (error) {
