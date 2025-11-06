@@ -18,6 +18,11 @@ interface Chat {
   participant2_id: string;
   created_at: string;
   updated_at: string;
+  // опциональные поля, если есть в представлении
+  last_message_at?: string;
+  last_message_text?: string;
+  unread_count_p1?: number;
+  unread_count_p2?: number;
 }
 
 interface Message {
@@ -52,18 +57,23 @@ export default function MessagesPage() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const shouldScrollRef = useRef(true);
   const isInitialLoadRef = useRef(true);
 
+  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
   useEffect(() => {
     if (user) {
       loadChats();
     }
-
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
     const chatId = params.get('chat');
     if (chatId) {
@@ -105,21 +115,15 @@ export default function MessagesPage() {
       return;
     }
 
-    const container = messagesContainerRef.current;
-
     if (isInitialLoadRef.current) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-      }, 100);
+      setTimeout(() => scrollToBottom('auto'), 0);
       isInitialLoadRef.current = false;
       prevMessagesLengthRef.current = messages.length;
       return;
     }
 
     if (shouldScrollRef.current && messages.length > prevMessagesLengthRef.current) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
+      setTimeout(() => scrollToBottom('smooth'), 0);
     }
 
     prevMessagesLengthRef.current = messages.length;
@@ -127,10 +131,7 @@ export default function MessagesPage() {
 
   const loadChats = async (showLoading = true) => {
     if (!user) return;
-
-    if (showLoading) {
-      setLoading(true);
-    }
+    if (showLoading) setLoading(true);
 
     try {
       const { data: chatsData } = await supabase
@@ -159,12 +160,10 @@ export default function MessagesPage() {
         });
         setProfiles(profilesMap);
       }
-    } catch (error) {
+    } catch {
       setChats([]);
     } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -191,7 +190,7 @@ export default function MessagesPage() {
             .eq('id', chatId);
         }
       }
-    } catch (error) {
+    } catch {
       setMessages([]);
     }
   };
@@ -203,25 +202,26 @@ export default function MessagesPage() {
     const messageText = message;
     const tempId = `temp-${Date.now()}`;
 
-    const optimisticMessage = {
+    const optimisticMessage: Message = {
       id: tempId,
       chat_id: selectedChatId,
       sender_id: user.id,
       text: messageText || '',
       created_at: new Date().toISOString(),
       is_read: false,
-      file_url: null,
-      file_name: null
+      file_url: undefined,
+      file_name: undefined
     };
 
     shouldScrollRef.current = true;
     setMessages(prev => [...prev, optimisticMessage]);
     setMessage('');
     setSelectedFile(null);
+    scrollToBottom('smooth');
 
     try {
-      let fileUrl = null;
-      let fileName = null;
+      let fileUrl: string | null = null;
+      let fileName: string | null = null;
 
       if (selectedFile) {
         setUploading(true);
@@ -258,7 +258,7 @@ export default function MessagesPage() {
       shouldScrollRef.current = false;
       loadMessages(selectedChatId);
       loadChats(false);
-    } catch (error) {
+    } catch {
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setMessage(messageText);
       alert('Ошибка при отправке сообщения');
@@ -280,7 +280,7 @@ export default function MessagesPage() {
       setDeleteDialogOpen(false);
       setSelectedChatId(null);
       await loadChats();
-    } catch (error) {
+    } catch {
       alert('Ошибка при удалении чата');
     }
   };
@@ -311,9 +311,7 @@ export default function MessagesPage() {
     return chat.participant1_id === user.id ? chat.participant2_id : chat.participant1_id;
   };
 
-  const getLastSeenText = () => {
-    return 'был(а) в сети недавно';
-  };
+  const getLastSeenText = () => 'был(а) в сети недавно';
 
   const filteredChats = chats.filter(chat => {
     if (!searchQuery) return true;
@@ -326,12 +324,18 @@ export default function MessagesPage() {
   const currentOtherUserId = currentChat ? getOtherParticipant(currentChat) : null;
   const currentProfile = currentOtherUserId ? profiles[currentOtherUserId] : null;
 
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatTime = (timestamp: string) =>
+    new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
+    <motion.div
+      initial="initial"
+      animate="in"
+      exit="out"
+      variants={pageVariants}
+      transition={pageTransition}
+      className="min-h-screen bg-background"
+    >
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Сообщения</h1>
 
@@ -340,8 +344,8 @@ export default function MessagesPage() {
             <div className="text-[#3F7F6E]">Загрузка...</div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h-[calc(100vh-200px)] max-h-[700px]">
-            <Card className="overflow-hidden h-full flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[700px] min-h-0">
+            <Card className="overflow-hidden h-full min-h-0 flex flex-col">
               <div className="p-4 border-b">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
@@ -353,7 +357,7 @@ export default function MessagesPage() {
                   />
                 </div>
               </div>
-              <div className="overflow-y-auto flex-1">
+              <div className="overflow-y-auto flex-1 min-h-0">
                 {filteredChats.length === 0 ? (
                   <div className="p-4 text-center text-[#3F7F6E]">
                     {searchQuery ? 'Ничего не найдено' : 'Нет активных чатов'}
@@ -395,8 +399,8 @@ export default function MessagesPage() {
                               <div className="text-sm text-[#3F7F6E] truncate">
                                 {chat.last_message_text || 'Нет сообщений'}
                               </div>
-                              {((chat.participant1_id === user?.id && chat.unread_count_p1 > 0) ||
-                                (chat.participant2_id === user?.id && chat.unread_count_p2 > 0)) && (
+                              {((chat.participant1_id === user?.id && (chat.unread_count_p1 || 0) > 0) ||
+                                (chat.participant2_id === user?.id && (chat.unread_count_p2 || 0) > 0)) && (
                                 <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
                                   {chat.participant1_id === user?.id ? chat.unread_count_p1 : chat.unread_count_p2}
                                 </div>
@@ -412,7 +416,7 @@ export default function MessagesPage() {
             </Card>
 
             {selectedChatId && currentProfile ? (
-              <Card className="flex flex-col h-full">
+              <Card className="flex flex-col h-full min-h-0 overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
@@ -469,7 +473,11 @@ export default function MessagesPage() {
                     )}
                   </div>
                 </div>
-                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+                >
                   {messages.length === 0 ? (
                     <div className="text-center text-[#3F7F6E] mt-8">
                       Начните разговор
@@ -500,8 +508,8 @@ export default function MessagesPage() {
                       );
                     })
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
+
                 <div className="p-4 border-t">
                   {selectedFile && (
                     <div className="mb-2 flex items-center gap-2 text-sm bg-[#EFFFF8] p-2 rounded">
@@ -543,7 +551,7 @@ export default function MessagesPage() {
                 </div>
               </Card>
             ) : (
-              <Card className="flex items-center justify-center h-full">
+              <Card className="flex items-center justify-center h-full min-h-0">
                 <div className="text-center text-[#3F7F6E] p-8">
                   {filteredChats.length === 0 ? (
                     <div>
