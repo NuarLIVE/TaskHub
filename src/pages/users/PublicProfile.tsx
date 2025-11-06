@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThumbsUp } from 'lucide-react';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -27,6 +28,11 @@ export default function PublicProfile() {
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [reviewLikes, setReviewLikes] = useState<Record<string, { count: number; liked: boolean }>>({
+    'review-1': { count: 5, liked: false },
+    'review-2': { count: 3, liked: false },
+    'review-3': { count: 8, liked: false }
+  });
 
   useEffect(() => {
     loadProfile();
@@ -167,6 +173,25 @@ export default function PublicProfile() {
       console.error('Error creating chat:', error);
       alert('Ошибка при создании чата');
     }
+  };
+
+  const handleReviewLike = (reviewId: string) => {
+    if (!currentUser) {
+      alert('Войдите, чтобы поставить лайк');
+      window.location.hash = '/login';
+      return;
+    }
+
+    setReviewLikes(prev => {
+      const current = prev[reviewId];
+      return {
+        ...prev,
+        [reviewId]: {
+          liked: !current.liked,
+          count: current.liked ? current.count - 1 : current.count + 1
+        }
+      };
+    });
   };
 
   if (loading) {
@@ -490,7 +515,7 @@ export default function PublicProfile() {
                   <CardContent className="p-6 pt-0 grid gap-6">
                     <div>
                       <h3 className="font-semibold text-lg mb-2">{profile.headline}</h3>
-                      <p className="text-[#3F7F6E] leading-relaxed mb-4">{profile.about || 'Информация о пользователе не указана'}</p>
+                      <p className="text-[#3F7F6E] leading-relaxed mb-4 whitespace-pre-wrap">{profile.bio || profile.about || 'Информация о пользователе не указана'}</p>
                     </div>
 
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -502,7 +527,42 @@ export default function PublicProfile() {
                         <div className="text-sm text-[#3F7F6E] mb-1">Локация</div>
                         <div className="font-semibold">{profile.location}</div>
                       </div>
+                      <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                        <div className="text-sm text-[#3F7F6E] mb-1">Ставка</div>
+                        <div className="font-semibold">{profile.currency} {profile.rateMin}–{profile.rateMax}/час</div>
+                      </div>
                     </div>
+
+                    {profile.skills && profile.skills.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-3">Навыки</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.skills.map((skill: string, idx: number) => (
+                            <Badge key={idx} variant="secondary">{skill}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(profile.contactEmail || profile.contactTelegram) && (
+                      <div>
+                        <h4 className="font-semibold mb-3">Контакты</h4>
+                        <div className="grid gap-2 text-sm">
+                          {profile.contactEmail && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#3F7F6E]">Email:</span>
+                              <a href={`mailto:${profile.contactEmail}`} className="text-[#6FE7C8] hover:underline">{profile.contactEmail}</a>
+                            </div>
+                          )}
+                          {profile.contactTelegram && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#3F7F6E]">Telegram:</span>
+                              <a href={`https://t.me/${profile.contactTelegram}`} target="_blank" rel="noopener noreferrer" className="text-[#6FE7C8] hover:underline">@{profile.contactTelegram}</a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -512,24 +572,39 @@ export default function PublicProfile() {
               <div className="grid gap-6">
                 <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <Card key={i} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-6 grid gap-3">
-                        <div className="flex items-center gap-3">
-                          <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-10 w-10 rounded-full object-cover" alt={`Заказчик ${i}`} />
-                          <div>
-                            <div className="font-medium">Заказчик #{i}</div>
-                            <div className="text-xs text-[#3F7F6E]">2 недели назад</div>
+                  {[1, 2, 3].map((i) => {
+                    const reviewId = `review-${i}`;
+                    const likesData = reviewLikes[reviewId];
+                    return (
+                      <Card key={i} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-6 grid gap-3">
+                          <div className="flex items-center gap-3">
+                            <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-10 w-10 rounded-full object-cover" alt={`Заказчик ${i}`} />
+                            <div>
+                              <div className="font-medium">Заказчик #{i}</div>
+                              <div className="text-xs text-[#3F7F6E]">2 недели назад</div>
+                            </div>
+                            <div className="ml-auto flex items-center gap-1 text-emerald-600">
+                              <Star className="h-4 w-4 fill-emerald-600" />
+                              <span className="font-semibold">5.0</span>
+                            </div>
                           </div>
-                          <div className="ml-auto flex items-center gap-1 text-emerald-600">
-                            <Star className="h-4 w-4 fill-emerald-600" />
-                            <span className="font-semibold">5.0</span>
+                          <p className="text-sm text-[#3F7F6E]">Отличная работа! Проект выполнен качественно и в срок. Рекомендую этого исполнителя.</p>
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleReviewLike(reviewId)}
+                              className={`h-8 px-3 ${likesData.liked ? 'text-[#6FE7C8]' : 'text-[#3F7F6E]'}`}
+                            >
+                              <ThumbsUp className={`h-4 w-4 mr-1 ${likesData.liked ? 'fill-current' : ''}`} />
+                              Полезно ({likesData.count})
+                            </Button>
                           </div>
-                        </div>
-                        <p className="text-sm text-[#3F7F6E]">Отличная работа! Проект выполнен качественно и в срок. Рекомендую этого исполнителя.</p>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             )}

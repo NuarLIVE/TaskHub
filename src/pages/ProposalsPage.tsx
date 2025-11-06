@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { navigateToProfile } from '@/lib/navigation';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -300,7 +301,7 @@ export default function ProposalsPage() {
                         {activeTab === 'received' && (
                           <div
                             className="hover:opacity-80 transition cursor-pointer"
-                            onClick={() => window.location.hash = `/users/${proposal.user_id}`}
+                            onClick={() => navigateToProfile(proposal.user_id, user?.id)}
                           >
                             {profiles[proposal.user_id]?.avatar_url ? (
                               <img src={profiles[proposal.user_id].avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
@@ -368,7 +369,7 @@ export default function ProposalsPage() {
                 {activeTab === 'received' && (
                   <div
                     className="flex items-center gap-3 p-3 bg-[#EFFFF8] rounded-lg cursor-pointer hover:opacity-80 transition"
-                    onClick={() => window.location.hash = `/users/${selectedProposal.user_id}`}
+                    onClick={() => navigateToProfile(selectedProposal.user_id, user?.id)}
                   >
                     {profiles[selectedProposal.user_id]?.avatar_url ? (
                       <img src={profiles[selectedProposal.user_id].avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />

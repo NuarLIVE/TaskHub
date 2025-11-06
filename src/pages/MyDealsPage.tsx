@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/lib/currency';
+import { navigateToProfile } from '@/lib/navigation';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -549,7 +550,7 @@ export default function MyDealsPage() {
                         <div className="flex items-center gap-3 mb-3">
                           <div
                             className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
-                            onClick={() => window.location.hash = `/users/${deal.client_id}`}
+                            onClick={() => navigateToProfile(deal.client_id, user?.id)}
                           >
                             {deal.client?.avatar_url ? (
                               <img src={deal.client.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />

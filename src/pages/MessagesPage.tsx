@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { navigateToProfile } from '@/lib/navigation';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
@@ -294,7 +295,7 @@ export default function MessagesPage() {
                             className="cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
-                              window.location.hash = `/users/${otherUserId}`;
+                              navigateToProfile(otherUserId, user?.id);
                             }}
                           >
                             {profile?.avatar_url ? (
@@ -333,7 +334,7 @@ export default function MessagesPage() {
                     </button>
                     <div
                       className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer"
-                      onClick={() => window.location.hash = `/users/${currentOtherUserId}`}
+                      onClick={() => navigateToProfile(currentOtherUserId || '', user?.id)}
                     >
                       {currentProfile.avatar_url ? (
                         <img src={currentProfile.avatar_url} alt={currentProfile.name} className="h-10 w-10 rounded-full object-cover" />

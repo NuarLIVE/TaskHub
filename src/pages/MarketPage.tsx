@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BoostBadge } from '@/components/ui/BoostBadge';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { navigateToProfile } from '@/lib/navigation';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -20,6 +22,7 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 const ITEMS_PER_PAGE = 20;
 
 export default function MarketPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('orders');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
@@ -261,7 +264,7 @@ export default function MarketPage() {
                         className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.location.hash = `/users/${item.user_id}`;
+                          navigateToProfile(item.user_id, user?.id);
                         }}
                       >
                         {profiles[item.user_id]?.avatar_url ? (
