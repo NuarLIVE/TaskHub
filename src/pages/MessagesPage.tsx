@@ -73,11 +73,32 @@ export default function MessagesPage() {
   useEffect(() => {
     if (user) {
       loadChats();
-    }
-    const params = new URLSearchParams(window.location.hash.split('?')[1]);
-    const chatId = params.get('chat');
-    if (chatId) {
-      setSelectedChatId(chatId);
+
+      // Subscribe to chat list updates for current user
+      const userChatsSubscription = supabase
+        .channel('user-chats')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chats',
+          },
+          () => {
+            loadChats(false);
+          }
+        )
+        .subscribe();
+
+      const params = new URLSearchParams(window.location.hash.split('?')[1]);
+      const chatId = params.get('chat');
+      if (chatId) {
+        setSelectedChatId(chatId);
+      }
+
+      return () => {
+        userChatsSubscription.unsubscribe();
+      };
     }
   }, [user]);
 
@@ -87,27 +108,43 @@ export default function MessagesPage() {
       shouldScrollRef.current = true;
       loadMessages(selectedChatId);
 
-      const handleVisibilityChange = () => {
-        if (!document.hidden) {
-          shouldScrollRef.current = false;
-          loadMessages(selectedChatId);
-        }
-      };
+      // Subscribe to real-time updates for messages in this chat
+      const messagesSubscription = supabase
+        .channel(`messages:${selectedChatId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `chat_id=eq.${selectedChatId}`
+          },
+          (payload) => {
+            const newMessage = payload.new as Message;
 
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      const interval = setInterval(() => {
-        if (!document.hidden) {
-          shouldScrollRef.current = false;
-          loadMessages(selectedChatId);
-        }
-      }, 10000);
+            // Only add if it's not from current user (to avoid duplication with optimistic update)
+            if (newMessage.sender_id !== user?.id) {
+              setMessages(prev => {
+                // Check if message already exists
+                if (prev.some(m => m.id === newMessage.id)) {
+                  return prev;
+                }
+                shouldScrollRef.current = true;
+                return [...prev, newMessage];
+              });
+
+              // Mark as read and update chat
+              markMessagesAsRead(selectedChatId);
+            }
+          }
+        )
+        .subscribe();
 
       return () => {
-        clearInterval(interval);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        messagesSubscription.unsubscribe();
       };
     }
-  }, [selectedChatId]);
+  }, [selectedChatId, user]);
 
   useEffect(() => {
     if (messages.length === 0) {
