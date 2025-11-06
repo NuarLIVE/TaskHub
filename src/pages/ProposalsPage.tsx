@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, CheckCircle, X, FileText } from 'lucide-react';
+import { Clock, CheckCircle, X, FileText, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -15,20 +17,205 @@ const pageVariants = {
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function ProposalsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
+  const [sentProposals, setSentProposals] = useState<any[]>([]);
+  const [receivedProposals, setReceivedProposals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const [orders, setOrders] = useState<Record<string, any>>({});
+  const [tasks, setTasks] = useState<Record<string, any>>({});
 
-  const handleAccept = (proposalId: number) => {
-    alert(`Отклик #${proposalId} принят! Переходим к открытию сделки...`);
-    window.location.hash = `/deal/open?proposalId=${proposalId}`;
+  useEffect(() => {
+    loadProposals();
+  }, [user]);
+
+  const loadProposals = async () => {
+    if (!user) return;
+
+    setLoading(true);
+
+    try {
+      const { data: sent } = await supabase
+        .from('proposals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      const { data: received } = await supabase
+        .from('proposals')
+        .select('*')
+        .or(`order_id.in.(${await getUserOrderIds()}),task_id.in.(${await getUserTaskIds()})`)
+        .order('created_at', { ascending: false });
+
+      setSentProposals(sent || []);
+      setReceivedProposals(received || []);
+
+      const allUserIds = new Set<string>();
+      (sent || []).forEach((p: any) => allUserIds.add(p.user_id));
+      (received || []).forEach((p: any) => allUserIds.add(p.user_id));
+
+      const allOrderIds = new Set<string>();
+      const allTaskIds = new Set<string>();
+      (sent || []).forEach((p: any) => {
+        if (p.order_id) allOrderIds.add(p.order_id);
+        if (p.task_id) allTaskIds.add(p.task_id);
+      });
+      (received || []).forEach((p: any) => {
+        if (p.order_id) allOrderIds.add(p.order_id);
+        if (p.task_id) allTaskIds.add(p.task_id);
+      });
+
+      if (allUserIds.size > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url')
+          .in('id', Array.from(allUserIds));
+
+        const profilesMap: Record<string, any> = {};
+        (profilesData || []).forEach((p: any) => {
+          profilesMap[p.id] = p;
+        });
+        setProfiles(profilesMap);
+      }
+
+      if (allOrderIds.size > 0) {
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('id, title, user_id')
+          .in('id', Array.from(allOrderIds));
+
+        const ordersMap: Record<string, any> = {};
+        (ordersData || []).forEach((o: any) => {
+          ordersMap[o.id] = o;
+        });
+        setOrders(ordersMap);
+      }
+
+      if (allTaskIds.size > 0) {
+        const { data: tasksData } = await supabase
+          .from('tasks')
+          .select('id, title, user_id')
+          .in('id', Array.from(allTaskIds));
+
+        const tasksMap: Record<string, any> = {};
+        (tasksData || []).forEach((t: any) => {
+          tasksMap[t.id] = t;
+        });
+        setTasks(tasksMap);
+      }
+    } catch (error) {
+      console.error('Error loading proposals:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (proposalId: number) => {
+  const getUserOrderIds = async () => {
+    if (!user) return '';
+    const { data } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user.id);
+    return (data || []).map((o: any) => o.id).join(',') || 'null';
+  };
+
+  const getUserTaskIds = async () => {
+    if (!user) return '';
+    const { data } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('user_id', user.id);
+    return (data || []).map((t: any) => t.id).join(',') || 'null';
+  };
+
+  const handleAccept = async (proposal: any) => {
+    if (!user) return;
+
+    try {
+      const item = proposal.order_id ? orders[proposal.order_id] : tasks[proposal.task_id];
+      const clientId = item.user_id;
+      const freelancerId = proposal.user_id;
+
+      let chatId = null;
+
+      const { data: existingChat } = await supabase
+        .from('chats')
+        .select('id')
+        .or(`and(participant1_id.eq.${clientId},participant2_id.eq.${freelancerId}),and(participant1_id.eq.${freelancerId},participant2_id.eq.${clientId})`)
+        .maybeSingle();
+
+      if (existingChat) {
+        chatId = existingChat.id;
+      } else {
+        const { data: newChat, error: chatError } = await supabase
+          .from('chats')
+          .insert({
+            participant1_id: clientId,
+            participant2_id: freelancerId
+          })
+          .select()
+          .single();
+
+        if (chatError) throw chatError;
+        chatId = newChat.id;
+      }
+
+      const { error: dealError } = await supabase
+        .from('deals')
+        .insert({
+          proposal_id: proposal.id,
+          order_id: proposal.order_id,
+          task_id: proposal.task_id,
+          client_id: clientId,
+          freelancer_id: freelancerId,
+          chat_id: chatId,
+          title: item.title,
+          description: proposal.message,
+          price: proposal.price,
+          currency: proposal.currency,
+          delivery_days: proposal.delivery_days,
+          status: 'in_progress'
+        });
+
+      if (dealError) throw dealError;
+
+      const { error: proposalError } = await supabase
+        .from('proposals')
+        .update({ status: 'accepted' })
+        .eq('id', proposal.id);
+
+      if (proposalError) throw proposalError;
+
+      alert('Отклик принят! Сделка создана.');
+      loadProposals();
+      setDetailsOpen(false);
+    } catch (error) {
+      console.error('Error accepting proposal:', error);
+      alert('Ошибка при принятии отклика');
+    }
+  };
+
+  const handleReject = async (proposalId: string) => {
     const confirmed = confirm('Вы уверены, что хотите отклонить этот отклик?');
-    if (confirmed) {
-      alert(`Отклик #${proposalId} отклонён`);
-      window.location.reload();
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('proposals')
+        .update({ status: 'rejected' })
+        .eq('id', proposalId);
+
+      if (error) throw error;
+
+      alert('Отклик отклонён');
+      loadProposals();
+      setDetailsOpen(false);
+    } catch (error) {
+      console.error('Error rejecting proposal:', error);
+      alert('Ошибка при отклонении отклика');
     }
   };
 
@@ -37,23 +224,32 @@ export default function ProposalsPage() {
     setDetailsOpen(true);
   };
 
-  const sentProposals = [
-    { id: 1, order: 'Лендинг на React для стартапа', price: 650, days: 10, status: 'pending', date: '2025-10-25', client: 'NovaTech', message: 'Здравствуйте! Готов взяться за проект. Имею опыт создания лендингов на React с использованием современных технологий. Могу предложить адаптивную вёрстку и оптимизацию производительности.' },
-    { id: 2, order: 'Редизайн мобильного приложения', price: 950, days: 14, status: 'accepted', date: '2025-10-23', client: 'AppNest', message: 'Добрый день! Изучил требования к редизайну. Предлагаю современный UI/UX с акцентом на пользовательский опыт.' },
-    { id: 3, order: 'UX-аудит дашборда', price: 600, days: 7, status: 'rejected', date: '2025-10-20', client: 'Metricly', message: 'Здравствуйте! Проведу полный UX-аудит с рекомендациями по улучшению интерфейса.' }
-  ];
-
-  const receivedProposals = [
-    { id: 4, freelancer: 'John Doe', freelancerSlug: 'johndoe', task: 'Unity прототип', price: 1200, days: 15, status: 'pending', date: '2025-10-26', avatar: 'https://i.pravatar.cc/64?img=15', message: 'Привет! Я Unity разработчик с 3+ годами опыта. Создам прототип по вашим требованиям с качественным кодом и документацией. Готов предоставить регулярные апдейты процесса разработки.' },
-    { id: 5, freelancer: 'Jane Smith', freelancerSlug: 'janesmith', task: 'Unity прототип', price: 950, days: 12, status: 'pending', date: '2025-10-25', avatar: 'https://i.pravatar.cc/64?img=20', message: 'Здравствуйте! Опытный Unity разработчик. Работала над множеством прототипов и готова реализовать ваш проект качественно и в срок. Использую лучшие практики разработки.' }
-  ];
-
   const proposals = activeTab === 'sent' ? sentProposals : receivedProposals;
 
   const getStatusBadge = (status: string) => {
     if (status === 'accepted') return <Badge className="bg-green-100 text-green-800">Принят</Badge>;
     if (status === 'rejected') return <Badge variant="destructive">Отклонён</Badge>;
     return <Badge variant="secondary">На рассмотрении</Badge>;
+  };
+
+  const getProposalTitle = (proposal: any) => {
+    if (proposal.order_id && orders[proposal.order_id]) {
+      return orders[proposal.order_id].title;
+    }
+    if (proposal.task_id && tasks[proposal.task_id]) {
+      return tasks[proposal.task_id].title;
+    }
+    return 'Без названия';
+  };
+
+  const getItemOwnerId = (proposal: any) => {
+    if (proposal.order_id && orders[proposal.order_id]) {
+      return orders[proposal.order_id].user_id;
+    }
+    if (proposal.task_id && tasks[proposal.task_id]) {
+      return tasks[proposal.task_id].user_id;
+    }
+    return null;
   };
 
   return (
@@ -78,56 +274,82 @@ export default function ProposalsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4">
-          {proposals.map((proposal) => (
-            <Card key={proposal.id}>
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      {activeTab === 'received' && (
-                        <a href={`#/u/${proposal.freelancerSlug}`} className="hover:opacity-80 transition">
-                          <img src={proposal.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
-                        </a>
-                      )}
-                      <div>
-                        <div className="font-semibold">
-                          {activeTab === 'sent' ? proposal.order : `${proposal.freelancer} — ${proposal.task}`}
-                        </div>
-                        <div className="text-sm text-[#3F7F6E]">
-                          {activeTab === 'sent' ? `Заказчик: ${proposal.client}` : ''}
+        {loading ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+              <p className="text-[#3F7F6E]">Загрузка...</p>
+            </CardContent>
+          </Card>
+        ) : proposals.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <p className="text-[#3F7F6E]">
+                {activeTab === 'sent' ? 'Вы ещё не отправили ни одного отклика' : 'Вы ещё не получили ни одного отклика'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {proposals.map((proposal) => (
+              <Card key={proposal.id}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {activeTab === 'received' && (
+                          <div
+                            className="hover:opacity-80 transition cursor-pointer"
+                            onClick={() => window.location.hash = `/users/${proposal.user_id}`}
+                          >
+                            {profiles[proposal.user_id]?.avatar_url ? (
+                              <img src={profiles[proposal.user_id].avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <User className="h-5 w-5 text-[#3F7F6E]" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-semibold">
+                            {activeTab === 'sent' ? getProposalTitle(proposal) : `${profiles[proposal.user_id]?.name || 'Пользователь'} — ${getProposalTitle(proposal)}`}
+                          </div>
+                          <div className="text-sm text-[#3F7F6E]">
+                            {activeTab === 'sent' && getItemOwnerId(proposal) && `Заказчик: ${profiles[getItemOwnerId(proposal)]?.name || 'Пользователь'}`}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4 text-sm text-[#3F7F6E]">
+                        <span>Цена: {proposal.currency} {proposal.price}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-[#3F7F6E]">
-                      <span>Цена: ${proposal.price}</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {proposal.date}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(proposal.status)}
+                      {activeTab === 'received' && proposal.status === 'pending' && (
+                        <>
+                          <Button size="sm" onClick={() => handleAccept(proposal)}>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Принять
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleReject(proposal.id)}>
+                            <X className="h-4 w-4 mr-1" />
+                            Отклонить
+                          </Button>
+                        </>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => showDetails(proposal)}>Подробнее</Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(proposal.status)}
-                    {activeTab === 'received' && proposal.status === 'pending' && (
-                      <>
-                        <Button size="sm" onClick={() => handleAccept(proposal.id)}>
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Принять
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleReject(proposal.id)}>
-                          <X className="h-4 w-4 mr-1" />
-                          Отклонить
-                        </Button>
-                      </>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => showDetails(proposal)}>Подробнее</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -136,46 +358,53 @@ export default function ProposalsPage() {
             <>
               <DialogHeader>
                 <DialogTitle>
-                  Детали отклика #{selectedProposal.id}
+                  Детали отклика
                 </DialogTitle>
                 <DialogDescription>
-                  {activeTab === 'sent' ? `Заказ: ${selectedProposal.order}` : `Исполнитель: ${selectedProposal.freelancer}`}
+                  {getProposalTitle(selectedProposal)}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
                 {activeTab === 'received' && (
-                  <div className="flex items-center gap-3 p-3 bg-[#EFFFF8] rounded-lg">
-                    <a href={`#/u/${selectedProposal.freelancerSlug}`} className="hover:opacity-80 transition">
-                      <img src={selectedProposal.avatar} alt={selectedProposal.freelancer} className="h-12 w-12 rounded-full object-cover" />
-                    </a>
+                  <div
+                    className="flex items-center gap-3 p-3 bg-[#EFFFF8] rounded-lg cursor-pointer hover:opacity-80 transition"
+                    onClick={() => window.location.hash = `/users/${selectedProposal.user_id}`}
+                  >
+                    {profiles[selectedProposal.user_id]?.avatar_url ? (
+                      <img src={profiles[selectedProposal.user_id].avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center">
+                        <User className="h-6 w-6 text-[#3F7F6E]" />
+                      </div>
+                    )}
                     <div>
-                      <a href={`#/u/${selectedProposal.freelancerSlug}`} className="font-semibold hover:opacity-80 transition">
-                        {selectedProposal.freelancer}
-                      </a>
-                      <div className="text-sm text-[#3F7F6E]">Задача: {selectedProposal.task}</div>
+                      <div className="font-semibold">
+                        {profiles[selectedProposal.user_id]?.name || 'Пользователь'}
+                      </div>
+                      <div className="text-sm text-[#3F7F6E]">Нажмите, чтобы открыть профиль</div>
                     </div>
                   </div>
                 )}
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm font-medium text-[#3F7F6E] mb-1">Цена</div>
-                    <div className="text-2xl font-bold">${selectedProposal.price}</div>
+                    <div className="text-2xl font-bold">{selectedProposal.currency} {selectedProposal.price}</div>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm font-medium text-[#3F7F6E] mb-1">Срок выполнения</div>
-                    <div className="text-2xl font-bold">{selectedProposal.days} дней</div>
+                    <div className="text-2xl font-bold">{selectedProposal.delivery_days} дней</div>
                   </div>
                 </div>
                 <div>
                   <div className="text-sm font-medium mb-2">Сообщение</div>
                   <div className="p-4 bg-[#EFFFF8] rounded-lg text-sm text-[#3F7F6E]">
-                    {selectedProposal.message}
+                    {selectedProposal.message || 'Сообщение не указано'}
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-[#3F7F6E]">Дата отправки: </span>
-                    <span className="font-medium">{selectedProposal.date}</span>
+                    <span className="font-medium">{new Date(selectedProposal.created_at).toLocaleDateString('ru-RU')}</span>
                   </div>
                   <div>
                     <span className="text-[#3F7F6E]">Статус: </span>
@@ -187,11 +416,11 @@ export default function ProposalsPage() {
                 <Button variant="ghost" onClick={() => setDetailsOpen(false)}>Закрыть</Button>
                 {activeTab === 'received' && selectedProposal.status === 'pending' && (
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => { setDetailsOpen(false); handleReject(selectedProposal.id); }}>
+                    <Button variant="outline" onClick={() => handleReject(selectedProposal.id)}>
                       <X className="h-4 w-4 mr-1" />
                       Отклонить
                     </Button>
-                    <Button onClick={() => { setDetailsOpen(false); handleAccept(selectedProposal.id); }}>
+                    <Button onClick={() => handleAccept(selectedProposal)}>
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Принять
                     </Button>

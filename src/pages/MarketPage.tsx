@@ -257,7 +257,13 @@ export default function MarketPage() {
                       <div className="text-sm text-[#3F7F6E] line-clamp-2">{item.description}</div>
                     </CardContent>
                     <div className="flex items-center justify-between px-6 py-4 border-t">
-                      <div className="flex items-center gap-2">
+                      <div
+                        className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.hash = `/users/${item.user_id}`;
+                        }}
+                      >
                         {profiles[item.user_id]?.avatar_url ? (
                           <img src={profiles[item.user_id].avatar_url} alt={profiles[item.user_id].name} className="h-7 w-7 rounded-full object-cover" />
                         ) : (
@@ -265,7 +271,7 @@ export default function MarketPage() {
                             {profiles[item.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
                           </div>
                         )}
-                        <span className="text-sm">{profiles[item.user_id]?.name || 'Пользователь'}</span>
+                        <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                       </div>
                       <div className="font-semibold">
                         {activeTab === 'orders' ? `${item.currency} ${item.price_min}–${item.price_max}` : `${item.currency} ${item.price}`}

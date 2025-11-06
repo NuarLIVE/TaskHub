@@ -16,7 +16,7 @@ const pageVariants = {
 
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
-type Tab = 'orders' | 'tasks';
+type Tab = 'orders' | 'tasks' | 'mywork';
 
 interface Proposal {
   id: string;
@@ -64,6 +64,7 @@ export default function MyDealsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
   const [loading, setLoading] = useState(true);
@@ -71,7 +72,7 @@ export default function MyDealsPage() {
 
   useEffect(() => {
     loadDeals();
-  }, [user]);
+  }, [user, activeTab]);
 
   const loadDeals = async () => {
     setLoading(true);
@@ -79,20 +80,40 @@ export default function MyDealsPage() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('created_at', { ascending: false });
+      if (activeTab === 'mywork') {
+        const { data: dealsData } = await supabase
+          .from('deals')
+          .select('*')
+          .eq('freelancer_id', authUser.id)
+          .order('created_at', { ascending: false});
 
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('created_at', { ascending: false });
+        const clientIds = Array.from(new Set((dealsData || []).map(d => d.client_id)));
+        let profilesMap: any = {};
+        if (clientIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, name, avatar_url')
+            .in('id', clientIds);
+          profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
+        }
 
-      setOrders(ordersData || []);
-      setTasks(tasksData || []);
+        setDeals((dealsData || []).map(d => ({ ...d, client: profilesMap[d.client_id] })));
+      } else {
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false });
+
+        const { data: tasksData } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false });
+
+        setOrders(ordersData || []);
+        setTasks(tasksData || []);
+      }
     } catch (error) {
       console.error('Error loading deals:', error);
     } finally {
@@ -220,6 +241,18 @@ export default function MyDealsPage() {
             <ListTodo className="inline-block h-4 w-4 mr-2" />
             Мои объявления ({tasks.length})
             {activeTab === 'tasks' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6FE7C8]" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('mywork')}
+            className={`relative px-6 py-3 font-medium transition-colors ${
+              activeTab === 'mywork' ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
+            }`}
+          >
+            <ListTodo className="inline-block h-4 w-4 mr-2" />
+            Моя работа ({deals.length})
+            {activeTab === 'mywork' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6FE7C8]" />
             )}
           </button>
@@ -357,7 +390,7 @@ export default function MyDealsPage() {
               ))
             )}
           </div>
-        ) : (
+        ) : activeTab === 'tasks' ? (
           <div className="space-y-4">
             <div className="flex justify-end mb-4">
               <Button asChild>
@@ -482,7 +515,78 @@ export default function MyDealsPage() {
               ))
             )}
           </div>
-        )}
+        ) : activeTab === 'mywork' ? (
+          <div className="space-y-4">
+            {deals.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ListTodo className="h-12 w-12 mx-auto mb-4 text-[#3F7F6E]" />
+                  <p className="text-[#3F7F6E] mb-4">У вас пока нет активных сделок</p>
+                </CardContent>
+              </Card>
+            ) : (
+              deals.map((deal) => (
+                <Card key={deal.id} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-2">{deal.title}</h3>
+                        <div className="flex gap-2 mt-2 mb-3">
+                          <Badge variant="secondary">{deal.currency} {deal.price}</Badge>
+                          <Badge variant="outline">{deal.delivery_days} дней</Badge>
+                          <Badge className={
+                            deal.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                            deal.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            deal.status === 'disputed' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }>
+                            {deal.status === 'in_progress' ? 'В работе' :
+                             deal.status === 'completed' ? 'Завершено' :
+                             deal.status === 'disputed' ? 'Спор' :
+                             deal.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div
+                            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
+                            onClick={() => window.location.hash = `/users/${deal.client_id}`}
+                          >
+                            {deal.client?.avatar_url ? (
+                              <img src={deal.client.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">{deal.client?.name?.charAt(0)}</span>
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">Заказчик: {deal.client?.name || 'Пользователь'}</span>
+                          </div>
+                        </div>
+                        {deal.description && (
+                          <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
+                        )}
+                        <div className="text-xs text-[#3F7F6E]">
+                          Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {deal.chat_id && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Чат
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        ) : null}
       </section>
     </motion.div>
   );
