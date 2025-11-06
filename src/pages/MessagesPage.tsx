@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Send, ArrowLeft, MoreVertical, Trash2, Ban, AlertTriangle, Paperclip, X } from 'lucide-react';
+import { Search, Send, ArrowLeft, MoreVertical, Trash2, Ban, AlertTriangle, Paperclip, X, Image as ImageIcon, Video, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
+import { MediaEditor } from '@/components/MediaEditor';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -32,6 +33,7 @@ interface Message {
   text: string;
   file_url?: string;
   file_name?: string;
+  file_type?: 'image' | 'video' | 'file';
   created_at: string;
   is_read: boolean;
 }
@@ -57,6 +59,8 @@ export default function MessagesPage() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showMediaEditor, setShowMediaEditor] = useState(false);
+  const [fileToEdit, setFileToEdit] = useState<File | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -260,23 +264,34 @@ export default function MessagesPage() {
       let fileUrl: string | null = null;
       let fileName: string | null = null;
 
+      let fileType: 'image' | 'video' | 'file' | null = null;
+
       if (selectedFile) {
         setUploading(true);
         const fileExt = selectedFile.name.split('.').pop();
         const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('chat-files')
+          .from('message-attachments')
           .upload(filePath, selectedFile);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('chat-files')
+          .from('message-attachments')
           .getPublicUrl(filePath);
 
         fileUrl = publicUrl;
         fileName = selectedFile.name;
+
+        if (selectedFile.type.startsWith('image/')) {
+          fileType = 'image';
+        } else if (selectedFile.type.startsWith('video/')) {
+          fileType = 'video';
+        } else {
+          fileType = 'file';
+        }
+
         setUploading(false);
       }
 
@@ -287,7 +302,8 @@ export default function MessagesPage() {
           sender_id: user.id,
           text: messageText || '',
           file_url: fileUrl,
-          file_name: fileName
+          file_name: fileName,
+          file_type: fileType
         });
 
       if (error) throw error;
@@ -334,14 +350,37 @@ export default function MessagesPage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert('Файл слишком большой. Максимальный размер: 10 МБ');
-        return;
-      }
+    if (!file) return;
+
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      setFileToEdit(file);
+      setShowMediaEditor(true);
+    } else {
       setSelectedFile(file);
     }
   };
+
+  const handleMediaSave = (editedFile: File) => {
+    setSelectedFile(editedFile);
+    setShowMediaEditor(false);
+    setFileToEdit(null);
+  };
+
+  const handleMediaCancel = () => {
+    setShowMediaEditor(false);
+    setFileToEdit(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
 
   const getOtherParticipant = (chat: Chat): string => {
     if (!user) return '';
@@ -524,20 +563,51 @@ export default function MessagesPage() {
                       const isOwn = msg.sender_id === user?.id;
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[70%] rounded-lg p-3 ${isOwn ? 'bg-[#6FE7C8] text-white' : 'bg-gray-100'}`}>
-                            {msg.text && <div className="text-sm mb-1">{msg.text}</div>}
-                            {msg.file_url && (
+                          <div className={`max-w-[70%] rounded-lg overflow-hidden ${isOwn ? 'bg-[#6FE7C8] text-white' : 'bg-gray-100'}`}>
+                            {msg.file_type === 'image' && msg.file_url && (
+                              <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={msg.file_url}
+                                  alt={msg.file_name || 'Image'}
+                                  className="w-full max-w-sm cursor-pointer hover:opacity-90 transition"
+                                />
+                              </a>
+                            )}
+                            {msg.file_type === 'video' && msg.file_url && (
+                              <video
+                                src={msg.file_url}
+                                controls
+                                className="w-full max-w-sm"
+                              />
+                            )}
+                            {msg.file_type === 'file' && msg.file_url && (
                               <a
                                 href={msg.file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`text-sm underline flex items-center gap-1 ${isOwn ? 'text-white' : 'text-[#6FE7C8]'}`}
+                                className={`flex items-center gap-2 p-3 hover:opacity-80 transition ${
+                                  isOwn ? 'bg-white/10' : 'bg-[#3F7F6E]/5'
+                                }`}
                               >
-                                <Paperclip className="h-3 w-3" />
-                                {msg.file_name || 'Файл'}
+                                <div className={`p-2 rounded ${isOwn ? 'bg-white/20' : 'bg-[#3F7F6E]/10'}`}>
+                                  <FileText className={`h-5 w-5 ${isOwn ? 'text-white' : 'text-[#3F7F6E]'}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium truncate ${isOwn ? 'text-white' : 'text-gray-900'}`}>
+                                    {msg.file_name || 'Файл'}
+                                  </p>
+                                  <p className={`text-xs ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
+                                    Нажмите для скачивания
+                                  </p>
+                                </div>
                               </a>
                             )}
-                            <div className={`text-xs mt-1 ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
+                            {msg.text && (
+                              <div className="p-3">
+                                <div className="text-sm whitespace-pre-wrap break-words">{msg.text}</div>
+                              </div>
+                            )}
+                            <div className={`px-3 pb-2 text-xs ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
                               {formatTime(msg.created_at)}
                             </div>
                           </div>
@@ -549,12 +619,38 @@ export default function MessagesPage() {
 
                 <div className="p-4 border-t">
                   {selectedFile && (
-                    <div className="mb-2 flex items-center gap-2 text-sm bg-[#EFFFF8] p-2 rounded">
-                      <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
-                      <span className="flex-1 truncate">{selectedFile.name}</span>
-                      <button onClick={() => setSelectedFile(null)} className="hover:opacity-70">
-                        <X className="h-4 w-4" />
-                      </button>
+                    <div className="mb-2 p-3 bg-[#EFFFF8] rounded-lg border border-[#3F7F6E]/20">
+                      <div className="flex items-start gap-3">
+                        {selectedFile.type.startsWith('image/') ? (
+                          <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0">
+                            <img
+                              src={URL.createObjectURL(selectedFile)}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : selectedFile.type.startsWith('video/') ? (
+                          <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                            <Video className="h-8 w-8 text-[#3F7F6E]" />
+                          </div>
+                        ) : (
+                          <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                            <FileText className="h-8 w-8 text-[#3F7F6E]" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                          <p className="text-xs text-[#3F7F6E] mt-1">
+                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <button
+                          onClick={removeSelectedFile}
+                          className="flex-shrink-0 hover:opacity-70 transition p-1"
+                        >
+                          <X className="h-5 w-5 text-[#3F7F6E]" />
+                        </button>
+                      </div>
                     </div>
                   )}
                   <form onSubmit={handleSendMessage} className="flex gap-2">
@@ -563,7 +659,7 @@ export default function MessagesPage() {
                       ref={fileInputRef}
                       onChange={handleFileSelect}
                       className="hidden"
-                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
                     />
                     <Button
                       type="button"
@@ -571,8 +667,9 @@ export default function MessagesPage() {
                       size="icon"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
+                      className="hover:bg-[#EFFFF8]"
                     >
-                      <Paperclip className="h-4 w-4" />
+                      <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
                     </Button>
                     <Input
                       value={message}
@@ -649,6 +746,14 @@ export default function MessagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showMediaEditor && fileToEdit && (
+        <MediaEditor
+          file={fileToEdit}
+          onSave={handleMediaSave}
+          onCancel={handleMediaCancel}
+        />
+      )}
     </motion.div>
   );
 }
