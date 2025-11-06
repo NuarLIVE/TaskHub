@@ -1,26 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
-import ProfilePage from './pages/ProfilePage';
-import OrderCreatePage from './pages/OrderCreatePage';
-import OrderEditPage from './pages/OrderEditPage';
-import TaskCreatePage from './pages/TaskCreatePage';
-import TaskEditPage from './pages/TaskEditPage';
-import MarketPage from './pages/MarketPage';
-import MyDealsPage from './pages/MyDealsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import OrderDetailPage from './pages/OrderDetailPage';
-import TaskDetailPage from './pages/TaskDetailPage';
-import ProposalsPage from './pages/ProposalsPage';
-import MessagesPage from './pages/MessagesPage';
 import NotFound from './pages/NotFound';
-import ProposalsCreate from './pages/proposals/Create';
-import PublicProfile from './pages/users/PublicProfile';
-import PortfolioAdd from './pages/me/PortfolioAdd';
-import DealOpen from './pages/deal/Open';
+
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const OrderCreatePage = lazy(() => import('./pages/OrderCreatePage'));
+const OrderEditPage = lazy(() => import('./pages/OrderEditPage'));
+const TaskCreatePage = lazy(() => import('./pages/TaskCreatePage'));
+const TaskEditPage = lazy(() => import('./pages/TaskEditPage'));
+const MarketPage = lazy(() => import('./pages/MarketPage'));
+const MyDealsPage = lazy(() => import('./pages/MyDealsPage'));
+const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage'));
+const TaskDetailPage = lazy(() => import('./pages/TaskDetailPage'));
+const ProposalsPage = lazy(() => import('./pages/ProposalsPage'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const ProposalsCreate = lazy(() => import('./pages/proposals/Create'));
+const PublicProfile = lazy(() => import('./pages/users/PublicProfile'));
+const PortfolioAdd = lazy(() => import('./pages/me/PortfolioAdd'));
+const DealOpen = lazy(() => import('./pages/deal/Open'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -156,7 +157,16 @@ function App() {
     <AuthProvider>
       <div className="min-h-screen bg-background text-foreground">
         {!isAuthPage && <NavBar />}
-        <Page />
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
+              <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+            </div>
+          </div>
+        }>
+          <Page />
+        </Suspense>
         {!isAuthPage && <Footer />}
       </div>
     </AuthProvider>

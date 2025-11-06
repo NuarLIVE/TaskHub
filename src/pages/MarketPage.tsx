@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,39 +57,51 @@ export default function MarketPage() {
   const loadData = async () => {
     setLoading(true);
 
-    const { data: ordersData } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('status', 'open')
-      .order('created_at', { ascending: false });
+    try {
+      let ordersQuery = supabase
+        .from('orders')
+        .select('*')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-    const { data: tasksData } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      let tasksQuery = supabase
+        .from('tasks')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-    setOrders(ordersData || []);
-    setTasks(tasksData || []);
+      const [ordersRes, tasksRes] = await Promise.all([ordersQuery, tasksQuery]);
 
-    const allUserIds = new Set<string>();
-    (ordersData || []).forEach((o: any) => allUserIds.add(o.user_id));
-    (tasksData || []).forEach((t: any) => allUserIds.add(t.user_id));
+      const ordersData = ordersRes.data || [];
+      const tasksData = tasksRes.data || [];
 
-    if (allUserIds.size > 0) {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, name, avatar_url')
-        .in('id', Array.from(allUserIds));
+      setOrders(ordersData);
+      setTasks(tasksData);
 
-      const profilesMap: Record<string, any> = {};
-      (profilesData || []).forEach((p: any) => {
-        profilesMap[p.id] = p;
-      });
-      setProfiles(profilesMap);
+      const allUserIds = new Set<string>();
+      ordersData.forEach((o: any) => allUserIds.add(o.user_id));
+      tasksData.forEach((t: any) => allUserIds.add(t.user_id));
+
+      if (allUserIds.size > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url')
+          .in('id', Array.from(allUserIds));
+
+        const profilesMap: Record<string, any> = {};
+        (profilesData || []).forEach((p: any) => {
+          profilesMap[p.id] = p;
+        });
+        setProfiles(profilesMap);
+      }
+    } catch (error) {
+      setOrders([]);
+      setTasks([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const applyFilters = (arr: any[]) => {
@@ -124,11 +136,17 @@ export default function MarketPage() {
     return [...sortItems(boosted), ...sortItems(regular)];
   };
 
-  const allData = activeTab === 'orders' ? applyFilters(orders) : applyFilters(tasks);
+  const allData = useMemo(() => {
+    return activeTab === 'orders' ? applyFilters(orders) : applyFilters(tasks);
+  }, [activeTab, orders, tasks, q, category, currency, engagement, min, max, sort]);
+
   const totalPages = Math.ceil(allData.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const data = allData.slice(startIndex, endIndex);
+
+  const data = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return allData.slice(startIndex, endIndex);
+  }, [allData, currentPage]);
 
   const reset = () => {
     setQ('');

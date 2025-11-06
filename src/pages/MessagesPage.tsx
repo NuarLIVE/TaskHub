@@ -70,8 +70,24 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedChatId) {
       loadMessages(selectedChatId);
-      const interval = setInterval(() => loadMessages(selectedChatId), 5000);
-      return () => clearInterval(interval);
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadMessages(selectedChatId);
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      const interval = setInterval(() => {
+        if (!document.hidden) {
+          loadMessages(selectedChatId);
+        }
+      }, 10000);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
   }, [selectedChatId]);
 
