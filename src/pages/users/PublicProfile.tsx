@@ -1,48 +1,175 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Star, Briefcase, MessageCircle, Award } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, Eye, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import FavoriteButton from '@/components/ui/FavoriteButton';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
-const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
+const pageVariants = {
+  initial: { opacity: 0, y: 16 },
+  in: { opacity: 1, y: 0 },
+  out: { opacity: 0, y: -16 }
+};
+
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function PublicProfile() {
-  const slug = window.location.hash.split('/').pop() || 'mickey';
+  const { user: currentUser } = useAuth();
+  const userId = window.location.hash.split('/').pop() || '';
 
-  const user = {
-    name: 'Mickey',
-    slug: slug,
-    avatar: 'https://i.pravatar.cc/150?img=49',
-    location: 'Алматы, Казахстан',
-    rating: 4.9,
-    completedJobs: 27,
-    bio: 'Full-stack разработчик с 5+ годами опыта. Специализируюсь на React, Node.js, и Unity. Помогаю стартапам создавать MVP и масштабировать продукты.',
-    skills: ['React', 'Node.js', 'TypeScript', 'Unity', 'PostgreSQL', 'AWS'],
-    portfolio: [
-      { id: 1, title: 'E-commerce платформа', description: 'Полный стек разработки интернет-магазина', image: 'https://images.pexels.com/photos/7566392/pexels-photo-7566392.jpeg?auto=compress&cs=tinysrgb&w=400' },
-      { id: 2, title: 'Unity 2D игра', description: 'Мультиплеер платформер на Photon', image: 'https://images.pexels.com/photos/8612992/pexels-photo-8612992.jpeg?auto=compress&cs=tinysrgb&w=400' }
-    ],
-    reviews: [
-      { id: 1, author: 'NovaTech', rating: 5, text: 'Отличная работа, всё в срок!', date: '2025-10-20' },
-      { id: 2, author: 'AppNest', rating: 5, text: 'Профессионал своего дела', date: '2025-10-15' }
-    ]
+  const [tab, setTab] = useState('portfolio');
+  const [profile, setProfile] = useState<any>(null);
+  const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [userTasks, setUserTasks] = useState<any[]>([]);
+  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMarket, setLoadingMarket] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+    loadPortfolio();
+  }, [userId]);
+
+  useEffect(() => {
+    if (tab === 'market') {
+      loadMarketData();
+    }
+  }, [tab, userId]);
+
+  const loadProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setProfile({
+          name: data.name,
+          email: data.email,
+          headline: 'Фрилансер',
+          role: data.role || 'freelancer',
+          about: data.bio || '',
+          bio: data.bio || '',
+          skills: [],
+          rateMin: 20,
+          rateMax: 35,
+          currency: 'USD',
+          location: 'Алматы',
+          contactEmail: data.email,
+          contactTelegram: '',
+          avatar: data.avatar_url || 'https://i.pravatar.cc/150?img=49'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPortfolio = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('portfolio_projects')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPortfolioProjects(data || []);
+    } catch (error) {
+      console.error('Error loading portfolio:', error);
+    }
+  };
+
+  const loadMarketData = async () => {
+    setLoadingMarket(true);
+    try {
+      const [ordersRes, tasksRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+      ]);
+
+      if (ordersRes.error) throw ordersRes.error;
+      if (tasksRes.error) throw tasksRes.error;
+
+      setUserOrders(ordersRes.data || []);
+      setUserTasks(tasksRes.data || []);
+    } catch (error) {
+      console.error('Error loading market data:', error);
+    } finally {
+      setLoadingMarket(false);
+    }
   };
 
   const handleMessage = async () => {
-    const currentUserSlug = 'me';
+    if (!currentUser) {
+      alert('Войдите, чтобы отправить сообщение');
+      window.location.hash = '/login';
+      return;
+    }
 
-    const { findOrCreateChat } = await import('@/lib/supabase');
-    const chatId = await findOrCreateChat(currentUserSlug, slug);
+    try {
+      const { data: existingChat } = await supabase
+        .from('chats')
+        .select('id')
+        .or(`and(participant1_id.eq.${currentUser.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${currentUser.id})`)
+        .maybeSingle();
 
-    if (chatId) {
-      window.location.hash = `/messages?chat=${chatId}`;
-    } else {
-      window.location.hash = `/messages`;
+      if (existingChat) {
+        window.location.hash = `/messages?chat=${existingChat.id}`;
+      } else {
+        const { data: newChat, error } = await supabase
+          .from('chats')
+          .insert({
+            participant1_id: currentUser.id,
+            participant2_id: userId
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        window.location.hash = `/messages?chat=${newChat.id}`;
+      }
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      alert('Ошибка при создании чата');
     }
   };
+
+  if (loading || !profile) {
+    return (
+      <motion.div
+        key="public-profile-loading"
+        initial="initial"
+        animate="in"
+        exit="out"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="min-h-screen bg-background flex items-center justify-center"
+      >
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[#6FE7C8] mx-auto mb-4" />
+          <p className="text-[#3F7F6E]">Загрузка профиля...</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -55,140 +182,318 @@ export default function PublicProfile() {
       className="min-h-screen bg-background"
     >
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          <div className="grid gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
+          <div className="grid gap-6 sticky top-24 self-start">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
-                  <img src={user.avatar} alt={user.name} className="h-24 w-24 rounded-full object-cover" />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <h1 className="text-2xl font-bold">{user.name}</h1>
-                      <FavoriteButton itemId={user.slug} itemType="task" variant="text" />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-[#3F7F6E] mb-4">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        {user.location}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        {user.rating}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="h-4 w-4" />
-                        {user.completedJobs} проектов
-                      </span>
-                    </div>
-                    <Button onClick={handleMessage}>
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Написать
-                    </Button>
+              <CardContent className="p-6 grid gap-4">
+                <div className="flex items-center gap-4">
+                  <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
+                  <div>
+                    <div className="font-semibold">{profile.name} • {profile.headline}</div>
+                    <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>О себе</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-[#3F7F6E]">{user.bio}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Навыки</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {user.skills.map((skill) => (
-                    <Badge key={skill} variant="secondary">{skill}</Badge>
-                  ))}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl border p-2">
+                    <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
+                    <div className="font-semibold flex items-center justify-center gap-1"><Star className="h-4 w-4" />4.9</div>
+                  </div>
+                  <div className="rounded-xl border p-2">
+                    <div className="text-xs text-[#3F7F6E]">Проекты</div>
+                    <div className="font-semibold">{portfolioProjects.length}</div>
+                  </div>
+                  <div className="rounded-xl border p-2">
+                    <div className="text-xs text-[#3F7F6E]">Онлайн</div>
+                    <div className="font-semibold text-emerald-600">сейчас</div>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Button onClick={handleMessage}>
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Написать
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Портфолио</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {user.portfolio.map((item) => (
-                    <div key={item.id} className="group cursor-pointer">
-                      <div className="aspect-video rounded-lg overflow-hidden mb-2">
-                        <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                      </div>
-                      <h3 className="font-semibold">{item.title}</h3>
-                      <p className="text-sm text-[#3F7F6E]">{item.description}</p>
-                    </div>
-                  ))}
+            <Card className="bg-gradient-to-br from-[#EFFFF8] to-white border-[#6FE7C8]/30">
+              <CardContent className="p-6 grid gap-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-[#6FE7C8] flex items-center justify-center">
+                    <Star className="h-4 w-4 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Советы фрилансеру</h3>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Отзывы</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  {user.reviews.map((review) => (
-                    <div key={review.id} className="border-b last:border-0 pb-4 last:pb-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold">{review.author}</span>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm">{review.rating}</span>
-                        </div>
-                      </div>
-                      <p className="text-[#3F7F6E] text-sm mb-1">{review.text}</p>
-                      <span className="text-xs text-[#3F7F6E]">{review.date}</span>
+                <div className="grid gap-3">
+                  <div className="flex gap-3 items-start">
+                    <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-semibold text-[#3F7F6E]">1</span>
                     </div>
-                  ))}
+                    <div className="flex-1">
+                      <p className="text-sm leading-relaxed text-gray-700">
+                        <span className="font-medium">Пополните портфолио</span> — добавьте минимум 3 проекта, чтобы увеличить доверие клиентов
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-start">
+                    <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-semibold text-[#3F7F6E]">2</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm leading-relaxed text-gray-700">
+                        <span className="font-medium">Быстро отвечайте</span> — ответ в течение часа повышает шансы получить заказ на 40%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-start">
+                    <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-semibold text-[#3F7F6E]">3</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm leading-relaxed text-gray-700">
+                        <span className="font-medium">Обновляйте профиль</span> — детальное описание и актуальные навыки привлекают больше клиентов
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-start">
+                    <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-semibold text-[#3F7F6E]">4</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm leading-relaxed text-gray-700">
+                        <span className="font-medium">Собирайте отзывы</span> — попросите клиентов оставить отзыв после завершения проекта
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-2 pt-3 border-t border-[#6FE7C8]/20">
+                  <p className="text-xs text-[#3F7F6E] text-center">
+                    Следуйте этим советам, чтобы получать больше заказов
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid gap-6 self-start sticky top-24">
+          <div className="grid gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Статистика</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[#3F7F6E]">Выполнено</span>
-                  <span className="font-semibold">{user.completedJobs}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[#3F7F6E]">Рейтинг</span>
-                  <span className="font-semibold">{user.rating}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[#3F7F6E]">Отзывов</span>
-                  <span className="font-semibold">{user.reviews.length}</span>
-                </div>
+              <CardContent className="p-6 flex flex-wrap items-center gap-3">
+                {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
+                  <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
+                ))}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Достижения</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <div className="flex items-center gap-3">
-                  <Award className="h-8 w-8 text-[#6FE7C8]" />
-                  <div>
-                    <div className="font-semibold text-sm">Top Freelancer</div>
-                    <div className="text-xs text-[#3F7F6E]">Октябрь 2025</div>
-                  </div>
+            {tab === 'portfolio' && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold">Портфолио</h2>
                 </div>
-              </CardContent>
-            </Card>
+                {portfolioProjects.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <p className="text-[#3F7F6E] mb-4">У пользователя пока нет проектов в портфолио</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {portfolioProjects.map((project) => (
+                      <Card
+                        key={project.id}
+                        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                      >
+                        {project.image_url && (
+                          <div className="aspect-video overflow-hidden">
+                            <img src={project.image_url} alt={project.title} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                          </div>
+                        )}
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold text-lg mb-2">{project.title}</h3>
+                          <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{project.description}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(project.tags || []).slice(0, 3).map((tag: string) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {tab === 'market' && (
+              <>
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">Заказы пользователя</h2>
+                  {loadingMarket ? (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                        <p className="text-[#3F7F6E]">Загрузка...</p>
+                      </CardContent>
+                    </Card>
+                  ) : userOrders.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-6 text-center text-[#3F7F6E]">
+                        Пользователь ещё не создал ни одного заказа
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {userOrders.map((order) => (
+                        <Card key={order.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all">
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between gap-6">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg mb-2">{order.title}</h4>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Badge variant="secondary">{order.category}</Badge>
+                                  <Badge variant="outline">{order.status}</Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                  {(order.tags || []).map((t: string) => (
+                                    <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                  ))}
+                                </div>
+                                <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{order.description}</p>
+                                <div className="font-semibold text-[#6FE7C8]">
+                                  {order.currency} {order.price_min}–{order.price_max}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{new Date(order.created_at).toLocaleDateString('ru-RU')}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Eye className="h-4 w-4" />
+                                  <span>{order.views_count || 0}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">Объявления пользователя</h2>
+                  {loadingMarket ? (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                        <p className="text-[#3F7F6E]">Загрузка...</p>
+                      </CardContent>
+                    </Card>
+                  ) : userTasks.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-6 text-center text-[#3F7F6E]">
+                        Пользователь ещё не создал ни одного объявления
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {userTasks.map((task) => (
+                        <Card key={task.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all">
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between gap-6">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg mb-2">{task.title}</h4>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Badge variant="secondary">{task.category}</Badge>
+                                  <Badge variant="outline">{task.status}</Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                  {(task.tags || []).map((t: string) => (
+                                    <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                  ))}
+                                </div>
+                                <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{task.description}</p>
+                                <div className="font-semibold text-[#6FE7C8]">
+                                  {task.currency} {task.price}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{new Date(task.created_at).toLocaleDateString('ru-RU')}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Eye className="h-4 w-4" />
+                                  <span>{task.views_count || 0}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {tab === 'about' && (
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">О фрилансере</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0 grid gap-6">
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">{profile.headline}</h3>
+                      <p className="text-[#3F7F6E] leading-relaxed mb-4">{profile.about || 'Информация о пользователе не указана'}</p>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                        <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
+                        <div className="font-semibold">{profile.role}</div>
+                      </div>
+                      <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                        <div className="text-sm text-[#3F7F6E] mb-1">Локация</div>
+                        <div className="font-semibold">{profile.location}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {tab === 'reviews' && (
+              <div className="grid gap-6">
+                <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6 grid gap-3">
+                        <div className="flex items-center gap-3">
+                          <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-10 w-10 rounded-full object-cover" alt={`Заказчик ${i}`} />
+                          <div>
+                            <div className="font-medium">Заказчик #{i}</div>
+                            <div className="text-xs text-[#3F7F6E]">2 недели назад</div>
+                          </div>
+                          <div className="ml-auto flex items-center gap-1 text-emerald-600">
+                            <Star className="h-4 w-4 fill-emerald-600" />
+                            <span className="font-semibold">5.0</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-[#3F7F6E]">Отличная работа! Проект выполнен качественно и в срок. Рекомендую этого исполнителя.</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
