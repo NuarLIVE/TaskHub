@@ -9,8 +9,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 
-const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
-const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
+const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
+const pageTransition = { duration: 0.2 };
 
 interface Chat {
   id: string;
@@ -125,10 +125,13 @@ export default function MessagesPage() {
     prevMessagesLengthRef.current = messages.length;
   }, [messages]);
 
-  const loadChats = async () => {
+  const loadChats = async (showLoading = true) => {
     if (!user) return;
 
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
+
     try {
       const { data: chatsData } = await supabase
         .from('chats')
@@ -159,7 +162,9 @@ export default function MessagesPage() {
     } catch (error) {
       setChats([]);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -252,7 +257,7 @@ export default function MessagesPage() {
 
       shouldScrollRef.current = false;
       loadMessages(selectedChatId);
-      loadChats();
+      loadChats(false);
     } catch (error) {
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setMessage(messageText);
@@ -326,7 +331,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <motion.div key="messages" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
+    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Сообщения</h1>
 
