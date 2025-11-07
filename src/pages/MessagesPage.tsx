@@ -12,6 +12,9 @@ import {
   X,
   Video,
   FileText,
+  Clock,
+  Check,
+  CheckCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -837,7 +840,7 @@ export default function MessagesPage() {
                   filteredChats.map((chat) => {
                     const otherUserId = getOtherParticipant(chat);
                     const profile = profiles[otherUserId];
-                    const online = (profile?.is_online ?? false) || isOnlineFresh(profile);
+                    const online = isOnlineFresh(profile);
 
                     return (
                       <div
@@ -903,7 +906,10 @@ export default function MessagesPage() {
                               {((chat.participant1_id === user?.id && (chat.unread_count_p1 || 0) > 0) ||
                                 (chat.participant2_id === user?.id && (chat.unread_count_p2 || 0) > 0)) && (
                                 <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10">
-                                  {chat.participant1_id === user?.id ? chat.unread_count_p1 : chat.unread_count_p2}
+                                  {(() => {
+                                    const count = chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0);
+                                    return count > 99 ? '99+' : count;
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -1077,8 +1083,17 @@ export default function MessagesPage() {
                               </div>
                             )}
 
-                            <div className={`px-3 pb-2 text-xs ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
-                              {formatTime(msg.created_at)}
+                            <div className={`px-3 pb-2 text-xs flex items-center justify-between gap-2 ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
+                              <span>{formatTime(msg.created_at)}</span>
+                              {isOwn && (
+                                <span className="flex items-center">
+                                  {msg.is_read ? (
+                                    <CheckCheck className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Check className="h-3.5 w-3.5" />
+                                  )}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

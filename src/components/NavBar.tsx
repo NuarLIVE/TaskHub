@@ -45,7 +45,7 @@ export default function NavBar() {
           if (chat.participant2_id === user.id) return sum + (chat.unread_count_p2 || 0);
           return sum;
         }, 0);
-        setUnreadCount(total);
+        setUnreadCount(Math.min(total, 99));
       }
     } catch {
       setUnreadCount(0);
@@ -141,7 +141,7 @@ export default function NavBar() {
               {link.label}
               {link.label === 'Сообщения' && unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                  {unreadCount}
+                  {unreadCount === 99 ? '99+' : unreadCount}
                 </span>
               )}
             </a>
@@ -201,7 +201,7 @@ export default function NavBar() {
                   {link.label}
                   {link.label === 'Сообщения' && unreadCount > 0 && (
                     <span className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                      {unreadCount}
+                      {unreadCount === 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </span>
