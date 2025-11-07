@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -12,6 +12,9 @@ import {
   X,
   Video,
   FileText,
+  Clock,
+  Check,
+  CheckCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,7 +27,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
+import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
+import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 import { MediaEditor } from '@/components/MediaEditor';
@@ -32,7 +37,6 @@ import { ImageViewer } from '@/components/ImageViewer';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
-
 const ONLINE_WINDOW_MS = 60_000;
 
 interface Chat {
@@ -74,6 +78,7 @@ const isOnlineFresh = (p?: { last_seen_at?: string | null }) => {
 
 export default function MessagesPage() {
   const { user } = useAuth();
+
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +86,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -92,9 +98,7 @@ export default function MessagesPage() {
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
-  const [imageViewerImages, setImageViewerImages] = useState<
-    Array<{ url: string; name?: string }>
-  >([]);
+  const [imageViewerImages, setImageViewerImages] = useState<Array<{ url: string; name?: string }>>([]);
   const [isUserBlocked, setIsUserBlocked] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
 
@@ -105,13 +109,14 @@ export default function MessagesPage() {
   const shouldScrollRef = useRef(true);
   const isInitialLoadRef = useRef(true);
 
-  // Управление плавным скроллом при "Печатает"
+  // Для UX "Печатает"
   const otherTypingHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const justMarkedReadRef = useRef<Set<string>>(new Set());
   const otherTypingShownAtRef = useRef<number>(0);
   const wasTypingRef = useRef<boolean>(false);
   const prevScrollTopRef = useRef<number>(0);
 
-  // Чтобы last-seen "старился" без перезагрузки
+  // last seen авто-старение
   const [nowTick, setNowTick] = useState<number>(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 30_000);
@@ -130,44 +135,113 @@ export default function MessagesPage() {
     el.scrollTo({ top, behavior: 'smooth' });
   };
 
+  const reinitAll = async () => {
+    await loadChats(false);
+    if (selectedChatId) await loadMessages(selectedChatId);
+  };
+
+  useSupabaseKeepAlive({
+    onRecover: reinitAll,
+    intervalMs: 90_000,
+    headTable: 'profiles'
+  });
+
   useEffect(() => {
     if (!user) return;
 
-    loadChats();
+    let isMounted = true;
+
+    const initChats = async () => {
+      try {
+        setError(null);
+        await loadChats();
+      } catch (error) {
+        if (isMounted) {
+          setError('Не удалось загрузить чаты. Попробуйте ещё раз.');
+          setLoading(false);
+        }
+      }
+    };
+
+    initChats();
     updateOnlineStatus(true);
 
     const interval = setInterval(() => {
       updateOnlineStatus(true);
     }, 30_000);
 
-    const userChatsSubscription = supabase
-      .channel('user-chats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
+    const chatsRefreshInterval = setInterval(() => {
+      if (!document.hidden && isMounted) {
         loadChats(false);
-      })
-      .subscribe();
+      }
+    }, 60_000);
 
-    const profilesSubscription = supabase
-      .channel('profiles-changes')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles' },
-        (payload) => {
-          const updatedProfile = payload.new as Profile;
-          setProfiles((prev) => ({
-            ...prev,
-            [updatedProfile.id]: {
-              ...prev[updatedProfile.id],
-              is_online: updatedProfile.is_online,
-              last_seen_at: updatedProfile.last_seen_at,
-              avatar_url:
-                updatedProfile.avatar_url ?? prev[updatedProfile.id]?.avatar_url ?? null,
-              name: updatedProfile.name ?? prev[updatedProfile.id]?.name ?? '',
-            },
-          }));
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        updateOnlineStatus(true);
+        loadChats(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    let userChatsSubscription: any = null;
+    let profilesSubscription: any = null;
+
+    subscribeWithMonitoring('user-chats', {
+      table: 'chats',
+      event: '*',
+      callback: (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updatedChat = payload.new as Chat;
+
+          if (justMarkedReadRef.current.has(updatedChat.id)) {
+            return;
+          }
+
+          setChats((prev) => {
+            const existingChat = prev.find((c) => c.id === updatedChat.id);
+            if (!existingChat) return prev;
+
+            return prev.map((c) => {
+              if (c.id !== updatedChat.id) return c;
+
+              if (updatedChat.id === selectedChatId && user) {
+                const isP1 = updatedChat.participant1_id === user.id;
+                return {
+                  ...updatedChat,
+                  unread_count_p1: isP1 ? 0 : updatedChat.unread_count_p1,
+                  unread_count_p2: !isP1 ? 0 : updatedChat.unread_count_p2,
+                };
+              }
+
+              return updatedChat;
+            });
+          });
+        } else {
+          loadChats(false);
         }
-      )
-      .subscribe();
+      },
+      onError: () => setTimeout(() => loadChats(false), 2000)
+    }).then(sub => { userChatsSubscription = sub; });
+
+    subscribeWithMonitoring('profiles-changes', {
+      table: 'profiles',
+      event: 'UPDATE',
+      callback: (payload) => {
+        const updatedProfile = payload.new as Profile;
+        setProfiles((prev) => ({
+          ...prev,
+          [updatedProfile.id]: {
+            ...prev[updatedProfile.id],
+            is_online: updatedProfile.is_online,
+            last_seen_at: updatedProfile.last_seen_at,
+            avatar_url: updatedProfile.avatar_url ?? prev[updatedProfile.id]?.avatar_url ?? null,
+            name: updatedProfile.name ?? prev[updatedProfile.id]?.name ?? '',
+          },
+        }));
+      }
+    }).then(sub => { profilesSubscription = sub; });
 
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
     const chatId = params.get('chat');
@@ -177,10 +251,13 @@ export default function MessagesPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
+      clearInterval(chatsRefreshInterval);
       updateOnlineStatus(false);
-      userChatsSubscription.unsubscribe();
-      profilesSubscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      userChatsSubscription?.unsubscribe();
+      profilesSubscription?.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [user]);
@@ -190,28 +267,65 @@ export default function MessagesPage() {
 
     isInitialLoadRef.current = true;
     shouldScrollRef.current = true;
-    loadMessages(selectedChatId);
 
-    const messagesSubscription = supabase
-      .channel(`messages:${selectedChatId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${selectedChatId}` },
-        async (payload) => {
-          const newMessage = payload.new as Message;
-          if (newMessage.sender_id !== user.id) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newMessage.id)) return prev;
-              shouldScrollRef.current = true;
-              return [...prev, newMessage];
-            });
-            await markMessagesAsRead(selectedChatId);
-          }
+    let isMounted = true;
+
+    const initMessages = async () => {
+      if (!isMounted) return;
+      try {
+        await loadMessages(selectedChatId);
+      } catch (error) {
+        if (isMounted) setMessages([]);
+      }
+    };
+
+    initMessages();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && selectedChatId) {
+        loadMessages(selectedChatId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    let messagesSubscription: any = null;
+
+    subscribeWithMonitoring(`messages:${selectedChatId}`, {
+      table: 'messages',
+      event: 'INSERT',
+      filter: `chat_id=eq.${selectedChatId}`,
+      callback: async (payload) => {
+        const newMessage = payload.new as Message;
+        if (newMessage.sender_id !== user.id) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMessage.id)) return prev;
+            shouldScrollRef.current = true;
+            return [...prev, newMessage];
+          });
+          await markMessagesAsRead(selectedChatId);
         }
-      )
-      .subscribe();
+      },
+      onError: () => setTimeout(() => loadMessages(selectedChatId), 2000)
+    }).then(sub => { messagesSubscription = sub; });
 
-    const typingSubscription = supabase
+    let messagesUpdateSubscription: any = null;
+    subscribeWithMonitoring(`messages-update:${selectedChatId}`, {
+      table: 'messages',
+      event: 'UPDATE',
+      filter: `chat_id=eq.${selectedChatId}`,
+      callback: (payload) => {
+        const updatedMessage = payload.new as Message;
+        if (updatedMessage.sender_id === user.id) {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+          );
+        }
+      },
+      onError: () => {}
+    }).then(sub => { messagesUpdateSubscription = sub; });
+
+    const typingSubscription = getSupabase()
       .channel(`typing:${selectedChatId}`)
       .on(
         'postgres_changes',
@@ -222,12 +336,11 @@ export default function MessagesPage() {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const typingData = payload.new as { user_id: string; updated_at: string };
             if (typingData.user_id !== user.id) {
-              const now = Date.now();
-              otherTypingShownAtRef.current = now;
+              otherTypingShownAtRef.current = Date.now();
               setIsOtherUserTyping(true);
 
               if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
-              // Держим минимум 1 секунду без дёрганий
+              // Держим минимум 1 секунду
               otherTypingHideTimeoutRef.current = setTimeout(() => {
                 setIsOtherUserTyping(false);
               }, 1000);
@@ -248,14 +361,17 @@ export default function MessagesPage() {
       .subscribe();
 
     return () => {
-      messagesSubscription.unsubscribe();
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      messagesSubscription?.unsubscribe();
+      messagesUpdateSubscription?.unsubscribe();
       typingSubscription.unsubscribe();
       setIsOtherUserTyping(false);
       if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
     };
   }, [selectedChatId, user]);
 
-  // Скролл в низ при появлении "Печатает", возвращение назад — при скрытии
+  // Скроллим вниз при появлении "Печатает", затем плавно возвращаемся к прошлой позиции
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
@@ -297,11 +413,15 @@ export default function MessagesPage() {
     if (showLoading) setLoading(true);
 
     try {
-      const { data: chatsData } = await supabase
-        .from('chats')
-        .select('*')
-        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-        .order('updated_at', { ascending: false });
+      const { data: chatsData, error: chatsError } = await queryWithRetry(
+        () => getSupabase()
+          .from('chats')
+          .select('*')
+          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+          .order('updated_at', { ascending: false })
+      );
+
+      if (chatsError) throw chatsError;
 
       setChats(chatsData || []);
 
@@ -312,10 +432,14 @@ export default function MessagesPage() {
       });
 
       if (userIds.size > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, name, avatar_url, is_online, last_seen_at')
-          .in('id', Array.from(userIds));
+        const { data: profilesData, error: profilesError } = await queryWithRetry(
+          () => getSupabase()
+            .from('profiles')
+            .select('id, name, avatar_url, is_online, last_seen_at')
+            .in('id', Array.from(userIds))
+        );
+
+        if (profilesError) throw profilesError;
 
         const profilesMap: Record<string, Profile> = {};
         (profilesData || []).forEach((p: Profile) => {
@@ -323,8 +447,9 @@ export default function MessagesPage() {
         });
         setProfiles(profilesMap);
       }
-    } catch {
-      setChats([]);
+    } catch (error) {
+      console.error('❌ Error loading chats:', error);
+      throw error;
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -332,13 +457,11 @@ export default function MessagesPage() {
 
   const checkIfUserBlocked = async (chatId: string) => {
     if (!user) return;
-
     const chat = chats.find((c) => c.id === chatId);
     if (!chat) return;
 
     const otherUserId = getOtherParticipant(chat);
-
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('blocked_users')
       .select('id')
       .eq('blocker_id', user.id)
@@ -350,18 +473,22 @@ export default function MessagesPage() {
 
   const loadMessages = async (chatId: string) => {
     try {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
+      const { data, error } = await queryWithRetry(
+        () => getSupabase()
+          .from('messages')
+          .select('*')
+          .eq('chat_id', chatId)
+          .order('created_at', { ascending: true })
+      );
+
+      if (error) throw error;
 
       setMessages(data || []);
-
       await checkIfUserBlocked(chatId);
       await markMessagesAsRead(chatId);
-    } catch {
-      setMessages([]);
+    } catch (error) {
+      console.error('❌ Error loading messages:', error);
+      throw error;
     }
   };
 
@@ -369,25 +496,47 @@ export default function MessagesPage() {
     if (!user) return;
 
     try {
-      // Отмечаем входящие как прочитанные (если у тебя есть флаг is_read)
-      await supabase
+      await getSupabase()
         .from('messages')
         .update({ is_read: true })
         .eq('chat_id', chatId)
         .neq('sender_id', user.id)
         .eq('is_read', false);
 
-      // Сбрасываем свой счётчик непрочитанных в 'chats'
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.chat_id === chatId && msg.sender_id !== user.id ? { ...msg, is_read: true } : msg
+        )
+      );
+
       const chat = chats.find((c) => c.id === chatId);
       if (chat) {
         const isP1 = chat.participant1_id === user.id;
-        await supabase
+
+        justMarkedReadRef.current.add(chatId);
+        setTimeout(() => {
+          justMarkedReadRef.current.delete(chatId);
+        }, 3000);
+
+        await getSupabase()
           .from('chats')
           .update({
             unread_count_p1: isP1 ? 0 : chat.unread_count_p1,
             unread_count_p2: !isP1 ? 0 : chat.unread_count_p2,
           })
           .eq('id', chatId);
+
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === chatId
+              ? {
+                  ...c,
+                  unread_count_p1: isP1 ? 0 : c.unread_count_p1,
+                  unread_count_p2: !isP1 ? 0 : c.unread_count_p2,
+                }
+              : c
+          )
+        );
       }
     } catch {
       // no-op
@@ -402,8 +551,7 @@ export default function MessagesPage() {
     if (!selectedChat) return;
 
     const otherUserId = getOtherParticipant(selectedChat);
-
-    const { data: isBlockedByOther } = await supabase
+    const { data: isBlockedByOther } = await getSupabase()
       .from('blocked_users')
       .select('id')
       .eq('blocker_id', otherUserId)
@@ -445,18 +593,15 @@ export default function MessagesPage() {
         const fileExt = selectedFile.name.split('.').pop();
         const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase
+        const { error: uploadError } = await getSupabase()
           .storage
           .from('message-attachments')
           .upload(filePath, selectedFile);
 
         if (uploadError) throw uploadError;
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('message-attachments').getPublicUrl(filePath);
-
-        fileUrl = publicUrl;
+        const { data: pub } = getSupabase().storage.from('message-attachments').getPublicUrl(filePath);
+        fileUrl = pub.publicUrl;
         fileName = selectedFile.name;
 
         if (selectedFile.type.startsWith('image/')) fileType = 'image';
@@ -466,7 +611,7 @@ export default function MessagesPage() {
         setUploading(false);
       }
 
-      const { error } = await supabase.from('messages').insert({
+      const { error } = await getSupabase().from('messages').insert({
         chat_id: selectedChatId,
         sender_id: user.id,
         text: messageText || '',
@@ -491,7 +636,7 @@ export default function MessagesPage() {
     if (!selectedChatId) return;
 
     try {
-      const { error } = await supabase.from('chats').delete().eq('id', selectedChatId);
+      const { error } = await getSupabase().from('chats').delete().eq('id', selectedChatId);
       if (error) throw error;
 
       alert('Чат удален');
@@ -512,24 +657,21 @@ export default function MessagesPage() {
     const otherUserId = getOtherParticipant(selectedChat);
 
     try {
-      const { error } = await supabase.from('blocked_users').insert({
+      const { error } = await getSupabase().from('blocked_users').insert({
         blocker_id: user.id,
         blocked_id: otherUserId,
       });
 
-      if (error) {
-        // unique violation
-        // @ts-ignore
-        if (error.code === '23505') {
-          alert('Этот пользователь уже заблокирован');
-        } else {
-          throw error;
-        }
+      // @ts-ignore (для уникальных вставок)
+      if (error?.code === '23505') {
+        alert('Этот пользователь уже заблокирован');
         return;
+      } else if (error) {
+        throw error;
       }
 
       if (deleteAlsoChat) {
-        await supabase.from('chats').delete().eq('id', selectedChatId);
+        await getSupabase().from('chats').delete().eq('id', selectedChatId);
         setSelectedChatId(null);
       }
 
@@ -551,7 +693,7 @@ export default function MessagesPage() {
     const otherUserId = getOtherParticipant(selectedChat);
 
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('blocked_users')
         .delete()
         .eq('blocker_id', user.id)
@@ -620,7 +762,7 @@ export default function MessagesPage() {
     if (!user) return;
 
     try {
-      await supabase
+      await getSupabase()
         .from('profiles')
         .update({
           is_online: isOnline,
@@ -636,7 +778,7 @@ export default function MessagesPage() {
     if (!selectedChatId || !user) return;
 
     try {
-      await supabase
+      await getSupabase()
         .from('typing_indicators')
         .upsert(
           {
@@ -647,12 +789,9 @@ export default function MessagesPage() {
           { onConflict: 'chat_id,user_id' }
         );
 
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(async () => {
-        await supabase
+        await getSupabase()
           .from('typing_indicators')
           .delete()
           .eq('chat_id', selectedChatId)
@@ -696,6 +835,17 @@ export default function MessagesPage() {
   const currentOtherUserId = currentChat ? getOtherParticipant(currentChat) : null;
   const currentProfile = currentOtherUserId ? profiles[currentOtherUserId] : null;
 
+  // Кол-во непрочитанных в других чатах (показываем в шапке открытого чата)
+  const totalUnreadOtherChats = useMemo(() => {
+    if (!user) return 0;
+    return chats.reduce((sum, c) => {
+      if (c.id === selectedChatId) return sum;
+      if (c.participant1_id === user.id) return sum + (c.unread_count_p1 || 0);
+      if (c.participant2_id === user.id) return sum + (c.unread_count_p2 || 0);
+      return sum;
+    }, 0);
+  }, [chats, user, selectedChatId]);
+
   const formatTime = (timestamp: string) =>
     new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -713,7 +863,30 @@ export default function MessagesPage() {
 
         {loading ? (
           <div className="flex justify-center items-center h-[600px]">
-            <div className="text-[#3F7F6E]">Загрузка...</div>
+            <div className="text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent mb-4"></div>
+              <p className="text-[#3F7F6E]">Загрузка сообщений...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col justify-center items-center h-[600px]">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setError(null);
+                    setLoading(true);
+                    loadChats();
+                  }}
+                >
+                  Попробовать снова
+                </Button>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Обновить страницу
+                </Button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[700px] min-h-0">
@@ -739,7 +912,7 @@ export default function MessagesPage() {
                   filteredChats.map((chat) => {
                     const otherUserId = getOtherParticipant(chat);
                     const profile = profiles[otherUserId];
-                    const online = (profile?.is_online ?? false) || isOnlineFresh(profile);
+                    const online = isOnlineFresh(profile);
 
                     return (
                       <div
@@ -761,29 +934,32 @@ export default function MessagesPage() {
                               <div className="relative">
                                 <img
                                   src={profile.avatar_url}
-                                  alt={profile.name}
-                                  className="h-10 w-10 rounded-full object-cover hover:opacity-80 transition"
+                                  alt={profile?.name || 'Пользователь'}
+                                  className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
                                 />
                                 {online && (
-                                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+                                  <span
+                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                    style={{ bottom: '2px', right: '2px' }}
+                                  />
                                 )}
                               </div>
                             ) : (
-                              <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center hover:opacity-80 transition">
-                                <span className="text-sm font-medium">
-                                  {profile?.name?.charAt(0) ?? 'U'}
-                                </span>
+                              <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
                                 {online && (
-                                  <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+                                  <span
+                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                    style={{ bottom: '2px', right: '2px' }}
+                                  />
                                 )}
                               </div>
                             )}
                           </div>
+
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                              <div className="font-semibold truncate">
-                                {profile?.name || 'Пользователь'}
-                              </div>
+                              <div className="font-semibold truncate">{profile?.name || 'Пользователь'}</div>
                               <span className="text-xs text-[#3F7F6E]">
                                 {chat.last_message_at
                                   ? new Date(chat.last_message_at).toLocaleTimeString('ru-RU', {
@@ -793,16 +969,19 @@ export default function MessagesPage() {
                                   : ''}
                               </span>
                             </div>
+
                             <div className="flex items-center justify-between">
                               <div className="text-sm text-[#3F7F6E] truncate">
                                 {chat.last_message_text || 'Нет сообщений'}
                               </div>
+
                               {((chat.participant1_id === user?.id && (chat.unread_count_p1 || 0) > 0) ||
                                 (chat.participant2_id === user?.id && (chat.unread_count_p2 || 0) > 0)) && (
-                                <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                                  {chat.participant1_id === user?.id
-                                    ? chat.unread_count_p1
-                                    : chat.unread_count_p2}
+                                <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10">
+                                  {(() => {
+                                    const count = chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0);
+                                    return count > 99 ? '99+' : count;
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -819,17 +998,11 @@ export default function MessagesPage() {
             {selectedChatId && currentProfile ? (
               <Card className="flex flex-col h-full min-h-0 overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedChatId(null)}
-                      className="lg:hidden hover:opacity-70 transition"
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                    </button>
-                    <div
-                      className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer"
-                      onClick={() => navigateToProfile(currentOtherUserId || '', user?.id)}
-                    >
+                  <div
+                    className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer"
+                    onClick={() => navigateToProfile(currentOtherUserId || '', user?.id)}
+                  >
+                    <div className="relative">
                       {currentProfile.avatar_url ? (
                         <img
                           src={currentProfile.avatar_url}
@@ -838,39 +1011,47 @@ export default function MessagesPage() {
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                          <span className="text-sm font-medium">
-                            {currentProfile.name?.charAt(0)}
-                          </span>
+                          <span className="text-sm font-medium">{currentProfile.name?.charAt(0)}</span>
                         </div>
                       )}
-                      <div>
-                        <div className="font-semibold">{currentProfile.name}</div>
-                        <div className="text-xs text-[#3F7F6E] flex items-center gap-1">
-                          {isOtherUserTyping ? (
-                            <>
-                              <span>Печатает</span>
-                              <span className="flex gap-0.5">
-                                <span
-                                  className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
-                                  style={{ animationDelay: '0ms' }}
-                                />
-                                <span
-                                  className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
-                                  style={{ animationDelay: '150ms' }}
-                                />
-                                <span
-                                  className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
-                                  style={{ animationDelay: '300ms' }}
-                                />
-                              </span>
-                            </>
-                          ) : (
-                            <>{getLastSeenText(currentProfile)}</>
-                          )}
-                        </div>
+                      {totalUnreadOtherChats > 0 && (
+                        <span
+                          className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10"
+                          title="Непрочитанные в других чатах"
+                        >
+                          {totalUnreadOtherChats}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="font-semibold">{currentProfile.name}</div>
+                      <div className="text-xs text-[#3F7F6E] flex items-center gap-1">
+                        {isOtherUserTyping ? (
+                          <>
+                            <span>Печатает</span>
+                            <span className="flex gap-0.5">
+                              <span
+                                className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
+                                style={{ animationDelay: '0ms' }}
+                              />
+                              <span
+                                className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
+                                style={{ animationDelay: '150ms' }}
+                              />
+                              <span
+                                className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
+                                style={{ animationDelay: '300ms' }}
+                              />
+                            </span>
+                          </>
+                        ) : (
+                          <>{getLastSeenText(currentProfile)}</>
+                        )}
                       </div>
                     </div>
                   </div>
+
                   <div className="relative">
                     <Button variant="ghost" size="sm" onClick={() => setMenuOpen(!menuOpen)}>
                       <MoreVertical className="h-4 w-4" />
@@ -974,8 +1155,17 @@ export default function MessagesPage() {
                               </div>
                             )}
 
-                            <div className={`px-3 pb-2 text-xs ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
-                              {formatTime(msg.created_at)}
+                            <div className={`px-3 pb-2 text-xs flex items-center justify-between gap-2 ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
+                              <span>{formatTime(msg.created_at)}</span>
+                              {isOwn && (
+                                <span className="flex items-center">
+                                  {msg.is_read ? (
+                                    <CheckCheck className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Check className="h-3.5 w-3.5" />
+                                  )}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1028,9 +1218,7 @@ export default function MessagesPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                          <p className="text-xs text-[#3F7F6E] mt-1">
-                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
+                          <p className="text-xs text-[#3F7F6E] mt-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
                         <button onClick={removeSelectedFile} className="flex-shrink-0 hover:opacity-70 transition p-1">
                           <X className="h-5 w-5 text-[#3F7F6E]" />
@@ -1043,10 +1231,7 @@ export default function MessagesPage() {
                     <div className="flex flex-col gap-3 p-4 bg-gray-50 rounded-lg border">
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Ban className="h-5 w-5 text-[#3F7F6E]" />
-                        <span>
-                          Вы не можете отправлять сообщения данному пользователю, так как заблокировали
-                          его ранее
-                        </span>
+                        <span>Вы не можете отправлять сообщения данному пользователю, так как заблокировали его ранее</span>
                       </div>
                       <Button className="bg-[#3F7F6E] hover:bg-[#2d5f52] text-white" onClick={handleUnblockUser}>
                         Разблокировать пользователя
@@ -1184,11 +1369,7 @@ export default function MessagesPage() {
       )}
 
       {showImageViewer && imageViewerImages.length > 0 && (
-        <ImageViewer
-          images={imageViewerImages}
-          initialIndex={imageViewerIndex}
-          onClose={() => setShowImageViewer(false)}
-        />
+        <ImageViewer images={imageViewerImages} initialIndex={imageViewerIndex} onClose={() => setShowImageViewer(false)} />
       )}
     </motion.div>
   );

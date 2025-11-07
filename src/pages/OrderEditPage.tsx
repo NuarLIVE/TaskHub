@@ -4,7 +4,7 @@ import { Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
@@ -75,7 +75,7 @@ export default function OrderEditPage() {
         return;
       }
 
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await getSupabase().auth.getUser();
       if (authUser?.id !== orderData.user_id) {
         alert('У вас нет прав для редактирования этого заказа');
         window.location.hash = '#/my-deals';

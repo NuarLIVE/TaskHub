@@ -4,7 +4,7 @@ import { Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
@@ -48,14 +48,14 @@ export default function OrderCreatePage() {
 
     const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
 
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await getSupabase().auth.getUser();
     if (!authUser) {
       alert('Ошибка аутентификации');
       window.location.hash = '#/login';
       return;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('orders')
       .insert({
         user_id: authUser.id,

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
@@ -181,7 +181,7 @@ export default function ProfilePage() {
         const fileName = `${user.id}-avatar-${Date.now()}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await getSupabase().storage
           .from('portfolio-images')
           .upload(filePath, avatarFile, {
             cacheControl: '3600',
@@ -194,7 +194,7 @@ export default function ProfilePage() {
           return;
         }
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = getSupabase().storage
           .from('portfolio-images')
           .getPublicUrl(filePath);
 
