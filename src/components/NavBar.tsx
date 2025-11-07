@@ -44,7 +44,7 @@ export default function NavBar() {
 
     const loadUnreadCount = async () => {
       try {
-        const { data } = await supabase
+        const { data } = await getSupabase()
           .from('chats')
           .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
           .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
@@ -73,7 +73,7 @@ export default function NavBar() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const chatsChannel = supabase
+    const chatsChannel = getSupabase()
       .channel('navbar-chats')
       .on(
         'postgres_changes',
@@ -82,7 +82,7 @@ export default function NavBar() {
       )
       .subscribe();
 
-    const messagesChannel = supabase
+    const messagesChannel = getSupabase()
       .channel('navbar-messages')
       .on(
         'postgres_changes',

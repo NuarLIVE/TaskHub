@@ -75,7 +75,7 @@ export default function OrderEditPage() {
         return;
       }
 
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await getSupabase().auth.getUser();
       if (authUser?.id !== orderData.user_id) {
         alert('У вас нет прав для редактирования этого заказа');
         window.location.hash = '#/my-deals';

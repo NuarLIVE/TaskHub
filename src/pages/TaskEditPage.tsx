@@ -82,7 +82,7 @@ export default function TaskEditPage() {
         return;
       }
 
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await getSupabase().auth.getUser();
       if (authUser?.id !== taskData.user_id) {
         alert('У вас нет прав для редактирования этого объявления');
         window.location.hash = '#/my-deals';

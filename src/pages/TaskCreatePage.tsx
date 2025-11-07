@@ -62,14 +62,14 @@ export default function TaskCreatePage() {
       }
     }
 
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await getSupabase().auth.getUser();
     if (!authUser) {
       alert('Ошибка аутентификации');
       window.location.hash = '#/login';
       return;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('tasks')
       .insert({
         user_id: authUser.id,

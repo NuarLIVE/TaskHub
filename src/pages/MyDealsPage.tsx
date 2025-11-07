@@ -78,7 +78,7 @@ export default function MyDealsPage() {
   const loadDeals = async () => {
     setLoading(true);
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await getSupabase().auth.getUser();
       if (!authUser) return;
 
       if (activeTab === 'mywork') {

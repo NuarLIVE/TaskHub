@@ -48,14 +48,14 @@ export default function OrderCreatePage() {
 
     const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
 
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: { user: authUser } } = await getSupabase().auth.getUser();
     if (!authUser) {
       alert('Ошибка аутентификации');
       window.location.hash = '#/login';
       return;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('orders')
       .insert({
         user_id: authUser.id,
