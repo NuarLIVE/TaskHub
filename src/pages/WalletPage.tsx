@@ -461,15 +461,15 @@ export default function WalletPage() {
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md m-4">
-            <CardHeader>
+            <CardHeader className="p-6">
               <div className="flex items-center justify-between">
                 <CardTitle>Вывод средств</CardTitle>
-                <button onClick={() => setShowWithdrawModal(false)}>
+                <button onClick={() => setShowWithdrawModal(false)} className="hover:opacity-70 transition">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6 pt-0">
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Доступно: ${wallet.balance.toFixed(2)}
@@ -507,15 +507,15 @@ export default function WalletPage() {
       {showDepositModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md m-4">
-            <CardHeader>
+            <CardHeader className="p-6">
               <div className="flex items-center justify-between">
                 <CardTitle>Пополнение баланса</CardTitle>
-                <button onClick={() => setShowDepositModal(false)}>
+                <button onClick={() => setShowDepositModal(false)} className="hover:opacity-70 transition">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6 pt-0">
               <div>
                 <label className="text-sm font-medium mb-2 block">Сумма пополнения</label>
                 <Input
