@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
+import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 import { MediaEditor } from '@/components/MediaEditor';
@@ -133,24 +134,14 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user) return;
 
-    let retryCount = 0;
-    const maxRetries = 3;
     let isMounted = true;
 
-    const loadWithRetry = async () => {
-      if (!isMounted) return;
-
+    const initChats = async () => {
       try {
         setError(null);
         await loadChats();
       } catch (error) {
-        console.error('Failed to load chats:', error);
-        if (retryCount < maxRetries && isMounted) {
-          retryCount++;
-          setTimeout(() => {
-            if (isMounted) loadWithRetry();
-          }, 1000 * retryCount);
-        } else if (isMounted) {
+        if (isMounted) {
           setError('Не удалось загрузить чаты. Попробуйте ещё раз.');
           setLoading(false);
         }
@@ -159,7 +150,7 @@ export default function MessagesPage() {
 
     const safetyTimeout = setTimeout(() => {
       if (loading && isMounted) {
-        console.warn('Force stopping loading state after 15 seconds');
+        console.warn('⚠️ Force stopping loading after 15s');
         setLoading(false);
         if (chats.length === 0) {
           setError('Загрузка заняла слишком много времени. Попробуйте обновить страницу.');
@@ -167,7 +158,7 @@ export default function MessagesPage() {
       }
     }, 15000);
 
-    loadWithRetry();
+    initChats();
     updateOnlineStatus(true);
 
     const interval = setInterval(() => {
@@ -189,45 +180,33 @@ export default function MessagesPage() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const userChatsSubscription = supabase
-      .channel('user-chats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
-        loadChats(false);
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Subscribed to chats updates');
-        }
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Chats subscription error, retrying...');
-          setTimeout(() => loadChats(false), 2000);
-        }
-      });
+    let userChatsSubscription: any = null;
+    let profilesSubscription: any = null;
 
-    const profilesSubscription = supabase
-      .channel('profiles-changes')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles' },
-        (payload) => {
-          const updatedProfile = payload.new as Profile;
-          setProfiles((prev) => ({
-            ...prev,
-            [updatedProfile.id]: {
-              ...prev[updatedProfile.id],
-              is_online: updatedProfile.is_online,
-              last_seen_at: updatedProfile.last_seen_at,
-              avatar_url: updatedProfile.avatar_url ?? prev[updatedProfile.id]?.avatar_url ?? null,
-              name: updatedProfile.name ?? prev[updatedProfile.id]?.name ?? '',
-            },
-          }));
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Subscribed to profiles updates');
-        }
-      });
+    subscribeWithMonitoring('user-chats', {
+      table: 'chats',
+      event: '*',
+      callback: () => loadChats(false),
+      onError: () => setTimeout(() => loadChats(false), 2000)
+    }).then(sub => { userChatsSubscription = sub; });
+
+    subscribeWithMonitoring('profiles-changes', {
+      table: 'profiles',
+      event: 'UPDATE',
+      callback: (payload) => {
+        const updatedProfile = payload.new as Profile;
+        setProfiles((prev) => ({
+          ...prev,
+          [updatedProfile.id]: {
+            ...prev[updatedProfile.id],
+            is_online: updatedProfile.is_online,
+            last_seen_at: updatedProfile.last_seen_at,
+            avatar_url: updatedProfile.avatar_url ?? prev[updatedProfile.id]?.avatar_url ?? null,
+            name: updatedProfile.name ?? prev[updatedProfile.id]?.name ?? '',
+          },
+        }));
+      }
+    }).then(sub => { profilesSubscription = sub; });
 
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
     const chatId = params.get('chat');
@@ -243,8 +222,8 @@ export default function MessagesPage() {
       clearInterval(chatsRefreshInterval);
       updateOnlineStatus(false);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      userChatsSubscription.unsubscribe();
-      profilesSubscription.unsubscribe();
+      userChatsSubscription?.unsubscribe();
+      profilesSubscription?.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [user]);
@@ -255,29 +234,18 @@ export default function MessagesPage() {
     isInitialLoadRef.current = true;
     shouldScrollRef.current = true;
 
-    let retryCount = 0;
-    const maxRetries = 3;
     let isMounted = true;
 
-    const loadMessagesWithRetry = async (chatId: string) => {
+    const initMessages = async () => {
       if (!isMounted) return;
-
       try {
-        await loadMessages(chatId);
+        await loadMessages(selectedChatId);
       } catch (error) {
-        console.error('Failed to load messages:', error);
-        if (retryCount < maxRetries && isMounted) {
-          retryCount++;
-          setTimeout(() => {
-            if (isMounted) loadMessagesWithRetry(chatId);
-          }, 1000 * retryCount);
-        } else if (isMounted) {
-          setMessages([]);
-        }
+        if (isMounted) setMessages([]);
       }
     };
 
-    loadMessagesWithRetry(selectedChatId);
+    initMessages();
 
     const handleVisibilityChange = () => {
       if (!document.hidden && selectedChatId) {
@@ -287,32 +255,25 @@ export default function MessagesPage() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const messagesSubscription = supabase
-      .channel(`messages:${selectedChatId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${selectedChatId}` },
-        async (payload) => {
-          const newMessage = payload.new as Message;
-          if (newMessage.sender_id !== user.id) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newMessage.id)) return prev;
-              shouldScrollRef.current = true;
-              return [...prev, newMessage];
-            });
-            await markMessagesAsRead(selectedChatId);
-          }
+    let messagesSubscription: any = null;
+
+    subscribeWithMonitoring(`messages:${selectedChatId}`, {
+      table: 'messages',
+      event: 'INSERT',
+      filter: `chat_id=eq.${selectedChatId}`,
+      callback: async (payload) => {
+        const newMessage = payload.new as Message;
+        if (newMessage.sender_id !== user.id) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMessage.id)) return prev;
+            shouldScrollRef.current = true;
+            return [...prev, newMessage];
+          });
+          await markMessagesAsRead(selectedChatId);
         }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`Subscribed to messages for chat ${selectedChatId}`);
-        }
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Messages subscription error, reloading...');
-          setTimeout(() => loadMessages(selectedChatId), 2000);
-        }
-      });
+      },
+      onError: () => setTimeout(() => loadMessages(selectedChatId), 2000)
+    }).then(sub => { messagesSubscription = sub; });
 
     const typingSubscription = supabase
       .channel(`typing:${selectedChatId}`)
@@ -400,25 +361,14 @@ export default function MessagesPage() {
     if (!user) return;
     if (showLoading) setLoading(true);
 
-    const timeoutId = setTimeout(() => {
-      if (showLoading) {
-        console.warn('Chats loading timeout, but continuing...');
-      }
-    }, 10000);
-
     try {
-      const { data: chatsData, error: chatsError } = await Promise.race([
-        supabase
+      const { data: chatsData, error: chatsError } = await queryWithRetry(
+        () => supabase
           .from('chats')
           .select('*')
           .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
-          .order('updated_at', { ascending: false }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Chats query timeout')), 8000)
-        )
-      ]);
-
-      clearTimeout(timeoutId);
+          .order('updated_at', { ascending: false })
+      );
 
       if (chatsError) throw chatsError;
 
@@ -431,15 +381,12 @@ export default function MessagesPage() {
       });
 
       if (userIds.size > 0) {
-        const { data: profilesData, error: profilesError } = await Promise.race([
-          supabase
+        const { data: profilesData, error: profilesError } = await queryWithRetry(
+          () => supabase
             .from('profiles')
             .select('id, name, avatar_url, is_online, last_seen_at')
-            .in('id', Array.from(userIds)),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Profiles query timeout')), 8000)
-          )
-        ]);
+            .in('id', Array.from(userIds))
+        );
 
         if (profilesError) throw profilesError;
 
@@ -450,8 +397,7 @@ export default function MessagesPage() {
         setProfiles(profilesMap);
       }
     } catch (error) {
-      console.error('Error loading chats:', error);
-      clearTimeout(timeoutId);
+      console.error('❌ Error loading chats:', error);
       throw error;
     } finally {
       if (showLoading) setLoading(false);
@@ -475,23 +421,14 @@ export default function MessagesPage() {
   };
 
   const loadMessages = async (chatId: string) => {
-    const timeoutId = setTimeout(() => {
-      console.warn('Messages loading timeout, but continuing...');
-    }, 10000);
-
     try {
-      const { data, error } = await Promise.race([
-        supabase
+      const { data, error } = await queryWithRetry(
+        () => supabase
           .from('messages')
           .select('*')
           .eq('chat_id', chatId)
-          .order('created_at', { ascending: true }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Messages query timeout')), 8000)
-        )
-      ]);
-
-      clearTimeout(timeoutId);
+          .order('created_at', { ascending: true })
+      );
 
       if (error) throw error;
 
@@ -499,8 +436,7 @@ export default function MessagesPage() {
       await checkIfUserBlocked(chatId);
       await markMessagesAsRead(chatId);
     } catch (error) {
-      console.error('Error loading messages:', error);
-      clearTimeout(timeoutId);
+      console.error('❌ Error loading messages:', error);
       throw error;
     }
   };
