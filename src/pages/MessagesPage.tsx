@@ -190,7 +190,32 @@ export default function MessagesPage() {
     subscribeWithMonitoring('user-chats', {
       table: 'chats',
       event: '*',
-      callback: () => loadChats(false),
+      callback: (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updatedChat = payload.new as Chat;
+          setChats((prev) => {
+            const existingChat = prev.find((c) => c.id === updatedChat.id);
+            if (!existingChat) return prev;
+
+            return prev.map((c) => {
+              if (c.id !== updatedChat.id) return c;
+
+              if (updatedChat.id === selectedChatId && user) {
+                const isP1 = updatedChat.participant1_id === user.id;
+                return {
+                  ...updatedChat,
+                  unread_count_p1: isP1 ? 0 : updatedChat.unread_count_p1,
+                  unread_count_p2: !isP1 ? 0 : updatedChat.unread_count_p2,
+                };
+              }
+
+              return updatedChat;
+            });
+          });
+        } else {
+          loadChats(false);
+        }
+      },
       onError: () => setTimeout(() => loadChats(false), 2000)
     }).then(sub => { userChatsSubscription = sub; });
 
