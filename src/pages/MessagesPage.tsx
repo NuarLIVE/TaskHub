@@ -287,7 +287,7 @@ export default function MessagesPage() {
       onError: () => setTimeout(() => loadMessages(selectedChatId), 2000)
     }).then(sub => { messagesSubscription = sub; });
 
-    const typingSubscription = supabase
+    const typingSubscription = getSupabase()
       .channel(`typing:${selectedChatId}`)
       .on(
         'postgres_changes',
@@ -457,7 +457,7 @@ export default function MessagesPage() {
     if (!user) return;
 
     try {
-      await supabase
+      await getSupabase()
         .from('messages')
         .update({ is_read: true })
         .eq('chat_id', chatId)
@@ -467,7 +467,7 @@ export default function MessagesPage() {
       const chat = chats.find((c) => c.id === chatId);
       if (chat) {
         const isP1 = chat.participant1_id === user.id;
-        await supabase
+        await getSupabase()
           .from('chats')
           .update({
             unread_count_p1: isP1 ? 0 : chat.unread_count_p1,
@@ -488,7 +488,7 @@ export default function MessagesPage() {
     if (!selectedChat) return;
 
     const otherUserId = getOtherParticipant(selectedChat);
-    const { data: isBlockedByOther } = await supabase
+    const { data: isBlockedByOther } = await getSupabase()
       .from('blocked_users')
       .select('id')
       .eq('blocker_id', otherUserId)
@@ -530,7 +530,7 @@ export default function MessagesPage() {
         const fileExt = selectedFile.name.split('.').pop();
         const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase
+        const { error: uploadError } = await getSupabase()
           .storage
           .from('message-attachments')
           .upload(filePath, selectedFile);
@@ -630,7 +630,7 @@ export default function MessagesPage() {
     const otherUserId = getOtherParticipant(selectedChat);
 
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('blocked_users')
         .delete()
         .eq('blocker_id', user.id)
@@ -715,7 +715,7 @@ export default function MessagesPage() {
     if (!selectedChatId || !user) return;
 
     try {
-      await supabase
+      await getSupabase()
         .from('typing_indicators')
         .upsert(
           {
@@ -728,7 +728,7 @@ export default function MessagesPage() {
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(async () => {
-        await supabase
+        await getSupabase()
           .from('typing_indicators')
           .delete()
           .eq('chat_id', selectedChatId)
