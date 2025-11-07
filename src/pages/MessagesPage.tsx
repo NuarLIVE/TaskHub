@@ -111,6 +111,7 @@ export default function MessagesPage() {
 
   // Для UX "Печатает"
   const otherTypingHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const justMarkedReadRef = useRef<Set<string>>(new Set());
   const otherTypingShownAtRef = useRef<number>(0);
   const wasTypingRef = useRef<boolean>(false);
   const prevScrollTopRef = useRef<number>(0);
@@ -193,6 +194,12 @@ export default function MessagesPage() {
       callback: (payload) => {
         if (payload.eventType === 'UPDATE') {
           const updatedChat = payload.new as Chat;
+
+          if (justMarkedReadRef.current.has(updatedChat.id)) {
+            justMarkedReadRef.current.delete(updatedChat.id);
+            return;
+          }
+
           setChats((prev) => {
             const existingChat = prev.find((c) => c.id === updatedChat.id);
             if (!existingChat) return prev;
@@ -506,6 +513,9 @@ export default function MessagesPage() {
       const chat = chats.find((c) => c.id === chatId);
       if (chat) {
         const isP1 = chat.participant1_id === user.id;
+
+        justMarkedReadRef.current.add(chatId);
+
         await getSupabase()
           .from('chats')
           .update({
