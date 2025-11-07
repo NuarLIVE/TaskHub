@@ -196,7 +196,6 @@ export default function MessagesPage() {
           const updatedChat = payload.new as Chat;
 
           if (justMarkedReadRef.current.has(updatedChat.id)) {
-            justMarkedReadRef.current.delete(updatedChat.id);
             return;
           }
 
@@ -515,6 +514,9 @@ export default function MessagesPage() {
         const isP1 = chat.participant1_id === user.id;
 
         justMarkedReadRef.current.add(chatId);
+        setTimeout(() => {
+          justMarkedReadRef.current.delete(chatId);
+        }, 3000);
 
         await getSupabase()
           .from('chats')
