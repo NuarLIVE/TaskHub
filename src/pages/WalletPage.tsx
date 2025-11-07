@@ -90,7 +90,7 @@ export default function WalletPage() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('wallets')
         .select('*')
         .eq('user_id', user.id)
@@ -109,7 +109,7 @@ export default function WalletPage() {
     if (!user) return;
 
     try {
-      const { data: walletData } = await supabase
+      const { data: walletData } = await getSupabase()
         .from('wallets')
         .select('id')
         .eq('user_id', user.id)
@@ -117,7 +117,7 @@ export default function WalletPage() {
 
       if (!walletData) return;
 
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('transactions')
         .select('*')
         .eq('wallet_id', walletData.id)
@@ -140,7 +140,7 @@ export default function WalletPage() {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('transactions')
         .insert({
           wallet_id: wallet.id,
@@ -153,7 +153,7 @@ export default function WalletPage() {
 
       if (error) throw error;
 
-      await supabase
+      await getSupabase()
         .from('wallets')
         .update({
           balance: wallet.balance - amount,
@@ -183,7 +183,7 @@ export default function WalletPage() {
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('transactions')
         .insert({
           wallet_id: wallet.id,
@@ -197,7 +197,7 @@ export default function WalletPage() {
 
       if (error) throw error;
 
-      await supabase
+      await getSupabase()
         .from('wallets')
         .update({
           balance: wallet.balance + amount,
