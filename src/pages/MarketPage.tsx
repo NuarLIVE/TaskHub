@@ -70,14 +70,14 @@ export default function MarketPage() {
     setLoading(true);
 
     try {
-      let ordersQuery = supabase
+      let ordersQuery = getSupabase()
         .from('orders')
         .select('*')
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(100);
 
-      let tasksQuery = supabase
+      let tasksQuery = getSupabase()
         .from('tasks')
         .select('*')
         .eq('status', 'active')
@@ -97,7 +97,7 @@ export default function MarketPage() {
       tasksData.forEach((t: any) => allUserIds.add(t.user_id));
 
       if (allUserIds.size > 0) {
-        const { data: profilesData } = await supabase
+        const { data: profilesData } = await getSupabase()
           .from('profiles')
           .select('id, name, avatar_url')
           .in('id', Array.from(allUserIds));
