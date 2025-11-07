@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabase, executeQuery } from './supabase';
 
 interface RetryOptions {
   maxRetries?: number;
@@ -17,7 +17,7 @@ export async function queryWithRetry<T>(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const result = await Promise.race([
-        queryFn(),
+        executeQuery(async () => await queryFn()),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Query timeout')), timeoutMs)
         )
@@ -55,6 +55,7 @@ export async function subscribeWithMonitoring(
 ) {
   const { table, event, filter, callback, onError } = config;
 
+  const supabase = getSupabase();
   const channel = supabase.channel(channelName);
 
   const subscriptionConfig: any = {

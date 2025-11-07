@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 export function DbStatus() {
@@ -9,6 +9,7 @@ export function DbStatus() {
   const checkConnection = async () => {
     setStatus('checking');
     try {
+      const supabase = getSupabase();
       const { error } = await Promise.race([
         supabase.from('profiles').select('id').limit(1),
         new Promise<never>((_, reject) =>
