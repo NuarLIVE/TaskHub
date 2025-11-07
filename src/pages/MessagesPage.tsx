@@ -278,6 +278,22 @@ export default function MessagesPage() {
       onError: () => setTimeout(() => loadMessages(selectedChatId), 2000)
     }).then(sub => { messagesSubscription = sub; });
 
+    let messagesUpdateSubscription: any = null;
+    subscribeWithMonitoring(`messages-update:${selectedChatId}`, {
+      table: 'messages',
+      event: 'UPDATE',
+      filter: `chat_id=eq.${selectedChatId}`,
+      callback: (payload) => {
+        const updatedMessage = payload.new as Message;
+        if (updatedMessage.sender_id === user.id) {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+          );
+        }
+      },
+      onError: () => {}
+    }).then(sub => { messagesUpdateSubscription = sub; });
+
     const typingSubscription = getSupabase()
       .channel(`typing:${selectedChatId}`)
       .on(
@@ -316,7 +332,8 @@ export default function MessagesPage() {
     return () => {
       isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      messagesSubscription.unsubscribe();
+      messagesSubscription?.unsubscribe();
+      messagesUpdateSubscription?.unsubscribe();
       typingSubscription.unsubscribe();
       setIsOtherUserTyping(false);
       if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
@@ -455,6 +472,12 @@ export default function MessagesPage() {
         .neq('sender_id', user.id)
         .eq('is_read', false);
 
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.chat_id === chatId && msg.sender_id !== user.id ? { ...msg, is_read: true } : msg
+        )
+      );
+
       const chat = chats.find((c) => c.id === chatId);
       if (chat) {
         const isP1 = chat.participant1_id === user.id;
@@ -465,6 +488,18 @@ export default function MessagesPage() {
             unread_count_p2: !isP1 ? 0 : chat.unread_count_p2,
           })
           .eq('id', chatId);
+
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === chatId
+              ? {
+                  ...c,
+                  unread_count_p1: isP1 ? 0 : c.unread_count_p1,
+                  unread_count_p2: !isP1 ? 0 : c.unread_count_p2,
+                }
+              : c
+          )
+        );
       }
     } catch {
       // no-op
