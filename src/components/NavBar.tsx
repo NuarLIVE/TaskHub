@@ -35,17 +35,13 @@ export default function NavBar() {
     if (!user) return;
     try {
       const { data } = await getSupabase()
-        .from('chats')
-        .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
-        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
+        .from('profiles')
+        .select('unread_messages_count')
+        .eq('id', user.id)
+        .single();
 
       if (data) {
-        const total = data.reduce((sum, chat) => {
-          if (chat.participant1_id === user.id) return sum + (chat.unread_count_p1 || 0);
-          if (chat.participant2_id === user.id) return sum + (chat.unread_count_p2 || 0);
-          return sum;
-        }, 0);
-        setUnreadCount(Math.min(total, 99));
+        setUnreadCount(Math.min(data.unread_messages_count || 0, 99));
       }
     } catch {
       setUnreadCount(0);
@@ -84,29 +80,27 @@ export default function NavBar() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const chatsChannel = getSupabase()
-      .channel('navbar-chats')
+    const profileChannel = getSupabase()
+      .channel('navbar-profile-unread')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'chats' },
-        () => loadUnreadCount()
-      )
-      .subscribe();
-
-    const messagesChannel = getSupabase()
-      .channel('navbar-messages')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => loadUnreadCount()
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          const updatedProfile = payload.new as any;
+          setUnreadCount(Math.min(updatedProfile.unread_messages_count || 0, 99));
+        }
       )
       .subscribe();
 
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      chatsChannel.unsubscribe();
-      messagesChannel.unsubscribe();
+      profileChannel.unsubscribe();
     };
   }, [user]);
 
