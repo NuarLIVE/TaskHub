@@ -4,7 +4,7 @@ import { Calendar, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {

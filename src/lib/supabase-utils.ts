@@ -1,4 +1,4 @@
-import { getSupabase } from './supabase';
+import { getSupabase } from './supabaseClient';
 
 interface RetryOptions {
   maxRetries?: number;

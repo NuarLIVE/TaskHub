@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BoostBadge } from '@/components/ui/BoostBadge';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 

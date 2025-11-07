@@ -24,7 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
+import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
 import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -130,6 +131,17 @@ export default function MessagesPage() {
     if (!el) return;
     el.scrollTo({ top, behavior: 'smooth' });
   };
+
+  const reinitAll = async () => {
+    await loadChats(false);
+    if (selectedChatId) await loadMessages(selectedChatId);
+  };
+
+  useSupabaseKeepAlive({
+    onRecover: reinitAll,
+    intervalMs: 90_000,
+    headTable: 'profiles'
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -363,7 +375,7 @@ export default function MessagesPage() {
 
     try {
       const { data: chatsData, error: chatsError } = await queryWithRetry(
-        () => supabase
+        () => getSupabase()
           .from('chats')
           .select('*')
           .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
@@ -382,7 +394,7 @@ export default function MessagesPage() {
 
       if (userIds.size > 0) {
         const { data: profilesData, error: profilesError } = await queryWithRetry(
-          () => supabase
+          () => getSupabase()
             .from('profiles')
             .select('id, name, avatar_url, is_online, last_seen_at')
             .in('id', Array.from(userIds))
@@ -410,7 +422,7 @@ export default function MessagesPage() {
     if (!chat) return;
 
     const otherUserId = getOtherParticipant(chat);
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('blocked_users')
       .select('id')
       .eq('blocker_id', user.id)
@@ -423,7 +435,7 @@ export default function MessagesPage() {
   const loadMessages = async (chatId: string) => {
     try {
       const { data, error } = await queryWithRetry(
-        () => supabase
+        () => getSupabase()
           .from('messages')
           .select('*')
           .eq('chat_id', chatId)
@@ -687,7 +699,7 @@ export default function MessagesPage() {
     if (!user) return;
 
     try {
-      await supabase
+      await getSupabase()
         .from('profiles')
         .update({
           is_online: isOnline,

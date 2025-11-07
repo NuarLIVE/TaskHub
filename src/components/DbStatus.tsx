@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSupabase, forceReconnect } from '@/lib/supabase';
+import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
 import { Wifi, WifiOff, RefreshCw, CheckCircle } from 'lucide-react';
 
 export function DbStatus() {
@@ -47,7 +47,7 @@ export function DbStatus() {
 
     setStatus('reconnecting');
     try {
-      await forceReconnect();
+      await resetSupabase();
       await checkConnection();
     } catch (err) {
       console.error('Reconnect failed:', err);

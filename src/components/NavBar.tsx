@@ -3,7 +3,8 @@ import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
+import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
 
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
@@ -30,6 +31,36 @@ export default function NavBar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { isAuthenticated, user, logout } = useAuth();
 
+  const loadUnreadCount = async () => {
+    if (!user) return;
+    try {
+      const { data } = await getSupabase()
+        .from('chats')
+        .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
+        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
+
+      if (data) {
+        const total = data.reduce((sum, chat) => {
+          if (chat.participant1_id === user.id) return sum + (chat.unread_count_p1 || 0);
+          if (chat.participant2_id === user.id) return sum + (chat.unread_count_p2 || 0);
+          return sum;
+        }, 0);
+        setUnreadCount(total);
+      }
+    } catch {
+      setUnreadCount(0);
+    }
+  };
+
+  useSupabaseKeepAlive({
+    onRecover: async () => {
+      await resetSupabase();
+      await loadUnreadCount();
+    },
+    intervalMs: 90_000,
+    headTable: 'profiles'
+  });
+
   useEffect(() => {
     const handleHashChange = () => {
       setCurrentHash(window.location.hash);
@@ -41,26 +72,6 @@ export default function NavBar() {
 
   useEffect(() => {
     if (!user) return;
-
-    const loadUnreadCount = async () => {
-      try {
-        const { data } = await getSupabase()
-          .from('chats')
-          .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
-          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
-
-        if (data) {
-          const total = data.reduce((sum, chat) => {
-            if (chat.participant1_id === user.id) return sum + (chat.unread_count_p1 || 0);
-            if (chat.participant2_id === user.id) return sum + (chat.unread_count_p2 || 0);
-            return sum;
-          }, 0);
-          setUnreadCount(total);
-        }
-      } catch {
-        setUnreadCount(0);
-      }
-    };
 
     loadUnreadCount();
     const interval = setInterval(loadUnreadCount, 15000);
