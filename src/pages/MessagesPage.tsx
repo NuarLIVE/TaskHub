@@ -84,7 +84,6 @@ export default function MessagesPage() {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingTimeout, setLoadingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
@@ -160,16 +159,6 @@ export default function MessagesPage() {
       }
     };
 
-    const safetyTimeout = setTimeout(() => {
-      if (loading && isMounted) {
-        console.warn('⚠️ Force stopping loading after 15s');
-        setLoading(false);
-        if (chats.length === 0) {
-          setError('Загрузка заняла слишком много времени. Попробуйте обновить страницу.');
-        }
-      }
-    }, 15000);
-
     initChats();
     updateOnlineStatus(true);
 
@@ -229,7 +218,6 @@ export default function MessagesPage() {
 
     return () => {
       isMounted = false;
-      clearTimeout(safetyTimeout);
       clearInterval(interval);
       clearInterval(chatsRefreshInterval);
       updateOnlineStatus(false);
