@@ -4,7 +4,7 @@ import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play,
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/lib/currency';
 import { navigateToProfile } from '@/lib/navigation';

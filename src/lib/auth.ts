@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 
 export interface User {
   id: string;
@@ -51,28 +51,34 @@ class AuthService {
   }
 
   private async initializeAuth() {
+    const supabase = getSupabase();
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session?.user) {
       await this.loadUserProfile(session.user.id, session.user.email || '');
     }
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await this.loadUserProfile(session.user.id, session.user.email || '');
-      } else if (event === 'SIGNED_OUT') {
-        this.authState = {
-          user: null,
-          accessToken: null,
-          refreshToken: null,
-        };
-        this.notify();
-      }
+    supabase.auth.onAuthStateChange((event, session) => {
+      (async () => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          await this.loadUserProfile(session.user.id, session.user.email || '');
+        } else if (event === 'SIGNED_OUT') {
+          this.authState = {
+            user: null,
+            accessToken: null,
+            refreshToken: null,
+          };
+          this.notify();
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed automatically');
+        }
+      })();
     });
   }
 
   private async loadUserProfile(userId: string, email: string) {
     try {
+      const supabase = getSupabase();
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
@@ -118,6 +124,7 @@ class AuthService {
     role: 'CLIENT' | 'FREELANCER';
   }): Promise<{ success: boolean; error?: string }> {
     try {
+      const supabase = getSupabase();
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -148,6 +155,7 @@ class AuthService {
 
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const supabase = getSupabase();
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -171,6 +179,7 @@ class AuthService {
   }
 
   async logout() {
+    const supabase = getSupabase();
     await supabase.auth.signOut();
 
     this.authState = {
@@ -186,6 +195,7 @@ class AuthService {
 
   async refreshAccessToken(): Promise<boolean> {
     try {
+      const supabase = getSupabase();
       const { data, error } = await supabase.auth.refreshSession();
 
       if (error || !data.session) {
@@ -204,6 +214,7 @@ class AuthService {
   }
 
   async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+    const supabase = getSupabase();
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session?.access_token) {

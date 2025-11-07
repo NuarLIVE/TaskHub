@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
@@ -79,7 +79,7 @@ export default function PortfolioAdd() {
     setLoading(true);
     try {
       // First, ensure profile exists
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile } = await getSupabase()
         .from('profiles')
         .select('id')
         .eq('id', user.id)
@@ -87,7 +87,7 @@ export default function PortfolioAdd() {
 
       if (!existingProfile) {
         // Create profile if it doesn't exist
-        const { error: profileError } = await supabase
+        const { error: profileError } = await getSupabase()
           .from('profiles')
           .insert({
             id: user.id,
@@ -110,7 +110,7 @@ export default function PortfolioAdd() {
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         const filePath = `portfolio/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await getSupabase().storage
           .from('portfolio-images')
           .upload(filePath, imageFile, {
             cacheControl: '3600',
@@ -122,14 +122,14 @@ export default function PortfolioAdd() {
           throw new Error(`Ошибка при загрузке изображения: ${uploadError.message}`);
         }
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = getSupabase().storage
           .from('portfolio-images')
           .getPublicUrl(filePath);
 
         uploadedImageUrl = publicUrl;
       }
 
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('portfolio_projects')
         .insert({
           user_id: user.id,

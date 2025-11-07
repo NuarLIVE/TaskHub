@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import FavoriteButton from '@/components/ui/FavoriteButton';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { formatPrice } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 
 interface RetryOptions {
   maxRetries?: number;
@@ -51,31 +51,70 @@ export async function subscribeWithMonitoring(
     filter?: string;
     callback: (payload: any) => void;
     onError?: () => void;
+    onReconnect?: () => void;
   }
 ) {
-  const { table, event, filter, callback, onError } = config;
+  const { table, event, filter, callback, onError, onReconnect } = config;
 
-  const channel = supabase.channel(channelName);
+  let currentChannel: ReturnType<ReturnType<typeof getSupabase>['channel']> | null = null;
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 5;
+  let isReconnecting = false;
 
-  const subscriptionConfig: any = {
-    event,
-    schema: 'public',
-    table
+  const createSubscription = () => {
+    const supabase = getSupabase();
+    const channel = supabase.channel(channelName);
+
+    const subscriptionConfig: any = {
+      event,
+      schema: 'public',
+      table
+    };
+
+    if (filter) {
+      subscriptionConfig.filter = filter;
+    }
+
+    currentChannel = channel
+      .on('postgres_changes', subscriptionConfig, callback)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`✅ Subscribed: ${channelName}`);
+          reconnectAttempts = 0;
+          isReconnecting = false;
+          if (onReconnect) onReconnect();
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`❌ Subscription error: ${channelName}`);
+          if (onError) onError();
+
+          if (!isReconnecting && reconnectAttempts < maxReconnectAttempts) {
+            isReconnecting = true;
+            reconnectAttempts++;
+            console.log(`Attempting to reconnect subscription ${reconnectAttempts}/${maxReconnectAttempts}...`);
+
+            setTimeout(() => {
+              if (currentChannel) {
+                currentChannel.unsubscribe();
+              }
+              createSubscription();
+            }, Math.min(1000 * Math.pow(2, reconnectAttempts), 30000));
+          }
+        }
+      });
+
+    return currentChannel;
   };
 
-  if (filter) {
-    subscriptionConfig.filter = filter;
-  }
+  return createSubscription();
+}
 
-  return channel
-    .on('postgres_changes', subscriptionConfig, callback)
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Subscribed: ${channelName}`);
-      }
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.error(`❌ Subscription error: ${channelName}`);
-        if (onError) onError();
-      }
-    });
+export async function executeQuery<T>(
+  queryFn: (client: ReturnType<typeof getSupabase>) => Promise<{ data: T | null; error: any }>,
+  options: RetryOptions = {}
+): Promise<{ data: T | null; error: any }> {
+  return queryWithRetry(() => {
+    const client = getSupabase();
+    return queryFn(client);
+  }, options);
 }

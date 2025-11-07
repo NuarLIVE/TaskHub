@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -525,7 +525,7 @@ export default function MessagesPage() {
 
         if (uploadError) throw uploadError;
 
-        const { data: pub } = supabase.storage.from('message-attachments').getPublicUrl(filePath);
+        const { data: pub } = getSupabase().storage.from('message-attachments').getPublicUrl(filePath);
         fileUrl = pub.publicUrl;
         fileName = selectedFile.name;
 
@@ -536,7 +536,7 @@ export default function MessagesPage() {
         setUploading(false);
       }
 
-      const { error } = await supabase.from('messages').insert({
+      const { error } = await getSupabase().from('messages').insert({
         chat_id: selectedChatId,
         sender_id: user.id,
         text: messageText || '',
@@ -561,7 +561,7 @@ export default function MessagesPage() {
     if (!selectedChatId) return;
 
     try {
-      const { error } = await supabase.from('chats').delete().eq('id', selectedChatId);
+      const { error } = await getSupabase().from('chats').delete().eq('id', selectedChatId);
       if (error) throw error;
 
       alert('Чат удален');
@@ -582,7 +582,7 @@ export default function MessagesPage() {
     const otherUserId = getOtherParticipant(selectedChat);
 
     try {
-      const { error } = await supabase.from('blocked_users').insert({
+      const { error } = await getSupabase().from('blocked_users').insert({
         blocker_id: user.id,
         blocked_id: otherUserId,
       });
@@ -596,7 +596,7 @@ export default function MessagesPage() {
       }
 
       if (deleteAlsoChat) {
-        await supabase.from('chats').delete().eq('id', selectedChatId);
+        await getSupabase().from('chats').delete().eq('id', selectedChatId);
         setSelectedChatId(null);
       }
 
