@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSupabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
