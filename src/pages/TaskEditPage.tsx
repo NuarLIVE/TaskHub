@@ -4,7 +4,7 @@ import { Clock, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { getSupabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
@@ -82,7 +82,7 @@ export default function TaskEditPage() {
         return;
       }
 
-      const { data: { user: authUser } } = await getSupabase().auth.getUser();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser?.id !== taskData.user_id) {
         alert('У вас нет прав для редактирования этого объявления');
         window.location.hash = '#/my-deals';

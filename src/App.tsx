@@ -2,7 +2,6 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
-import { DbStatus } from './components/DbStatus';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -172,7 +171,6 @@ function App() {
           <Page />
         </Suspense>
         {!isAuthPage && <Footer />}
-        <DbStatus />
       </div>
     </AuthProvider>
   );

@@ -4,7 +4,7 @@ import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play,
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSupabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/lib/currency';
 import { navigateToProfile } from '@/lib/navigation';
@@ -78,11 +78,11 @@ export default function MyDealsPage() {
   const loadDeals = async () => {
     setLoading(true);
     try {
-      const { data: { user: authUser } } = await getSupabase().auth.getUser();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
 
       if (activeTab === 'mywork') {
-        const { data: dealsData } = await getSupabase()
+        const { data: dealsData } = await supabase
           .from('deals')
           .select('*')
           .eq('freelancer_id', authUser.id)
@@ -91,7 +91,7 @@ export default function MyDealsPage() {
         const clientIds = Array.from(new Set((dealsData || []).map(d => d.client_id)));
         let profilesMap: any = {};
         if (clientIds.length > 0) {
-          const { data: profilesData } = await getSupabase()
+          const { data: profilesData } = await supabase
             .from('profiles')
             .select('id, name, avatar_url')
             .in('id', clientIds);
@@ -100,13 +100,13 @@ export default function MyDealsPage() {
 
         setDeals((dealsData || []).map(d => ({ ...d, client: profilesMap[d.client_id] })));
       } else {
-        const { data: ordersData } = await getSupabase()
+        const { data: ordersData } = await supabase
           .from('orders')
           .select('*')
           .eq('user_id', authUser.id)
           .order('created_at', { ascending: false });
 
-        const { data: tasksData } = await getSupabase()
+        const { data: tasksData } = await supabase
           .from('tasks')
           .select('*')
           .eq('user_id', authUser.id)
@@ -125,7 +125,7 @@ export default function MyDealsPage() {
   const loadProposals = async (itemId: string, type: 'order' | 'task') => {
     try {
       const column = type === 'order' ? 'order_id' : 'task_id';
-      const { data: proposalsData } = await getSupabase()
+      const { data: proposalsData } = await supabase
         .from('proposals')
         .select('*')
         .eq(column, itemId)
@@ -133,7 +133,7 @@ export default function MyDealsPage() {
 
       if (proposalsData) {
         const userIds = proposalsData.map(p => p.user_id);
-        const { data: profilesData } = await getSupabase()
+        const { data: profilesData } = await supabase
           .from('profiles')
           .select('id, name, avatar_url')
           .in('id', userIds);
@@ -171,7 +171,7 @@ export default function MyDealsPage() {
       : type === 'order' ? 'open' : 'active';
 
     const table = type === 'order' ? 'orders' : 'tasks';
-    const { error } = await getSupabase()
+    const { error } = await supabase
       .from(table)
       .update({ status: newStatus })
       .eq('id', itemId);
@@ -187,7 +187,7 @@ export default function MyDealsPage() {
     }
 
     const table = type === 'order' ? 'orders' : 'tasks';
-    const { error } = await getSupabase()
+    const { error } = await supabase
       .from(table)
       .delete()
       .eq('id', itemId);

@@ -4,7 +4,7 @@ import { Clock, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { getSupabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = {
@@ -62,14 +62,14 @@ export default function TaskCreatePage() {
       }
     }
 
-    const { data: { user: authUser } } = await getSupabase().auth.getUser();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
       alert('Ошибка аутентификации');
       window.location.hash = '#/login';
       return;
     }
 
-    const { data, error } = await getSupabase()
+    const { data, error } = await supabase
       .from('tasks')
       .insert({
         user_id: authUser.id,

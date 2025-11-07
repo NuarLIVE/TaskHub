@@ -3,8 +3,7 @@ import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
-import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
+import { supabase } from '@/lib/supabase';
 
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
@@ -31,32 +30,6 @@ export default function NavBar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { isAuthenticated, user, logout } = useAuth();
 
-  const loadUnreadCount = async () => {
-    if (!user) return;
-    try {
-      const { data } = await getSupabase()
-        .from('profiles')
-        .select('unread_messages_count')
-        .eq('id', user.id)
-        .single();
-
-      if (data) {
-        setUnreadCount(Math.min(data.unread_messages_count || 0, 99));
-      }
-    } catch {
-      setUnreadCount(0);
-    }
-  };
-
-  useSupabaseKeepAlive({
-    onRecover: async () => {
-      await resetSupabase();
-      await loadUnreadCount();
-    },
-    intervalMs: 90_000,
-    headTable: 'profiles'
-  });
-
   useEffect(() => {
     const handleHashChange = () => {
       setCurrentHash(window.location.hash);
@@ -69,38 +42,51 @@ export default function NavBar() {
   useEffect(() => {
     if (!user) return;
 
-    loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 15000);
+    const loadUnreadCount = async () => {
+      try {
+        const { data } = await supabase
+          .from('chats')
+          .select('participant1_id, participant2_id, unread_count_p1, unread_count_p2')
+          .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
 
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadUnreadCount();
+        if (data) {
+          const total = data.reduce((sum, chat) => {
+            if (chat.participant1_id === user.id) return sum + (chat.unread_count_p1 || 0);
+            if (chat.participant2_id === user.id) return sum + (chat.unread_count_p2 || 0);
+            return sum;
+          }, 0);
+          setUnreadCount(total);
+        }
+      } catch {
+        setUnreadCount(0);
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 15000);
 
-    const profileChannel = getSupabase()
-      .channel('navbar-profile-unread')
+    const chatsChannel = supabase
+      .channel('navbar-chats')
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`
-        },
-        (payload) => {
-          const updatedProfile = payload.new as any;
-          setUnreadCount(Math.min(updatedProfile.unread_messages_count || 0, 99));
-        }
+        { event: '*', schema: 'public', table: 'chats' },
+        () => loadUnreadCount()
+      )
+      .subscribe();
+
+    const messagesChannel = supabase
+      .channel('navbar-messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => loadUnreadCount()
       )
       .subscribe();
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      profileChannel.unsubscribe();
+      chatsChannel.unsubscribe();
+      messagesChannel.unsubscribe();
     };
   }, [user]);
 
@@ -135,7 +121,7 @@ export default function NavBar() {
               {link.label}
               {link.label === 'Сообщения' && unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                  {unreadCount === 99 ? '99+' : unreadCount}
+                  {unreadCount}
                 </span>
               )}
             </a>
@@ -195,7 +181,7 @@ export default function NavBar() {
                   {link.label}
                   {link.label === 'Сообщения' && unreadCount > 0 && (
                     <span className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                      {unreadCount === 99 ? '99+' : unreadCount}
+                      {unreadCount}
                     </span>
                   )}
                 </span>
