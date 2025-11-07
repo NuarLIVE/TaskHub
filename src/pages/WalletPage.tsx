@@ -460,7 +460,7 @@ export default function WalletPage() {
 
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md m-4">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Вывод средств</CardTitle>
@@ -506,7 +506,7 @@ export default function WalletPage() {
 
       {showDepositModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md m-4">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Пополнение баланса</CardTitle>
