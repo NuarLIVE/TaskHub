@@ -1139,8 +1139,10 @@ export default function MessagesPage() {
                   CRM
                 </button>
 
+                {/* CRM Confirmation Notifications */}
+                {selectedChatId && <CRMConfirmation chatId={selectedChatId} />}
+
                 <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-                  {selectedChatId && <CRMConfirmation chatId={selectedChatId} />}
 
                   {messages.length === 0 ? (
                     <div className="text-center text-[#3F7F6E] mt-8">Начните разговор</div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSupabase } from '@/lib/supabaseClient';
 
@@ -130,59 +129,59 @@ export function CRMConfirmation({ chatId }: CRMConfirmationProps) {
 
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 0.7) {
-      return <Badge className="bg-green-100 text-green-800 border-green-300">Высокая</Badge>;
+      return <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Высокая</Badge>;
     } else if (confidence >= 0.4) {
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Средняя</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-xs">Средняя</Badge>;
     } else {
-      return <Badge className="bg-red-100 text-red-800 border-red-300">Низкая</Badge>;
+      return <Badge className="bg-red-100 text-red-800 border-red-300 text-xs">Низкая</Badge>;
     }
   };
 
   if (confirmations.length === 0) return null;
 
   return (
-    <div className="space-y-2 mb-4">
+    <div className="absolute left-4 top-32 z-20 w-80">
       <AnimatePresence>
-        {confirmations.map((confirmation) => (
+        {confirmations.map((confirmation, index) => (
           <motion.div
             key={confirmation.id}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, x: -20, y: -10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: -20, height: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            className="mb-2"
           >
-            <Card className="p-4 bg-blue-50 border-blue-200">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="font-medium text-sm text-gray-900">CRM: {confirmation.message}</p>
-                    {getConfidenceBadge(confirmation.confidence)}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleConfirm(confirmation)}
-                      disabled={loading}
-                      className="bg-[#3F7F6E] hover:bg-[#2d5f52] text-white"
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Подтвердить
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleReject(confirmation.id)}
-                      disabled={loading}
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Отклонить
-                    </Button>
-                  </div>
+            <div className="bg-white border-2 border-[#3F7F6E] rounded-lg shadow-lg overflow-hidden">
+              <div className="bg-[#3F7F6E] px-3 py-2 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-white flex-shrink-0" />
+                <span className="text-white font-semibold text-xs">CRM Подтверждение</span>
+                {getConfidenceBadge(confirmation.confidence)}
+              </div>
+              <div className="p-3 bg-[#6FE7C8]/10">
+                <p className="text-sm text-gray-800 mb-3 font-medium">{confirmation.message}</p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleConfirm(confirmation)}
+                    disabled={loading}
+                    className="flex-1 bg-[#3F7F6E] hover:bg-[#2d5f52] text-white text-xs h-8"
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Подтвердить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReject(confirmation.id)}
+                    disabled={loading}
+                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50 text-xs h-8"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Отклонить
+                  </Button>
                 </div>
               </div>
-            </Card>
+            </div>
           </motion.div>
         ))}
       </AnimatePresence>
