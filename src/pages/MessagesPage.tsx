@@ -102,7 +102,12 @@ export default function MessagesPage() {
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [crmPanelOpen, setCrmPanelOpen] = useState(false);
 
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const crmButtonRef = useRef<HTMLButtonElement>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
@@ -122,6 +127,19 @@ export default function MessagesPage() {
     const t = setInterval(() => setNowTick(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuOpen && menuRef.current && !menuRef.current.contains(event.target as Node) &&
+          menuButtonRef.current && !menuButtonRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
     const el = messagesContainerRef.current;
@@ -867,7 +885,6 @@ export default function MessagesPage() {
     new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
   // ======== АВТО-РОСТ TEXTAREA до 8 строк ========
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_ROWS = 8;
 
   const autosize = () => {
@@ -959,38 +976,52 @@ export default function MessagesPage() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div
-                            className="cursor-pointer relative"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigateToProfile(otherUserId, user?.id);
-                            }}
-                          >
-                            {profile?.avatar_url ? (
-                              <div className="relative">
-                                <img
-                                  src={profile.avatar_url}
-                                  alt={profile?.name || 'Пользователь'}
-                                  className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
-                                />
-                                {online && (
-                                  <span
-                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
-                                    style={{ bottom: '2px', right: '2px' }}
+                          <div className="flex flex-col items-center gap-1">
+                            <div
+                              className="cursor-pointer relative"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToProfile(otherUserId, user?.id);
+                              }}
+                            >
+                              {profile?.avatar_url ? (
+                                <div className="relative">
+                                  <img
+                                    src={profile.avatar_url}
+                                    alt={profile?.name || 'Пользователь'}
+                                    className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
                                   />
-                                )}
-                              </div>
-                            ) : (
-                              <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                                <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
-                                {online && (
-                                  <span
-                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
-                                    style={{ bottom: '2px', right: '2px' }}
-                                  />
-                                )}
-                              </div>
-                            )}
+                                  {online && (
+                                    <span
+                                      className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                      style={{ bottom: '2px', right: '2px' }}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                  <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
+                                  {online && (
+                                    <span
+                                      className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                      style={{ bottom: '2px', right: '2px' }}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              ref={chat.id === selectedChatId ? crmButtonRef : undefined}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedChatId(chat.id);
+                                setCrmPanelOpen(true);
+                              }}
+                              className="w-8 h-8 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-[10px] font-semibold transition"
+                              title="CRM"
+                            >
+                              CRM
+                            </button>
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -1071,22 +1102,20 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  <div className="relative">
                     <Button
+                      ref={menuButtonRef}
                       variant="ghost"
                       size="sm"
-                      onClick={() => setCrmPanelOpen(true)}
-                      className="hover:bg-[#EFFFF8]"
-                      title="CRM чата"
+                      onClick={() => setMenuOpen(!menuOpen)}
                     >
-                      <Briefcase className="h-4 w-4 text-[#3F7F6E]" />
+                      <MoreVertical className="h-4 w-4" />
                     </Button>
-                    <div className="relative">
-                      <Button variant="ghost" size="sm" onClick={() => setMenuOpen(!menuOpen)}>
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
                     {menuOpen && (
-                      <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[180px]">
+                      <div
+                        ref={menuRef}
+                        className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[180px]"
+                      >
                         <button
                           onClick={() => { setDeleteDialogOpen(true); setMenuOpen(false); }}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
@@ -1110,7 +1139,6 @@ export default function MessagesPage() {
                         </button>
                       </div>
                     )}
-                    </div>
                   </div>
                 </div>
 
@@ -1339,6 +1367,7 @@ export default function MessagesPage() {
           isOpen={crmPanelOpen}
           onClose={() => setCrmPanelOpen(false)}
           currentUserId={user.id}
+          triggerRef={crmButtonRef}
         />
       )}
     </motion.div>

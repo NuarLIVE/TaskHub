@@ -33,13 +33,15 @@ interface ChatCRMPanelProps {
   isOpen: boolean;
   onClose: () => void;
   currentUserId: string;
+  triggerRef?: React.RefObject<HTMLButtonElement>;
 }
 
-export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId }: ChatCRMPanelProps) {
+export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRef }: ChatCRMPanelProps) {
   const [crmData, setCrmData] = useState<CRMContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [newTask, setNewTask] = useState('');
+  const panelRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -67,6 +69,23 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId }: ChatCRM
       };
     }
   }, [isOpen, chatId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const isClickOnPanel = panelRef.current && panelRef.current.contains(target);
+      const isClickOnTrigger = triggerRef?.current && triggerRef.current.contains(target);
+
+      if (isOpen && !isClickOnPanel && !isClickOnTrigger) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen, onClose, triggerRef]);
 
   const loadCRMData = async () => {
     setLoading(true);
@@ -185,6 +204,7 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId }: ChatCRM
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
