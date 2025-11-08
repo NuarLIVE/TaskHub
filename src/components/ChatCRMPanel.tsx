@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, Trash2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -159,6 +159,24 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
 
     const updatedTasks = crmData.tasks.filter((_, i) => i !== index);
     await updateCRMData({ tasks: updatedTasks });
+  };
+
+  const clearCRMData = async () => {
+    if (!crmData) return;
+
+    const confirmed = window.confirm('Вы уверены, что хотите очистить все CRM данные? Это действие нельзя отменить.');
+
+    if (!confirmed) return;
+
+    await updateCRMData({
+      order_title: '',
+      total_price: 0,
+      currency: 'USD',
+      deadline: undefined,
+      priority: 'medium',
+      tasks: [],
+      notes: '',
+    });
   };
 
   const toggleTaskExpanded = (index: number) => {
@@ -487,12 +505,20 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
               </div>
             )}
 
-            <div className="p-4 border-t bg-gray-50">
+            <div className="p-4 border-t bg-gray-50 space-y-2">
               <Button
                 onClick={() => setEditing(!editing)}
                 className="w-full bg-[#3F7F6E] hover:bg-[#2d5f52]"
               >
                 {editing ? 'Завершить редактирование' : 'Редактировать'}
+              </Button>
+              <Button
+                onClick={clearCRMData}
+                variant="outline"
+                className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Очистить CRM
               </Button>
             </div>
           </motion.div>
