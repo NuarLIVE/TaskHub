@@ -65,7 +65,7 @@ export default function ProposalsCreate() {
         </h1>
 
         <Card className="mb-6">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 px-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default function ProposalsCreate() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <a href={`#/u/${orderData.author.name.toLowerCase()}`} className="flex items-center gap-2 hover:opacity-80 transition">
@@ -102,10 +102,10 @@ export default function ProposalsCreate() {
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-6">
             <CardTitle>Ваше предложение</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-6">
             <form onSubmit={handleSubmit} className="grid gap-6">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
