@@ -30,7 +30,7 @@ export default function MyTasksPage() {
     if (!user) return;
 
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('tasks')
       .select('*')
       .eq('user_id', user.id)

@@ -39,20 +39,35 @@ export default function ProposalsPage() {
     setLoading(true);
 
     try {
+      const supabase = getSupabase();
+
       const { data: sent } = await supabase
         .from('proposals')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      const { data: received } = await supabase
-        .from('proposals')
-        .select('*')
-        .or(`order_id.in.(${await getUserOrderIds()}),task_id.in.(${await getUserTaskIds()})`)
-        .order('created_at', { ascending: false });
+      const orderIds = await getUserOrderIds();
+      const taskIds = await getUserTaskIds();
+
+      let received: any[] = [];
+
+      if (orderIds.length > 0 || taskIds.length > 0) {
+        const conditions: string[] = [];
+        if (orderIds.length > 0) conditions.push(`order_id.in.(${orderIds.join(',')})`);
+        if (taskIds.length > 0) conditions.push(`task_id.in.(${taskIds.join(',')})`);
+
+        const { data: receivedData } = await supabase
+          .from('proposals')
+          .select('*')
+          .or(conditions.join(','))
+          .order('created_at', { ascending: false });
+
+        received = receivedData || [];
+      }
 
       setSentProposals(sent || []);
-      setReceivedProposals(received || []);
+      setReceivedProposals(received);
 
       const allUserIds = new Set<string>();
       (sent || []).forEach((p: any) => allUserIds.add(p.user_id));
@@ -70,7 +85,7 @@ export default function ProposalsPage() {
       });
 
       if (allUserIds.size > 0) {
-        const { data: profilesData } = await supabase
+        const { data: profilesData } = await getSupabase()
           .from('profiles')
           .select('id, name, avatar_url')
           .in('id', Array.from(allUserIds));
@@ -83,7 +98,7 @@ export default function ProposalsPage() {
       }
 
       if (allOrderIds.size > 0) {
-        const { data: ordersData } = await supabase
+        const { data: ordersData } = await getSupabase()
           .from('orders')
           .select('id, title, user_id')
           .in('id', Array.from(allOrderIds));
@@ -96,7 +111,7 @@ export default function ProposalsPage() {
       }
 
       if (allTaskIds.size > 0) {
-        const { data: tasksData } = await supabase
+        const { data: tasksData } = await getSupabase()
           .from('tasks')
           .select('id, title, user_id')
           .in('id', Array.from(allTaskIds));
@@ -115,21 +130,21 @@ export default function ProposalsPage() {
   };
 
   const getUserOrderIds = async () => {
-    if (!user) return '';
-    const { data } = await supabase
+    if (!user) return [];
+    const { data } = await getSupabase()
       .from('orders')
       .select('id')
       .eq('user_id', user.id);
-    return (data || []).map((o: any) => o.id).join(',') || 'null';
+    return (data || []).map((o: any) => o.id);
   };
 
   const getUserTaskIds = async () => {
-    if (!user) return '';
-    const { data } = await supabase
+    if (!user) return [];
+    const { data } = await getSupabase()
       .from('tasks')
       .select('id')
       .eq('user_id', user.id);
-    return (data || []).map((t: any) => t.id).join(',') || 'null';
+    return (data || []).map((t: any) => t.id);
   };
 
   const handleAccept = async (proposal: any) => {

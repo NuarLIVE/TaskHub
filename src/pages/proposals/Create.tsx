@@ -20,6 +20,8 @@ export default function ProposalsCreate() {
   const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [orderOrTaskData, setOrderOrTaskData] = useState<any>(null);
+  const [currency, setCurrency] = useState('USD');
 
   const params = new URLSearchParams(window.location.hash.split('?')[1]);
   const type = params.get('type') || 'order';
@@ -30,6 +32,7 @@ export default function ProposalsCreate() {
       window.location.hash = '/login';
     } else {
       loadPortfolio();
+      loadOrderOrTask();
     }
   }, [user]);
 
@@ -50,28 +53,94 @@ export default function ProposalsCreate() {
     }
   };
 
+  const loadOrderOrTask = async () => {
+    try {
+      if (type === 'order') {
+        const { data } = await getSupabase()
+          .from('orders')
+          .select('*, profiles(name, avatar_url)')
+          .eq('id', id)
+          .single();
+        setOrderOrTaskData(data);
+        if (data?.currency) setCurrency(data.currency);
+      } else {
+        const { data } = await getSupabase()
+          .from('tasks')
+          .select('*, profiles(name, avatar_url)')
+          .eq('id', id)
+          .single();
+        setOrderOrTaskData(data);
+        if (data?.currency) setCurrency(data.currency);
+      }
+    } catch (error) {
+      console.error('Error loading order/task:', error);
+    }
+  };
+
   const togglePortfolioItem = (id: string) => {
     setSelectedPortfolio(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
 
-  const orderData = {
-    id: id,
-    title: type === 'order' ? 'Лендинг на React для стартапа' : 'Unity прототип',
-    description: type === 'order'
-      ? 'Нужен современный лендинг на React с адаптивной вёрсткой и интеграцией с API. Дизайн готов.'
-      : 'Создание игрового прототипа на Unity. Требуется опыт разработки 2D/3D игр.',
-    budget: type === 'order' ? '$600-800' : '$1000',
-    tags: type === 'order' ? ['React', 'Landing', 'Responsive'] : ['Unity', 'Game Dev', 'Prototype'],
-    author: { name: 'NovaTech', avatar: 'https://i.pravatar.cc/64?img=12' }
-  };
+  const orderData = orderOrTaskData ? {
+    id: orderOrTaskData.id,
+    title: orderOrTaskData.title,
+    description: orderOrTaskData.description,
+    budget: type === 'order' ? `${orderOrTaskData.price_min}-${orderOrTaskData.price_max} ${orderOrTaskData.currency}` : `${orderOrTaskData.price} ${orderOrTaskData.currency}`,
+    tags: orderOrTaskData.tags || [],
+    author: { name: orderOrTaskData.profiles?.name || 'User', avatar: orderOrTaskData.profiles?.avatar_url }
+  } : null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Proposal submitted:', { type, id, price, days, message, attachment });
-    alert('Отклик отправлен (демо)');
-    window.location.hash = '/';
+
+    if (!user) {
+      alert('Войдите в систему');
+      return;
+    }
+
+    if (!price || !days || !message) {
+      alert('Заполните все обязательные поля');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const proposalData: any = {
+        user_id: user.id,
+        message,
+        price: Number(price),
+        currency,
+        delivery_days: Number(days),
+        status: 'pending'
+      };
+
+      if (type === 'order') {
+        proposalData.order_id = id;
+      } else {
+        proposalData.task_id = id;
+      }
+
+      const { error } = await getSupabase()
+        .from('proposals')
+        .insert(proposalData);
+
+      if (error) {
+        console.error('Error creating proposal:', error);
+        alert('Ошибка при отправке отклика: ' + error.message);
+        return;
+      }
+
+      alert('Отклик успешно отправлен!');
+      window.location.hash = '/proposals';
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Произошла ошибка');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -93,18 +162,25 @@ export default function ProposalsCreate() {
           Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'}
         </h1>
 
-        <Card className="mb-6">
-          <CardHeader className="pb-3 px-6">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <CardTitle className="flex items-center gap-2">
-                  {type === 'order' ? <Briefcase className="h-5 w-5" /> : <Tag className="h-5 w-5" />}
-                  {orderData.title}
-                </CardTitle>
-                <p className="text-sm text-[#3F7F6E] mt-2">{orderData.description}</p>
+        {!orderData ? (
+          <Card className="mb-6">
+            <CardContent className="p-6 text-center">
+              <p>Загрузка...</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="mb-6">
+            <CardHeader className="pb-3 px-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="flex items-center gap-2">
+                    {type === 'order' ? <Briefcase className="h-5 w-5" /> : <Tag className="h-5 w-5" />}
+                    {orderData.title}
+                  </CardTitle>
+                  <p className="text-sm text-[#3F7F6E] mt-2">{orderData.description}</p>
+                </div>
               </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
 
           {/* Плашка профиля — добавлен нижний отступ */}
           <CardContent className="px-6 pt-4 pb-6">
@@ -124,6 +200,7 @@ export default function ProposalsCreate() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <div className="mb-4 px-5 py-4 rounded-lg bg-[#EFFFF8] border border-[#6FE7C8]/20">
           <p className="text-sm text-[#3F7F6E]">
@@ -278,9 +355,9 @@ export default function ProposalsCreate() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={loading}>
                   <Send className="h-4 w-4 mr-2" />
-                  Отправить отклик
+                  {loading ? 'Отправка...' : 'Отправить отклик'}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleCancel}>
                   Отмена
