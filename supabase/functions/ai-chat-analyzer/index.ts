@@ -225,9 +225,11 @@ Deno.serve(async (req: Request) => {
 
     const analysis = await analyzeWithAI(message_text, crmContext);
 
+    console.log('AI Analysis:', JSON.stringify(analysis, null, 2));
+
     const updates: Partial<CRMContext> = {};
     const confirmationsNeeded: string[] = [];
-    const CONFIDENCE_THRESHOLD = 0.7;
+    const CONFIDENCE_THRESHOLD = 0.85;
 
     if (analysis.order_title && analysis.order_title.value) {
       const newTitle = analysis.order_title.value.slice(0, 100);

@@ -657,8 +657,6 @@ export default function MessagesPage() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      console.log('🤖 Analyzing message:', { chatId, text, senderId });
-
       const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat-analyzer`, {
         method: 'POST',
         headers: {
@@ -674,9 +672,11 @@ export default function MessagesPage() {
       });
 
       const result = await response.json();
-      console.log('🤖 Analysis result:', result);
+      if (result.confirmations_pending > 0) {
+        console.log('✅ CRM: Created', result.confirmations_pending, 'confirmations');
+      }
     } catch (error) {
-      console.error('❌ Error analyzing message:', error);
+      console.error('❌ CRM Analysis error:', error);
     }
   };
 
