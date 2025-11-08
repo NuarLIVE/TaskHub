@@ -229,20 +229,25 @@ Deno.serve(async (req: Request) => {
     const confirmationsNeeded: string[] = [];
     const CONFIDENCE_THRESHOLD = 0.7;
 
-    if (analysis.order_title && analysis.order_title.value && !crmContext?.order_title) {
-      if (analysis.order_title.confidence >= CONFIDENCE_THRESHOLD) {
-        updates.order_title = analysis.order_title.value.slice(0, 100);
-      } else {
-        const message = `Название проекта: "${analysis.order_title.value}". Верно?`;
-        await createPendingConfirmation(
-          supabase,
-          chat_id,
-          'order_title',
-          { value: analysis.order_title.value },
-          analysis.order_title.confidence,
-          message
-        );
-        confirmationsNeeded.push('order_title');
+    if (analysis.order_title && analysis.order_title.value) {
+      const newTitle = analysis.order_title.value.slice(0, 100);
+      const isDifferent = !crmContext?.order_title || crmContext.order_title !== newTitle;
+
+      if (isDifferent) {
+        if (analysis.order_title.confidence >= CONFIDENCE_THRESHOLD) {
+          updates.order_title = newTitle;
+        } else {
+          const message = `Название проекта: "${newTitle}". Верно?`;
+          await createPendingConfirmation(
+            supabase,
+            chat_id,
+            'order_title',
+            { value: newTitle },
+            analysis.order_title.confidence,
+            message
+          );
+          confirmationsNeeded.push('order_title');
+        }
       }
     }
 
@@ -262,65 +267,79 @@ Deno.serve(async (req: Request) => {
           break;
       }
 
-      if (analysis.price_change.confidence >= CONFIDENCE_THRESHOLD) {
-        updates.total_price = newPrice;
-        if (analysis.price_change.currency) {
-          updates.currency = analysis.price_change.currency;
+      const isDifferent = newPrice !== currentPrice;
+
+      if (isDifferent) {
+        if (analysis.price_change.confidence >= CONFIDENCE_THRESHOLD) {
+          updates.total_price = newPrice;
+          if (analysis.price_change.currency) {
+            updates.currency = analysis.price_change.currency;
+          }
+        } else {
+          const priceMessage = `Цена: ${newPrice} ${analysis.price_change.currency || crmContext?.currency || 'USD'}. Верно?`;
+          await createPendingConfirmation(
+            supabase,
+            chat_id,
+            'total_price',
+            {
+              value: newPrice,
+              currency: analysis.price_change.currency || crmContext?.currency || 'USD'
+            },
+            analysis.price_change.confidence,
+            priceMessage
+          );
+          confirmationsNeeded.push('total_price');
         }
-      } else {
-        const priceMessage = `Цена: ${newPrice} ${analysis.price_change.currency || crmContext?.currency || 'USD'}. Верно?`;
-        await createPendingConfirmation(
-          supabase,
-          chat_id,
-          'total_price',
-          {
-            value: newPrice,
-            currency: analysis.price_change.currency || crmContext?.currency || 'USD'
-          },
-          analysis.price_change.confidence,
-          priceMessage
-        );
-        confirmationsNeeded.push('total_price');
       }
     }
 
     if (analysis.deadline && analysis.deadline.value) {
       const deadlineDate = new Date(analysis.deadline.value);
       if (!isNaN(deadlineDate.getTime()) && deadlineDate > new Date()) {
-        if (analysis.deadline.confidence >= CONFIDENCE_THRESHOLD) {
-          updates.deadline = deadlineDate.toISOString();
-        } else {
-          const formattedDate = deadlineDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          const message = `Дедлайн: ${formattedDate}. Верно?`;
-          await createPendingConfirmation(
-            supabase,
-            chat_id,
-            'deadline',
-            { value: deadlineDate.toISOString() },
-            analysis.deadline.confidence,
-            message
-          );
-          confirmationsNeeded.push('deadline');
+        const newDeadline = deadlineDate.toISOString();
+        const currentDeadline = crmContext?.deadline;
+        const isDifferent = !currentDeadline || new Date(currentDeadline).toDateString() !== deadlineDate.toDateString();
+
+        if (isDifferent) {
+          if (analysis.deadline.confidence >= CONFIDENCE_THRESHOLD) {
+            updates.deadline = newDeadline;
+          } else {
+            const formattedDate = deadlineDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const message = `Дедлайн: ${formattedDate}. Верно?`;
+            await createPendingConfirmation(
+              supabase,
+              chat_id,
+              'deadline',
+              { value: newDeadline },
+              analysis.deadline.confidence,
+              message
+            );
+            confirmationsNeeded.push('deadline');
+          }
         }
       }
     }
 
     if (analysis.priority && analysis.priority.value && ['low', 'medium', 'high'].includes(analysis.priority.value)) {
-      if (analysis.priority.confidence >= CONFIDENCE_THRESHOLD) {
-        updates.priority = analysis.priority.value;
-      } else {
-        const priorityLabels = { low: 'Низкий', medium: 'Средний', high: 'Высокий' };
-        const priorityLabel = priorityLabels[analysis.priority.value as keyof typeof priorityLabels] || analysis.priority.value;
-        const message = `Приоритет: ${priorityLabel}. Верно?`;
-        await createPendingConfirmation(
-          supabase,
-          chat_id,
-          'priority',
-          { value: analysis.priority.value },
-          analysis.priority.confidence,
-          message
-        );
-        confirmationsNeeded.push('priority');
+      const isDifferent = !crmContext?.priority || crmContext.priority !== analysis.priority.value;
+
+      if (isDifferent) {
+        if (analysis.priority.confidence >= CONFIDENCE_THRESHOLD) {
+          updates.priority = analysis.priority.value;
+        } else {
+          const priorityLabels = { low: 'Низкий', medium: 'Средний', high: 'Высокий' };
+          const priorityLabel = priorityLabels[analysis.priority.value as keyof typeof priorityLabels] || analysis.priority.value;
+          const message = `Приоритет: ${priorityLabel}. Верно?`;
+          await createPendingConfirmation(
+            supabase,
+            chat_id,
+            'priority',
+            { value: analysis.priority.value },
+            analysis.priority.confidence,
+            message
+          );
+          confirmationsNeeded.push('priority');
+        }
       }
     }
 
