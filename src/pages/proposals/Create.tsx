@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function ProposalsCreate() {
+  const { user } = useAuth();
   const [price, setPrice] = useState('');
   const [days, setDays] = useState('');
   const [message, setMessage] = useState('');
@@ -18,6 +20,12 @@ export default function ProposalsCreate() {
   const params = new URLSearchParams(window.location.hash.split('?')[1]);
   const type = params.get('type') || 'order';
   const id = params.get('id') || '1';
+
+  useEffect(() => {
+    if (!user) {
+      window.location.hash = '/login';
+    }
+  }, [user]);
 
   const orderData = {
     id: id,
@@ -51,7 +59,7 @@ export default function ProposalsCreate() {
       transition={pageTransition}
       className="min-h-screen bg-background"
     >
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
+      <section className="mx-auto max-w-3xl px-6 sm:px-8 lg:px-10 py-10">
         <h1 className="text-2xl font-bold mb-6">
           Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'}
         </h1>

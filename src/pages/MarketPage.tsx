@@ -182,6 +182,14 @@ export default function MarketPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleProposalClick = () => {
+    if (!user) {
+      window.location.hash = '/login';
+      return;
+    }
+    window.location.hash = `/proposals/create?type=${previewType}&id=${previewItem.id}`;
+  };
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -430,10 +438,8 @@ export default function MarketPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Закрыть</Button>
-                  <Button asChild>
-                    <a href={`#/proposals/create?type=${previewType}&id=${previewItem.id}`}>
-                      Откликнуться
-                    </a>
+                  <Button onClick={handleProposalClick}>
+                    Откликнуться
                   </Button>
                 </DialogFooter>
               </>
