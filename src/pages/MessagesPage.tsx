@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+// import { Input } from '@/components/ui/input'; // не нужен, используем нативные input/textarea
 import {
   Dialog,
   DialogContent,
@@ -1114,7 +1114,7 @@ export default function MessagesPage() {
                           }}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-red-600"
                         >
-                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTriangle className="h-4 в-4" />
                           Пожаловаться
                         </button>
                       </div>
@@ -1286,7 +1286,8 @@ export default function MessagesPage() {
                         <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
                       </Button>
 
-                      <Textarea
+                      {/* Нативный textarea с авто-ростом до 8 строк */}
+                      <textarea
                         ref={textareaRef}
                         value={message}
                         onChange={(e) => {
@@ -1298,7 +1299,7 @@ export default function MessagesPage() {
                         placeholder="Введите сообщение..."
                         disabled={uploading}
                         rows={1}
-                        className="min-h-11 h-auto resize-none leading-5 px-3 py-2 flex-1"
+                        className="min-h-11 w-full h-auto resize-none leading-5 px-3 py-2 rounded-md border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
 
                       <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading}>
