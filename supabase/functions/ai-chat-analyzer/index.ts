@@ -84,8 +84,7 @@ async function analyzeWithAI(messageText: string, existingContext: any): Promise
 {
   "order_title": {
     "value": "название проекта",
-    "confidence": 0.8,
-    "message": "Название проекта: {value}. Верно?"
+    "confidence": 0.8
   },
   "price_change": {
     "type": "set|add|subtract",
@@ -95,16 +94,14 @@ async function analyzeWithAI(messageText: string, existingContext: any): Promise
   },
   "deadline": {
     "value": "YYYY-MM-DD",
-    "confidence": 0.7,
-    "message": "Дедлайн: {дата в формате DD.MM.YYYY}. Верно?"
+    "confidence": 0.7
   },
   "priority": {
     "value": "low|medium|high",
-    "confidence": 0.6,
-    "message": "Приоритет: {значение}. Верно?"
+    "confidence": 0.6
   },
   "tasks": {
-    "items": [{тitle": "название", "description": "описание"}],
+    "items": [{"title": "название", "description": "описание"}],
     "confidence": 0.8
   }
 }
@@ -232,17 +229,18 @@ Deno.serve(async (req: Request) => {
     const confirmationsNeeded: string[] = [];
     const CONFIDENCE_THRESHOLD = 0.7;
 
-    if (analysis.order_title && !crmContext?.order_title) {
+    if (analysis.order_title && analysis.order_title.value && !crmContext?.order_title) {
       if (analysis.order_title.confidence >= CONFIDENCE_THRESHOLD) {
         updates.order_title = analysis.order_title.value.slice(0, 100);
       } else {
+        const message = `Название проекта: "${analysis.order_title.value}". Верно?`;
         await createPendingConfirmation(
           supabase,
           chat_id,
           'order_title',
           { value: analysis.order_title.value },
           analysis.order_title.confidence,
-          analysis.order_title.message
+          message
         );
         confirmationsNeeded.push('order_title');
       }
@@ -286,36 +284,41 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (analysis.deadline) {
+    if (analysis.deadline && analysis.deadline.value) {
       const deadlineDate = new Date(analysis.deadline.value);
       if (!isNaN(deadlineDate.getTime()) && deadlineDate > new Date()) {
         if (analysis.deadline.confidence >= CONFIDENCE_THRESHOLD) {
           updates.deadline = deadlineDate.toISOString();
         } else {
+          const formattedDate = deadlineDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const message = `Дедлайн: ${formattedDate}. Верно?`;
           await createPendingConfirmation(
             supabase,
             chat_id,
             'deadline',
             { value: deadlineDate.toISOString() },
             analysis.deadline.confidence,
-            analysis.deadline.message
+            message
           );
           confirmationsNeeded.push('deadline');
         }
       }
     }
 
-    if (analysis.priority && ['low', 'medium', 'high'].includes(analysis.priority.value)) {
+    if (analysis.priority && analysis.priority.value && ['low', 'medium', 'high'].includes(analysis.priority.value)) {
       if (analysis.priority.confidence >= CONFIDENCE_THRESHOLD) {
         updates.priority = analysis.priority.value;
       } else {
+        const priorityLabels = { low: 'Низкий', medium: 'Средний', high: 'Высокий' };
+        const priorityLabel = priorityLabels[analysis.priority.value as keyof typeof priorityLabels] || analysis.priority.value;
+        const message = `Приоритет: ${priorityLabel}. Верно?`;
         await createPendingConfirmation(
           supabase,
           chat_id,
           'priority',
           { value: analysis.priority.value },
           analysis.priority.confidence,
-          analysis.priority.message
+          message
         );
         confirmationsNeeded.push('priority');
       }
