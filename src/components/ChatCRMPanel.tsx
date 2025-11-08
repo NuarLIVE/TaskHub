@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, Trash2 } from 'lucide-react';
+import { X, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -11,6 +11,9 @@ interface Task {
   title: string;
   status: 'pending' | 'in_progress' | 'completed';
   description?: string;
+  price?: number;
+  deadline?: string;
+  delivery_date?: string;
 }
 
 interface CRMContext {
@@ -19,7 +22,7 @@ interface CRMContext {
   client_id?: string;
   executor_id?: string;
   order_title: string;
-  agreed_price?: number;
+  total_price?: number;
   currency: string;
   deadline?: string;
   priority: 'low' | 'medium' | 'high';
@@ -41,13 +44,13 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [newTask, setNewTask] = useState('');
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const panelRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && chatId) {
       loadCRMData();
 
-      // Subscribe to realtime updates
       const channel = getSupabase()
         .channel(`crm-${chatId}`)
         .on(
@@ -97,26 +100,8 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
         .maybeSingle();
 
       if (error) throw error;
-
-      if (!data) {
-        // Create initial CRM context
-        const { data: newData, error: insertError } = await getSupabase()
-          .from('chat_crm_context')
-          .insert({
-            chat_id: chatId,
-            order_title: '',
-            currency: 'USD',
-            priority: 'medium',
-            tasks: [],
-            notes: '',
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        setCrmData(newData);
-      } else {
-        setCrmData(data);
+      if (data) {
+        setCrmData(data as CRMContext);
       }
     } catch (error) {
       console.error('Error loading CRM data:', error);
@@ -126,8 +111,6 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
   };
 
   const updateCRMData = async (updates: Partial<CRMContext>) => {
-    if (!crmData) return;
-
     try {
       const { error } = await getSupabase()
         .from('chat_crm_context')
@@ -138,14 +121,13 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
       await loadCRMData();
     } catch (error) {
       console.error('Error updating CRM data:', error);
-      alert('Ошибка при обновлении данных');
     }
   };
 
   const addTask = async () => {
-    if (!newTask.trim() || !crmData) return;
+    if (!crmData || !newTask.trim()) return;
 
-    const updatedTasks = [
+    const updatedTasks: Task[] = [
       ...crmData.tasks,
       { title: newTask.trim(), status: 'pending' as const, description: '' },
     ];
@@ -163,6 +145,15 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
     await updateCRMData({ tasks: updatedTasks });
   };
 
+  const updateTaskField = async (index: number, field: keyof Task, value: any) => {
+    if (!crmData) return;
+
+    const updatedTasks = [...crmData.tasks];
+    updatedTasks[index] = { ...updatedTasks[index], [field]: value };
+
+    await updateCRMData({ tasks: updatedTasks });
+  };
+
   const deleteTask = async (index: number) => {
     if (!crmData) return;
 
@@ -170,27 +161,59 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
     await updateCRMData({ tasks: updatedTasks });
   };
 
+  const toggleTaskExpanded = (index: number) => {
+    setExpandedTasks((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
         return 'bg-red-100 text-red-700 border-red-200';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'low':
         return 'bg-gray-100 text-gray-700 border-gray-200';
       default:
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
-  const getStatusIcon = (status: Task['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return 'bg-green-100 text-green-700 border-green-200';
       case 'in_progress':
-        return <Clock className="h-4 w-4 text-blue-600" />;
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'pending':
+        return 'bg-gray-100 text-gray-700 border-gray-200';
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-400" />;
+        return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const calculateTotalTasksPrice = () => {
+    if (!crmData) return 0;
+    return crmData.tasks.reduce((sum, task) => sum + (task.price || 0), 0);
+  };
+
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
@@ -227,7 +250,6 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
               </div>
             ) : crmData ? (
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Order Title */}
                 <Card className="p-4">
                   <label className="text-sm font-medium text-[#3F7F6E] mb-2 block">
                     Название заказа
@@ -235,40 +257,33 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
                   {editing ? (
                     <Input
                       value={crmData.order_title}
-                      onChange={(e) => setCrmData({ ...crmData, order_title: e.target.value })}
-                      placeholder="Введите название заказа"
+                      onChange={(e) => updateCRMData({ order_title: e.target.value })}
                       className="mb-2"
                     />
                   ) : (
-                    <p className="text-base font-medium mb-2">
+                    <p className="text-lg font-semibold mb-2">
                       {crmData.order_title || 'Не указано'}
                     </p>
                   )}
                 </Card>
 
-                {/* Price & Currency */}
                 <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
                     <DollarSign className="h-5 w-5 text-[#3F7F6E]" />
-                    <label className="text-sm font-medium text-[#3F7F6E]">
-                      Согласованная цена
-                    </label>
+                    <span className="font-semibold">Общая цена</span>
                   </div>
                   {editing ? (
                     <div className="flex gap-2">
                       <Input
                         type="number"
-                        value={crmData.agreed_price || ''}
-                        onChange={(e) =>
-                          setCrmData({ ...crmData, agreed_price: parseFloat(e.target.value) })
-                        }
-                        placeholder="0"
+                        value={crmData.total_price || ''}
+                        onChange={(e) => updateCRMData({ total_price: parseFloat(e.target.value) })}
                         className="flex-1"
                       />
                       <select
                         value={crmData.currency}
-                        onChange={(e) => setCrmData({ ...crmData, currency: e.target.value })}
-                        className="rounded-md border px-3 bg-background"
+                        onChange={(e) => updateCRMData({ currency: e.target.value })}
+                        className="px-3 py-2 border rounded-md"
                       >
                         <option value="USD">USD</option>
                         <option value="EUR">EUR</option>
@@ -278,51 +293,43 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
                       </select>
                     </div>
                   ) : (
-                    <p className="text-lg font-semibold">
-                      {crmData.agreed_price
-                        ? `${crmData.currency} ${crmData.agreed_price.toFixed(2)}`
-                        : 'Не указано'}
+                    <p className="text-2xl font-bold text-[#3F7F6E]">
+                      {crmData.total_price ? `${crmData.total_price} ${crmData.currency}` : 'Не указано'}
+                    </p>
+                  )}
+                  {crmData.tasks.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Сумма задач: {calculateTotalTasksPrice()} {crmData.currency}
                     </p>
                   )}
                 </Card>
 
-                {/* Deadline */}
                 <Card className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
                     <Calendar className="h-5 w-5 text-[#3F7F6E]" />
-                    <label className="text-sm font-medium text-[#3F7F6E]">Срок сдачи</label>
+                    <span className="font-semibold">Срок сдачи</span>
                   </div>
                   {editing ? (
                     <Input
                       type="date"
                       value={crmData.deadline ? crmData.deadline.split('T')[0] : ''}
-                      onChange={(e) => setCrmData({ ...crmData, deadline: e.target.value })}
+                      onChange={(e) => updateCRMData({ deadline: e.target.value })}
                     />
                   ) : (
-                    <p className="text-base">
-                      {crmData.deadline
-                        ? new Date(crmData.deadline).toLocaleDateString('ru-RU', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        : 'Не указано'}
-                    </p>
+                    <p>{formatDate(crmData.deadline) || 'Не указано'}</p>
                   )}
                 </Card>
 
-                {/* Priority */}
                 <Card className="p-4">
-                  <label className="text-sm font-medium text-[#3F7F6E] mb-2 block">
-                    Приоритет
-                  </label>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="h-5 w-5 text-[#3F7F6E]" />
+                    <span className="font-semibold">Приоритет</span>
+                  </div>
                   {editing ? (
                     <select
                       value={crmData.priority}
-                      onChange={(e) =>
-                        setCrmData({ ...crmData, priority: e.target.value as any })
-                      }
-                      className="w-full rounded-md border px-3 py-2 bg-background"
+                      onChange={(e) => updateCRMData({ priority: e.target.value as 'low' | 'medium' | 'high' })}
+                      className="w-full px-3 py-2 border rounded-md"
                     >
                       <option value="low">Низкий</option>
                       <option value="medium">Средний</option>
@@ -330,149 +337,163 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
                     </select>
                   ) : (
                     <Badge className={getPriorityColor(crmData.priority)}>
-                      {crmData.priority === 'high'
-                        ? 'Высокий'
-                        : crmData.priority === 'low'
-                        ? 'Низкий'
-                        : 'Средний'}
+                      {crmData.priority === 'high' ? 'Высокий' : crmData.priority === 'medium' ? 'Средний' : 'Низкий'}
                     </Badge>
                   )}
                 </Card>
 
-                {/* Tasks */}
                 <Card className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-[#3F7F6E]">Задачи</label>
-                    <Badge variant="outline">{crmData.tasks.length}</Badge>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-[#3F7F6E]" />
+                      <span className="font-semibold">Задачи ({crmData.tasks.length})</span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2 mb-3">
+                  <div className="space-y-2">
                     {crmData.tasks.map((task, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg"
-                      >
-                        <button
-                          onClick={() => {
-                            const statuses: Task['status'][] = ['pending', 'in_progress', 'completed'];
-                            const currentIndex = statuses.indexOf(task.status);
-                            const nextStatus = statuses[(currentIndex + 1) % statuses.length];
-                            updateTaskStatus(index, nextStatus);
-                          }}
-                          className="mt-0.5"
+                      <div key={index} className="border rounded-lg overflow-hidden">
+                        <div
+                          className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition"
+                          onClick={() => toggleTaskExpanded(index)}
                         >
-                          {getStatusIcon(task.status)}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm ${
-                              task.status === 'completed'
-                                ? 'line-through text-gray-500'
-                                : 'text-gray-900'
-                            }`}
-                          >
-                            {task.title}
-                          </p>
-                        </div>
-                        {editing && (
-                          <button
-                            onClick={() => deleteTask(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
+                          <div className="flex items-center gap-2 flex-1">
+                            <Badge className={getStatusColor(task.status)}>
+                              {task.status === 'completed' ? '✓' : task.status === 'in_progress' ? '⋯' : '○'}
+                            </Badge>
+                            <span className="text-sm font-medium truncate">{task.title}</span>
+                          </div>
+                          <button className="p-1 hover:bg-gray-200 rounded">
+                            {expandedTasks.has(index) ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </button>
-                        )}
+                        </div>
+
+                        <AnimatePresence>
+                          {expandedTasks.has(index) && (
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: 'auto' }}
+                              exit={{ height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="p-3 space-y-3 bg-white">
+                                <div>
+                                  <label className="text-xs text-gray-500">Статус</label>
+                                  <select
+                                    value={task.status}
+                                    onChange={(e) => updateTaskStatus(index, e.target.value as Task['status'])}
+                                    className="w-full px-2 py-1 border rounded text-sm mt-1"
+                                  >
+                                    <option value="pending">В ожидании</option>
+                                    <option value="in_progress">В процессе</option>
+                                    <option value="completed">Выполнено</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="text-xs text-gray-500">Цена</label>
+                                  <Input
+                                    type="number"
+                                    value={task.price || ''}
+                                    onChange={(e) => updateTaskField(index, 'price', parseFloat(e.target.value) || 0)}
+                                    placeholder="0"
+                                    className="mt-1 text-sm"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-xs text-gray-500">Срок выдачи</label>
+                                  <Input
+                                    type="date"
+                                    value={task.delivery_date ? task.delivery_date.split('T')[0] : ''}
+                                    onChange={(e) => updateTaskField(index, 'delivery_date', e.target.value)}
+                                    className="mt-1 text-sm"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-xs text-gray-500">Дедлайн</label>
+                                  <Input
+                                    type="date"
+                                    value={task.deadline ? task.deadline.split('T')[0] : ''}
+                                    onChange={(e) => updateTaskField(index, 'deadline', e.target.value)}
+                                    className="mt-1 text-sm"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-xs text-gray-500">Описание</label>
+                                  <textarea
+                                    value={task.description || ''}
+                                    onChange={(e) => updateTaskField(index, 'description', e.target.value)}
+                                    className="w-full px-2 py-1 border rounded text-sm mt-1"
+                                    rows={2}
+                                    placeholder="Описание задачи"
+                                  />
+                                </div>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteTask(index)}
+                                  className="w-full text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Удалить задачу
+                                </Button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     ))}
                   </div>
 
-                  {editing && (
-                    <div className="flex gap-2">
-                      <Input
-                        value={newTask}
-                        onChange={(e) => setNewTask(e.target.value)}
-                        placeholder="Новая задача..."
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addTask();
-                          }
-                        }}
-                      />
-                      <Button onClick={addTask} size="icon" disabled={!newTask.trim()}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-2 mt-3">
+                    <Input
+                      value={newTask}
+                      onChange={(e) => setNewTask(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addTask()}
+                      placeholder="Новая задача..."
+                      className="flex-1"
+                    />
+                    <Button onClick={addTask} size="sm" className="bg-[#6FE7C8] hover:bg-[#5cd4b5]">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </Card>
 
-                {/* Notes */}
-                {crmData.notes && (
-                  <Card className="p-4">
-                    <label className="text-sm font-medium text-[#3F7F6E] mb-2 block">
-                      Заметки ИИ
-                    </label>
-                    <div className="text-xs text-gray-600 whitespace-pre-line max-h-40 overflow-y-auto">
-                      {crmData.notes}
-                    </div>
-                  </Card>
-                )}
-
-                {/* Last Updated */}
-                <div className="text-xs text-gray-500 text-center">
-                  Обновлено:{' '}
-                  {new Date(crmData.last_updated_at).toLocaleString('ru-RU', {
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </div>
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-5 w-5 text-[#3F7F6E]" />
+                    <span className="font-semibold">Заметки</span>
+                  </div>
+                  <textarea
+                    value={crmData.notes}
+                    onChange={(e) => updateCRMData({ notes: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-md text-sm"
+                    rows={4}
+                    placeholder="Добавьте заметки..."
+                  />
+                </Card>
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-[#3F7F6E]">Нет данных</p>
+                <p className="text-gray-500">CRM данные не найдены</p>
               </div>
             )}
 
-            {/* Footer Actions */}
-            <div className="p-4 border-t bg-white flex gap-2">
-              {editing ? (
-                <>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setEditing(false);
-                      loadCRMData();
-                    }}
-                  >
-                    Отмена
-                  </Button>
-                  <Button
-                    className="flex-1 bg-[#3F7F6E] hover:bg-[#2d5f52]"
-                    onClick={() => {
-                      updateCRMData({
-                        order_title: crmData?.order_title,
-                        agreed_price: crmData?.agreed_price,
-                        currency: crmData?.currency,
-                        deadline: crmData?.deadline,
-                        priority: crmData?.priority,
-                      });
-                      setEditing(false);
-                    }}
-                  >
-                    Сохранить
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  className="w-full bg-[#3F7F6E] hover:bg-[#2d5f52]"
-                  onClick={() => setEditing(true)}
-                >
-                  Редактировать
-                </Button>
-              )}
+            <div className="p-4 border-t bg-gray-50">
+              <Button
+                onClick={() => setEditing(!editing)}
+                className="w-full bg-[#3F7F6E] hover:bg-[#2d5f52]"
+              >
+                {editing ? 'Завершить редактирование' : 'Редактировать'}
+              </Button>
             </div>
           </motion.div>
         </>
