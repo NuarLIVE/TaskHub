@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
 import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
+import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
@@ -28,37 +29,34 @@ const PRIVATE_LINKS = [
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0); // используем как флаг > 0
+  const [hasUnread, setHasUnread] = useState(false); // флаг для зелёной точки
   const { isAuthenticated, user, logout } = useAuth();
 
-  const hasUnread = unreadCount > 0;
-
-  const loadUnreadCount = async () => {
+  const computeHasUnread = async () => {
     if (!user) {
-      setUnreadCount(0);
+      setHasUnread(false);
       return;
     }
-    try {
-      const { data } = await getSupabase()
-        .from('profiles')
-        .select('unread_messages_count')
-        .eq('id', user.id)
-        .single();
-
-      if (data) {
-        setUnreadCount(Math.max(0, data.unread_messages_count || 0));
-      } else {
-        setUnreadCount(0);
-      }
-    } catch {
-      setUnreadCount(0);
+    const { data, error } = await queryWithRetry(() =>
+      getSupabase()
+        .from('chats')
+        .select('id, participant1_id, participant2_id, unread_count_p1, unread_count_p2')
+        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+    );
+    if (error) {
+      setHasUnread(false);
+      return;
     }
+    const anyUnread = (data || []).some((c: any) =>
+      c.participant1_id === user.id ? (c.unread_count_p1 || 0) > 0 : (c.unread_count_p2 || 0) > 0
+    );
+    setHasUnread(anyUnread);
   };
 
   useSupabaseKeepAlive({
     onRecover: async () => {
       await resetSupabase();
-      await loadUnreadCount();
+      await computeHasUnread();
     },
     intervalMs: 90_000,
     headTable: 'profiles'
@@ -76,40 +74,28 @@ export default function NavBar() {
   useEffect(() => {
     if (!user) return;
 
-    loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 15000);
+    computeHasUnread();
+    const interval = setInterval(computeHasUnread, 15000);
 
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadUnreadCount();
-      }
+      if (!document.hidden) computeHasUnread();
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const profileChannel = getSupabase()
-      .channel('navbar-profile-unread')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`
-        },
-        (payload) => {
-          const updatedProfile = payload.new as any;
-          setUnreadCount(Math.max(0, updatedProfile.unread_messages_count || 0));
-        }
-      )
-      .subscribe();
+    let chatsSub: any = null;
+    subscribeWithMonitoring('navbar-chats-unread', {
+      table: 'chats',
+      event: '*',
+      callback: () => computeHasUnread(),
+      onError: () => setTimeout(computeHasUnread, 1200)
+    }).then(s => (chatsSub = s));
 
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      profileChannel.unsubscribe();
+      chatsSub?.unsubscribe?.();
     };
-  }, [user]);
+  }, [user?.id]);
 
   const isActiveLink = (href: string) => {
     const path = href.replace('#', '');
@@ -142,7 +128,6 @@ export default function NavBar() {
                 }`}
               >
                 {link.label}
-                {/* Точка-индикатор только для "Сообщения" */}
                 {isAuthenticated && isMessages && hasUnread && (
                   <span
                     aria-label="Есть новые сообщения"
@@ -208,12 +193,8 @@ export default function NavBar() {
                 >
                   <span className="flex items-center justify-between">
                     {link.label}
-                    {/* Для мобильного — маленькая точка справа */}
                     {isAuthenticated && isMessages && hasUnread && (
-                      <span
-                        aria-hidden="true"
-                        className="ml-2 h-2 w-2 rounded-full bg-[#6FE7C8]"
-                      />
+                      <span aria-hidden="true" className="ml-2 h-2 w-2 rounded-full bg-[#6FE7C8]" />
                     )}
                   </span>
                 </a>
