@@ -106,7 +106,7 @@ export default function ProposalsCreate() {
             </div>
           </CardHeader>
 
-          {/* 🔽 Добавлен отступ снизу */}
+          {/* Плашка профиля — добавлен нижний отступ */}
           <CardContent className="px-6 pt-4 pb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -136,7 +136,9 @@ export default function ProposalsCreate() {
           <CardHeader className="px-6">
             <CardTitle>Ваше предложение</CardTitle>
           </CardHeader>
-          <CardContent className="px-6">
+
+          {/* Добавлен нижний отступ под формой */}
+          <CardContent className="px-6 pb-8">
             <form onSubmit={handleSubmit} className="grid gap-6">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
