@@ -33,6 +33,7 @@ import { navigateToProfile } from '@/lib/navigation';
 import { MediaEditor } from '@/components/MediaEditor';
 import { ImageViewer } from '@/components/ImageViewer';
 import { ChatCRMPanel } from '@/components/ChatCRMPanel';
+import { CRMConfirmation } from '@/components/CRMConfirmation';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -1139,6 +1140,8 @@ export default function MessagesPage() {
                 </button>
 
                 <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+                  {selectedChatId && <CRMConfirmation chatId={selectedChatId} />}
+
                   {messages.length === 0 ? (
                     <div className="text-center text-[#3F7F6E] mt-8">Начните разговор</div>
                   ) : (

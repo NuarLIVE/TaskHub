@@ -35,7 +35,29 @@ interface CRMContext {
   notes?: string;
 }
 
-async function analyzeWithAI(messageText: string, existingContext: any): Promise<Partial<CRMContext>> {
+interface FieldUpdate {
+  value: any;
+  confidence: number;
+  message: string;
+}
+
+interface AIAnalysis {
+  order_title?: FieldUpdate;
+  price_change?: {
+    type: string;
+    amount: number;
+    currency?: string;
+    confidence: number;
+  };
+  deadline?: FieldUpdate;
+  priority?: FieldUpdate;
+  tasks?: {
+    items: Task[];
+    confidence: number;
+  };
+}
+
+async function analyzeWithAI(messageText: string, existingContext: any): Promise<AIAnalysis> {
   try {
     const today = new Date();
     const todayStr = today.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -50,29 +72,48 @@ async function analyzeWithAI(messageText: string, existingContext: any): Promise
 
 Новое сообщение: "${messageText}"
 
-ВАЖНО: Прошлые даты запрещены! Только будущие даты.
+ВАЖНО:
+1. Прошлые даты запрещены! Только будущие даты.
+2. Добавь уровень уверенности (confidence) для каждого извлеченного параметра от 0.0 до 1.0:
+   - 1.0 = абсолютно уверен (точная цифра, явная дата)
+   - 0.7-0.9 = уверен (понятный контекст)
+   - 0.4-0.6 = средняя уверенность (неоднозначность)
+   - 0.0-0.3 = низкая уверенность (догадка)
 
 Проанализируй сообщение и извлеки в JSON формате:
 {
-  "order_title": "тематическое название проекта (если упоминается)",
+  "order_title": {
+    "value": "название проекта",
+    "confidence": 0.8,
+    "message": "Название проекта: {value}. Верно?"
+  },
   "price_change": {
     "type": "set|add|subtract",
     "amount": число,
-    "currency": "USD|EUR|RUB|KZT|PLN"
+    "currency": "USD|EUR|RUB|KZT|PLN",
+    "confidence": 0.9
   },
-  "deadline": "YYYY-MM-DD или null (только будущая дата)",
-  "priority": "low|medium|high или null",
-  "tasks": [{"title": "название задачи", "description": "описание"}],
-  "notes": "краткая заметка о том, что обсуждалось"
+  "deadline": {
+    "value": "YYYY-MM-DD",
+    "confidence": 0.7,
+    "message": "Дедлайн: {дата в формате DD.MM.YYYY}. Верно?"
+  },
+  "priority": {
+    "value": "low|medium|high",
+    "confidence": 0.6,
+    "message": "Приоритет: {значение}. Верно?"
+  },
+  "tasks": {
+    "items": [{тitle": "название", "description": "описание"}],
+    "confidence": 0.8
+  }
 }
 
-Примеры анализа:
-- "Цена 500 долларов" → price_change: {type: "set", amount: 500, currency: "USD"}
-- "Добавь 100" → price_change: {type: "add", amount: 100}
-- "Минус 50" → price_change: {type: "subtract", amount: 50}
-- "К пятнице" → deadline: следующая пятница
-- "Срочно!" → priority: "high"
-- "Проект по дизайну сайта" → order_title: "Дизайн сайта"
+Примеры:
+- "Цена 500 долларов" → confidence: 1.0 (точная цифра)
+- "Дорого будет" → confidence: 0.3 (неопределенно)
+- "К пятнице сделаем" → confidence: 0.9 (явная дата)
+- "Скоро нужно" → confidence: 0.4 (неясный срок)
 
 Ответ только JSON, без комментариев:`;
 
@@ -95,7 +136,7 @@ async function analyzeWithAI(messageText: string, existingContext: any): Promise
           }
         ],
         temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: 700,
       }),
     });
 
@@ -110,68 +151,32 @@ async function analyzeWithAI(messageText: string, existingContext: any): Promise
     const jsonStr = jsonMatch ? jsonMatch[0] : aiResponse;
     const analysis = JSON.parse(jsonStr);
 
-    const updates: Partial<CRMContext> = {};
-
-    if (analysis.order_title && !existingContext?.order_title) {
-      updates.order_title = analysis.order_title.slice(0, 100);
-    }
-
-    if (analysis.price_change && analysis.price_change.amount > 0) {
-      const currentPrice = existingContext?.total_price || 0;
-      switch (analysis.price_change.type) {
-        case 'set':
-          updates.total_price = analysis.price_change.amount;
-          break;
-        case 'add':
-          updates.total_price = currentPrice + analysis.price_change.amount;
-          break;
-        case 'subtract':
-          updates.total_price = Math.max(0, currentPrice - analysis.price_change.amount);
-          break;
-      }
-      if (analysis.price_change.currency) {
-        updates.currency = analysis.price_change.currency;
-      }
-    }
-
-    if (analysis.deadline) {
-      const deadlineDate = new Date(analysis.deadline);
-      if (!isNaN(deadlineDate.getTime()) && deadlineDate > new Date()) {
-        updates.deadline = deadlineDate.toISOString();
-      }
-    }
-
-    if (analysis.priority && ['low', 'medium', 'high'].includes(analysis.priority)) {
-      updates.priority = analysis.priority;
-    }
-
-    if (analysis.tasks && Array.isArray(analysis.tasks) && analysis.tasks.length > 0) {
-      const currentTasks = (existingContext?.tasks as Task[]) || [];
-      const newTasks = analysis.tasks
-        .filter((t: any) => t.title && t.title.length > 3)
-        .map((t: any) => ({
-          title: t.title.slice(0, 200),
-          status: 'pending',
-          description: t.description || '',
-        }));
-
-      const uniqueNewTasks = newTasks.filter((newTask: Task) =>
-        !currentTasks.some((existingTask: Task) =>
-          existingTask.title.toLowerCase() === newTask.title.toLowerCase()
-        )
-      );
-
-      if (uniqueNewTasks.length > 0) {
-        updates.tasks = [...currentTasks, ...uniqueNewTasks];
-      }
-    }
-
-    return updates;
+    return analysis;
 
   } catch (error) {
     console.error('AI Analysis error:', error);
     return {};
   }
+}
+
+async function createPendingConfirmation(
+  supabase: any,
+  chatId: string,
+  fieldName: string,
+  fieldValue: any,
+  confidence: number,
+  message: string
+) {
+  await supabase
+    .from('crm_pending_confirmations')
+    .insert({
+      chat_id: chatId,
+      field_name: fieldName,
+      field_value: fieldValue,
+      confidence,
+      message,
+      status: 'pending',
+    });
 }
 
 Deno.serve(async (req: Request) => {
@@ -221,7 +226,134 @@ Deno.serve(async (req: Request) => {
       crmContext = newContext;
     }
 
-    const updates = await analyzeWithAI(message_text, crmContext);
+    const analysis = await analyzeWithAI(message_text, crmContext);
+
+    const updates: Partial<CRMContext> = {};
+    const confirmationsNeeded: string[] = [];
+    const CONFIDENCE_THRESHOLD = 0.7;
+
+    if (analysis.order_title && !crmContext?.order_title) {
+      if (analysis.order_title.confidence >= CONFIDENCE_THRESHOLD) {
+        updates.order_title = analysis.order_title.value.slice(0, 100);
+      } else {
+        await createPendingConfirmation(
+          supabase,
+          chat_id,
+          'order_title',
+          { value: analysis.order_title.value },
+          analysis.order_title.confidence,
+          analysis.order_title.message
+        );
+        confirmationsNeeded.push('order_title');
+      }
+    }
+
+    if (analysis.price_change && analysis.price_change.amount > 0) {
+      const currentPrice = crmContext?.total_price || 0;
+      let newPrice = currentPrice;
+
+      switch (analysis.price_change.type) {
+        case 'set':
+          newPrice = analysis.price_change.amount;
+          break;
+        case 'add':
+          newPrice = currentPrice + analysis.price_change.amount;
+          break;
+        case 'subtract':
+          newPrice = Math.max(0, currentPrice - analysis.price_change.amount);
+          break;
+      }
+
+      if (analysis.price_change.confidence >= CONFIDENCE_THRESHOLD) {
+        updates.total_price = newPrice;
+        if (analysis.price_change.currency) {
+          updates.currency = analysis.price_change.currency;
+        }
+      } else {
+        const priceMessage = `Цена: ${newPrice} ${analysis.price_change.currency || crmContext?.currency || 'USD'}. Верно?`;
+        await createPendingConfirmation(
+          supabase,
+          chat_id,
+          'total_price',
+          {
+            value: newPrice,
+            currency: analysis.price_change.currency || crmContext?.currency || 'USD'
+          },
+          analysis.price_change.confidence,
+          priceMessage
+        );
+        confirmationsNeeded.push('total_price');
+      }
+    }
+
+    if (analysis.deadline) {
+      const deadlineDate = new Date(analysis.deadline.value);
+      if (!isNaN(deadlineDate.getTime()) && deadlineDate > new Date()) {
+        if (analysis.deadline.confidence >= CONFIDENCE_THRESHOLD) {
+          updates.deadline = deadlineDate.toISOString();
+        } else {
+          await createPendingConfirmation(
+            supabase,
+            chat_id,
+            'deadline',
+            { value: deadlineDate.toISOString() },
+            analysis.deadline.confidence,
+            analysis.deadline.message
+          );
+          confirmationsNeeded.push('deadline');
+        }
+      }
+    }
+
+    if (analysis.priority && ['low', 'medium', 'high'].includes(analysis.priority.value)) {
+      if (analysis.priority.confidence >= CONFIDENCE_THRESHOLD) {
+        updates.priority = analysis.priority.value;
+      } else {
+        await createPendingConfirmation(
+          supabase,
+          chat_id,
+          'priority',
+          { value: analysis.priority.value },
+          analysis.priority.confidence,
+          analysis.priority.message
+        );
+        confirmationsNeeded.push('priority');
+      }
+    }
+
+    if (analysis.tasks && analysis.tasks.items && analysis.tasks.items.length > 0) {
+      const currentTasks = (crmContext?.tasks as Task[]) || [];
+      const newTasks = analysis.tasks.items
+        .filter((t: any) => t.title && t.title.length > 3)
+        .map((t: any) => ({
+          title: t.title.slice(0, 200),
+          status: 'pending',
+          description: t.description || '',
+        }));
+
+      const uniqueNewTasks = newTasks.filter((newTask: Task) =>
+        !currentTasks.some((existingTask: Task) =>
+          existingTask.title.toLowerCase() === newTask.title.toLowerCase()
+        )
+      );
+
+      if (uniqueNewTasks.length > 0) {
+        if (analysis.tasks.confidence >= CONFIDENCE_THRESHOLD) {
+          updates.tasks = [...currentTasks, ...uniqueNewTasks];
+        } else {
+          const tasksMessage = `Добавить задачи: ${uniqueNewTasks.map(t => t.title).join(', ')}. Верно?`;
+          await createPendingConfirmation(
+            supabase,
+            chat_id,
+            'tasks',
+            { items: uniqueNewTasks },
+            analysis.tasks.confidence,
+            tasksMessage
+          );
+          confirmationsNeeded.push('tasks');
+        }
+      }
+    }
 
     const existingNotes = crmContext?.notes || '';
     const timestamp = new Date().toLocaleString('ru-RU');
@@ -251,6 +383,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         updates: Object.keys(updates).length,
+        confirmations_pending: confirmationsNeeded.length,
         extracted: updates
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
