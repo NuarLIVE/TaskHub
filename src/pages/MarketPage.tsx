@@ -315,7 +315,7 @@ export default function MarketPage() {
                         <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                       </div>
                       <div className="font-semibold">
-                        {activeTab === 'orders' ? `${item.currency} ${item.price_min}–${item.price_max}` : `${item.currency} ${item.price}`}
+                        {activeTab === 'orders' ? `${item.price_min}–${item.price_max} ${item.currency}` : `${item.price} ${item.currency}`}
                       </div>
                     </div>
                   </Card>
@@ -432,7 +432,9 @@ export default function MarketPage() {
                       </div>
                     </div>
                     <div className="text-xl font-semibold">
-                      {previewType === 'order' ? `${previewItem.currency} ${previewItem.price_min}–${previewItem.price_max}` : `${previewItem.currency} ${previewItem.price}`}
+                      {previewType === 'order'
+                        ? `${previewItem.price_min}–${previewItem.price_max} ${previewItem.currency}`
+                        : `${previewItem.price} ${previewItem.currency}`}
                     </div>
                   </div>
                 </div>
