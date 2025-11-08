@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import {
   Search,
   Send,
-  ArrowLeft,
   MoreVertical,
   Trash2,
   Ban,
@@ -12,13 +11,11 @@ import {
   X,
   Video,
   FileText,
-  Clock,
   Check,
   CheckCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-// import { Input } from '@/components/ui/input'; // не нужен, используем нативные input/textarea
 import {
   Dialog,
   DialogContent,
@@ -27,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
+import { getSupabase } from '@/lib/supabaseClient';
 import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
 import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -195,9 +192,7 @@ export default function MessagesPage() {
         if (payload.eventType === 'UPDATE') {
           const updatedChat = payload.new as Chat;
 
-          if (justMarkedReadRef.current.has(updatedChat.id)) {
-            return;
-          }
+          if (justMarkedReadRef.current.has(updatedChat.id)) return;
 
           setChats((prev) => {
             const existingChat = prev.find((c) => c.id === updatedChat.id);
@@ -340,7 +335,6 @@ export default function MessagesPage() {
               setIsOtherUserTyping(true);
 
               if (otherTypingHideTimeoutRef.current) clearTimeout(otherTypingHideTimeoutRef.current);
-              // Держим минимум 1 секунду
               otherTypingHideTimeoutRef.current = setTimeout(() => {
                 setIsOtherUserTyping(false);
               }, 1000);
@@ -361,7 +355,6 @@ export default function MessagesPage() {
       .subscribe();
 
     return () => {
-      isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       messagesSubscription?.unsubscribe();
       messagesUpdateSubscription?.unsubscribe();
@@ -371,7 +364,7 @@ export default function MessagesPage() {
     };
   }, [selectedChatId, user]);
 
-  // Скроллим вниз при появлении "Печатает", затем плавно возвращаемся к прошлой позиции
+  // Скролл при "печатает" и назад
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
@@ -634,7 +627,6 @@ export default function MessagesPage() {
 
   const handleDeleteChat = async () => {
     if (!selectedChatId) return;
-
     try {
       const { error } = await getSupabase().from('chats').delete().eq('id', selectedChatId);
       if (error) throw error;
@@ -662,7 +654,7 @@ export default function MessagesPage() {
         blocked_id: otherUserId,
       });
 
-      // @ts-ignore (для уникальных вставок)
+      // @ts-ignore
       if (error?.code === '23505') {
         alert('Этот пользователь уже заблокирован');
         return;
@@ -781,11 +773,7 @@ export default function MessagesPage() {
       await getSupabase()
         .from('typing_indicators')
         .upsert(
-          {
-            chat_id: selectedChatId,
-            user_id: user.id,
-            updated_at: new Date().toISOString(),
-          },
+          { chat_id: selectedChatId, user_id: user.id, updated_at: new Date().toISOString() },
           { onConflict: 'chat_id,user_id' }
         );
 
@@ -835,7 +823,6 @@ export default function MessagesPage() {
   const currentOtherUserId = currentChat ? getOtherParticipant(currentChat) : null;
   const currentProfile = currentOtherUserId ? profiles[currentOtherUserId] : null;
 
-  // Кол-во непрочитанных в других чатах (показываем в шапке открытого чата)
   const totalUnreadOtherChats = useMemo(() => {
     if (!user) return 0;
     return chats.reduce((sum, c) => {
@@ -849,7 +836,7 @@ export default function MessagesPage() {
   const formatTime = (timestamp: string) =>
     new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-  // ======== АВТО-РОСТ ТЕКСТОВОГО ПОЛЯ (до 8 строк) ========
+  // ======== АВТО-РОСТ TEXTAREA до 8 строк ========
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_ROWS = 8;
 
@@ -876,17 +863,10 @@ export default function MessagesPage() {
       form?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
     }
   };
-  // ========================================================
+  // ================================================
 
   return (
-    <motion.div
-      initial="initial"
-      animate="in"
-      exit="out"
-      variants={pageVariants}
-      transition={pageTransition}
-      className="min-h-screen bg-background"
-    >
+    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Сообщения</h1>
 
@@ -902,13 +882,7 @@ export default function MessagesPage() {
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
               <div className="flex gap-3">
-                <Button
-                  onClick={() => {
-                    setError(null);
-                    setLoading(true);
-                    loadChats();
-                  }}
-                >
+                <Button onClick={() => { setError(null); setLoading(true); loadChats(); }}>
                   Попробовать снова
                 </Button>
                 <Button variant="outline" onClick={() => window.location.reload()}>
@@ -942,6 +916,9 @@ export default function MessagesPage() {
                     const otherUserId = getOtherParticipant(chat);
                     const profile = profiles[otherUserId];
                     const online = isOnlineFresh(profile);
+
+                    const unreadCount =
+                      chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0);
 
                     return (
                       <div
@@ -1004,13 +981,9 @@ export default function MessagesPage() {
                                 {chat.last_message_text || 'Нет сообщений'}
                               </div>
 
-                              {((chat.participant1_id === user?.id && (chat.unread_count_p1 || 0) > 0) ||
-                                (chat.participant2_id === user?.id && (chat.unread_count_p2 || 0) > 0)) && (
+                              {unreadCount > 0 && (
                                 <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10">
-                                  {(() => {
-                                    const count = chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0);
-                                    return count > 99 ? '99+' : count;
-                                  })()}
+                                  {unreadCount > 99 ? '99+' : unreadCount}
                                 </div>
                               )}
                             </div>
@@ -1033,11 +1006,7 @@ export default function MessagesPage() {
                   >
                     <div className="relative">
                       {currentProfile.avatar_url ? (
-                        <img
-                          src={currentProfile.avatar_url}
-                          alt={currentProfile.name}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
+                        <img src={currentProfile.avatar_url} alt={currentProfile.name} className="h-10 w-10 rounded-full object-cover" />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
                           <span className="text-sm font-medium">{currentProfile.name?.charAt(0)}</span>
@@ -1048,7 +1017,7 @@ export default function MessagesPage() {
                           className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10"
                           title="Непрочитанные в других чатах"
                         >
-                          {totalUnreadOtherChats}
+                          {totalUnreadOtherChats > 99 ? '99+' : totalUnreadOtherChats}
                         </span>
                       )}
                     </div>
@@ -1060,18 +1029,9 @@ export default function MessagesPage() {
                           <>
                             <span>Печатает</span>
                             <span className="flex gap-0.5">
-                              <span
-                                className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
-                                style={{ animationDelay: '0ms' }}
-                              />
-                              <span
-                                className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
-                                style={{ animationDelay: '150ms' }}
-                              />
-                              <span
-                                className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce"
-                                style={{ animationDelay: '300ms' }}
-                              />
+                              <span className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-1 h-1 bg-[#3F7F6E] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                             </span>
                           </>
                         ) : (
@@ -1088,33 +1048,24 @@ export default function MessagesPage() {
                     {menuOpen && (
                       <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[180px]">
                         <button
-                          onClick={() => {
-                            setDeleteDialogOpen(true);
-                            setMenuOpen(false);
-                          }}
+                          onClick={() => { setDeleteDialogOpen(true); setMenuOpen(false); }}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
                         >
                           <Trash2 className="h-4 w-4" />
                           Удалить чат
                         </button>
                         <button
-                          onClick={() => {
-                            setBlockDialogOpen(true);
-                            setMenuOpen(false);
-                          }}
+                          onClick={() => { setBlockDialogOpen(true); setMenuOpen(false); }}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm"
                         >
                           <Ban className="h-4 w-4" />
                           Заблокировать
                         </button>
                         <button
-                          onClick={() => {
-                            setReportDialogOpen(true);
-                            setMenuOpen(false);
-                          }}
+                          onClick={() => { setReportDialogOpen(true); setMenuOpen(false); }}
                           className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-red-600"
                         >
-                          <AlertTriangle className="h-4 в-4" />
+                          <AlertTriangle className="h-4 w-4" />
                           Пожаловаться
                         </button>
                       </div>
@@ -1130,45 +1081,27 @@ export default function MessagesPage() {
                       const isOwn = msg.sender_id === user?.id;
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                          <div
-                            className={`max-w-[70%] rounded-lg overflow-hidden ${
-                              isOwn ? 'bg-[#6FE7C8] text-white' : 'bg-gray-100'
-                            }`}
-                          >
+                          <div className={`max-w-[70%] rounded-lg overflow-hidden ${isOwn ? 'bg-[#6FE7C8] text-white' : 'bg-gray-100'}`}>
                             {msg.file_type === 'image' && msg.file_url && (
                               <div onClick={() => handleImageClick(msg.file_url!, msg.file_name)}>
-                                <img
-                                  src={msg.file_url}
-                                  alt={msg.file_name || 'Image'}
-                                  className="w-full max-w-sm cursor-pointer hover:opacity-90 transition"
-                                />
+                                <img src={msg.file_url} alt={msg.file_name || 'Image'} className="w-full max-w-sm cursor-pointer hover:opacity-90 transition" />
                               </div>
                             )}
-
                             {msg.file_type === 'video' && msg.file_url && (
                               <video src={msg.file_url} controls className="w-full max-w-sm" />
                             )}
-
                             {msg.file_type === 'file' && msg.file_url && (
                               <a
                                 href={msg.file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`flex items-center gap-2 p-3 hover:opacity-80 transition ${
-                                  isOwn ? 'bg-white/10' : 'bg-[#3F7F6E]/5'
-                                }`}
+                                className={`flex items-center gap-2 p-3 hover:opacity-80 transition ${isOwn ? 'bg-white/10' : 'bg-[#3F7F6E]/5'}`}
                               >
                                 <div className={`p-2 rounded ${isOwn ? 'bg-white/20' : 'bg-[#3F7F6E]/10'}`}>
-                                  <FileText
-                                    className={`h-5 w-5 ${isOwn ? 'text-white' : 'text-[#3F7F6E]'}`}
-                                  />
+                                  <FileText className={`h-5 w-5 ${isOwn ? 'text-white' : 'text-[#3F7F6E]'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p
-                                    className={`text-sm font-medium truncate ${
-                                      isOwn ? 'text-white' : 'text-gray-900'
-                                    }`}
-                                  >
+                                  <p className={`text-sm font-medium truncate ${isOwn ? 'text-white' : 'text-gray-900'}`}>
                                     {msg.file_name || 'Файл'}
                                   </p>
                                   <p className={`text-xs ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
@@ -1177,22 +1110,16 @@ export default function MessagesPage() {
                                 </div>
                               </a>
                             )}
-
                             {msg.text && (
                               <div className="p-3">
                                 <div className="text-sm whitespace-pre-wrap break-words">{msg.text}</div>
                               </div>
                             )}
-
                             <div className={`px-3 pb-2 text-xs flex items-center justify-between gap-2 ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
                               <span>{formatTime(msg.created_at)}</span>
                               {isOwn && (
                                 <span className="flex items-center">
-                                  {msg.is_read ? (
-                                    <CheckCheck className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <Check className="h-3.5 w-3.5" />
-                                  )}
+                                  {msg.is_read ? <CheckCheck className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
                                 </span>
                               )}
                             </div>
@@ -1206,18 +1133,9 @@ export default function MessagesPage() {
                     <div className="flex justify-start">
                       <div className="max-w-[70%] rounded-lg bg-gray-100 px-4 py-3">
                         <div className="flex gap-1.5">
-                          <span
-                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                            style={{ animationDelay: '0ms' }}
-                          />
-                          <span
-                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                            style={{ animationDelay: '150ms' }}
-                          />
-                          <span
-                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                            style={{ animationDelay: '300ms' }}
-                          />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                       </div>
                     </div>
@@ -1230,11 +1148,7 @@ export default function MessagesPage() {
                       <div className="flex items-start gap-3">
                         {selectedFile.type.startsWith('image/') ? (
                           <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0">
-                            <img
-                              src={URL.createObjectURL(selectedFile)}
-                              alt="Preview"
-                              className="w-full h-full object-cover"
-                            />
+                            <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="w-full h-full object-cover" />
                           </div>
                         ) : selectedFile.type.startsWith('video/') ? (
                           <div className="relative w-20 h-20 rounded overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
@@ -1275,18 +1189,10 @@ export default function MessagesPage() {
                         className="hidden"
                         accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="hover:bg-[#EFFFF8]"
-                      >
+                      <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="hover:bg-[#EFFFF8]">
                         <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
                       </Button>
 
-                      {/* Нативный textarea с авто-ростом до 8 строк */}
                       <textarea
                         ref={textareaRef}
                         value={message}
@@ -1335,23 +1241,13 @@ export default function MessagesPage() {
             <DialogDescription>Все сообщения в этом чате будут удалены безвозвратно.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteChat}>
-              Удалить
-            </Button>
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>Отмена</Button>
+            <Button variant="destructive" onClick={handleDeleteChat}>Удалить</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={blockDialogOpen}
-        onOpenChange={(open) => {
-          setBlockDialogOpen(open);
-          if (!open) setDeleteAlsoChat(false);
-        }}
-      >
+      <Dialog open={blockDialogOpen} onOpenChange={(open) => { setBlockDialogOpen(open); if (!open) setDeleteAlsoChat(false); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Заблокировать пользователя?</DialogTitle>
@@ -1369,15 +1265,7 @@ export default function MessagesPage() {
             </label>
           </div>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setBlockDialogOpen(false);
-                setDeleteAlsoChat(false);
-              }}
-            >
-              Отмена
-            </Button>
+            <Button variant="ghost" onClick={() => { setBlockDialogOpen(false); setDeleteAlsoChat(false); }}>Отмена</Button>
             <Button onClick={handleBlockUser}>Заблокировать</Button>
           </DialogFooter>
         </DialogContent>
@@ -1390,12 +1278,8 @@ export default function MessagesPage() {
             <DialogDescription>Опишите причину жалобы. Мы рассмотрим её в ближайшее время.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setReportDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button variant="destructive" onClick={handleReportUser}>
-              Отправить жалобу
-            </Button>
+            <Button variant="ghost" onClick={() => setReportDialogOpen(false)}>Отмена</Button>
+            <Button variant="destructive" onClick={handleReportUser}>Отправить жалобу</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
