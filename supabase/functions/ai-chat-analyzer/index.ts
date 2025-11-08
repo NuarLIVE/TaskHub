@@ -35,150 +35,143 @@ interface CRMContext {
   notes?: string;
 }
 
-function parseDayOfWeek(text: string): Date | null {
-  const days: Record<string, number> = {
-    'понедельник': 1, 'вторник': 2, 'среда': 3, 'четверг': 4,
-    'пятница': 5, 'пятницу': 5, 'суббота': 6, 'воскресенье': 0,
-  };
-
-  const lowerText = text.toLowerCase();
-  for (const [dayName, dayNum] of Object.entries(days)) {
-    if (lowerText.includes(dayName)) {
-      const today = new Date();
-      const currentDay = today.getDay();
-      let daysToAdd = dayNum - currentDay;
-
-      if (daysToAdd <= 0) {
-        daysToAdd += 7;
-      }
-
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + daysToAdd);
-      targetDate.setHours(23, 59, 59, 999);
-
-      return targetDate;
-    }
-  }
-
-  return null;
-}
-
-function parseRelativeDate(text: string): Date | null {
-  const lowerText = text.toLowerCase();
-
-  if (lowerText.includes('сегодня')) {
+async function analyzeWithAI(messageText: string, existingContext: any): Promise<Partial<CRMContext>> {
+  try {
     const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    return today;
-  }
+    const todayStr = today.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  if (lowerText.includes('завтра')) {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(23, 59, 59, 999);
-    return tomorrow;
-  }
+    const prompt = `Ты система анализа деловых сообщений для CRM. Сегодня: ${todayStr}.
 
-  const relativePattern = /(?:через|за)\s+(\d+)\s*(день|дня|дней|неделю|недели|недель|месяц|месяца|месяцев)/i;
-  const match = relativePattern.exec(lowerText);
+Текущий контекст:
+- Название заказа: ${existingContext?.order_title || 'не указано'}
+- Цена: ${existingContext?.total_price || 0} ${existingContext?.currency || 'USD'}
+- Дедлайн: ${existingContext?.deadline ? new Date(existingContext.deadline).toLocaleDateString('ru-RU') : 'не указан'}
+- Приоритет: ${existingContext?.priority || 'medium'}
 
-  if (match) {
-    const amount = parseInt(match[1]);
-    const unit = match[2].toLowerCase();
-    const targetDate = new Date();
+Новое сообщение: "${messageText}"
 
-    if (unit.includes('день')) {
-      targetDate.setDate(targetDate.getDate() + amount);
-    } else if (unit.includes('недел')) {
-      targetDate.setDate(targetDate.getDate() + amount * 7);
-    } else if (unit.includes('месяц')) {
-      targetDate.setMonth(targetDate.getMonth() + amount);
-    }
+ВАЖНО: Прошлые даты запрещены! Только будущие даты.
 
-    targetDate.setHours(23, 59, 59, 999);
-    return targetDate;
-  }
-
-  return null;
+Проанализируй сообщение и извлеки в JSON формате:
+{
+  "order_title": "тематическое название проекта (если упоминается)",
+  "price_change": {
+    "type": "set|add|subtract",
+    "amount": число,
+    "currency": "USD|EUR|RUB|KZT|PLN"
+  },
+  "deadline": "YYYY-MM-DD или null (только будущая дата)",
+  "priority": "low|medium|high или null",
+  "tasks": [{"title": "название задачи", "description": "описание"}],
+  "notes": "краткая заметка о том, что обсуждалось"
 }
 
-function parseAbsoluteDate(text: string): Date | null {
-  const datePattern = /(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?/;
-  const match = datePattern.exec(text);
+Примеры анализа:
+- "Цена 500 долларов" → price_change: {type: "set", amount: 500, currency: "USD"}
+- "Добавь 100" → price_change: {type: "add", amount: 100}
+- "Минус 50" → price_change: {type: "subtract", amount: 50}
+- "К пятнице" → deadline: следующая пятница
+- "Срочно!" → priority: "high"
+- "Проект по дизайну сайта" → order_title: "Дизайн сайта"
 
-  if (match) {
-    const day = parseInt(match[1]);
-    const month = parseInt(match[2]) - 1;
-    const year = match[3] ? parseInt(match[3]) : new Date().getFullYear();
-    const fullYear = year < 100 ? 2000 + year : year;
+Ответ только JSON, без комментариев:`;
 
-    const date = new Date(fullYear, month, day, 23, 59, 59, 999);
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('GROQ_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: 'Ты эксперт по анализу деловой переписки. Отвечай только валидным JSON без markdown форматирования.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    });
 
-    if (!isNaN(date.getTime()) && date > new Date()) {
-      return date;
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status}`);
     }
-  }
 
-  return null;
-}
+    const data = await response.json();
+    const aiResponse = data.choices[0]?.message?.content || '{}';
 
-function extractPriceChanges(text: string): { additions: number; subtractions: number; total: number } {
-  const lowerText = text.toLowerCase();
-  let additions = 0;
-  let subtractions = 0;
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : aiResponse;
+    const analysis = JSON.parse(jsonStr);
 
-  const additionPatterns = [
-    /(?:добавить|доплата|плюс|дополнительно|\+)\s*([\d,\.]+)\s*(usd|eur|rub|kzt|pln|\$|€|₽|₸|zł)?/gi,
-  ];
+    const updates: Partial<CRMContext> = {};
 
-  const subtractionPatterns = [
-    /(?:вычесть|минус|скидка|-)\s*([\d,\.]+)\s*(usd|eur|rub|kzt|pln|\$|€|₽|₸|zł)?/gi,
-  ];
+    if (analysis.order_title && !existingContext?.order_title) {
+      updates.order_title = analysis.order_title.slice(0, 100);
+    }
 
-  for (const pattern of additionPatterns) {
-    let match;
-    while ((match = pattern.exec(lowerText)) !== null) {
-      const price = parseFloat(match[1].replace(',', '.'));
-      if (!isNaN(price) && price > 0) {
-        additions += price;
+    if (analysis.price_change && analysis.price_change.amount > 0) {
+      const currentPrice = existingContext?.total_price || 0;
+      switch (analysis.price_change.type) {
+        case 'set':
+          updates.total_price = analysis.price_change.amount;
+          break;
+        case 'add':
+          updates.total_price = currentPrice + analysis.price_change.amount;
+          break;
+        case 'subtract':
+          updates.total_price = Math.max(0, currentPrice - analysis.price_change.amount);
+          break;
+      }
+      if (analysis.price_change.currency) {
+        updates.currency = analysis.price_change.currency;
       }
     }
-  }
 
-  for (const pattern of subtractionPatterns) {
-    let match;
-    while ((match = pattern.exec(lowerText)) !== null) {
-      const price = parseFloat(match[1].replace(',', '.'));
-      if (!isNaN(price) && price > 0) {
-        subtractions += price;
+    if (analysis.deadline) {
+      const deadlineDate = new Date(analysis.deadline);
+      if (!isNaN(deadlineDate.getTime()) && deadlineDate > new Date()) {
+        updates.deadline = deadlineDate.toISOString();
       }
     }
-  }
 
-  return { additions, subtractions, total: additions - subtractions };
-}
+    if (analysis.priority && ['low', 'medium', 'high'].includes(analysis.priority)) {
+      updates.priority = analysis.priority;
+    }
 
-function extractOrderTitle(text: string, existingTitle?: string): string | null {
-  if (existingTitle && existingTitle.length > 0) {
-    return null;
-  }
+    if (analysis.tasks && Array.isArray(analysis.tasks) && analysis.tasks.length > 0) {
+      const currentTasks = (existingContext?.tasks as Task[]) || [];
+      const newTasks = analysis.tasks
+        .filter((t: any) => t.title && t.title.length > 3)
+        .map((t: any) => ({
+          title: t.title.slice(0, 200),
+          status: 'pending',
+          description: t.description || '',
+        }));
 
-  const titlePatterns = [
-    /(?:проект|заказ|работа)\s+(?:по|на)?\s*[«"]?([^.!?\n«»"]{10,80})[»"]?/i,
-    /(?:нужно|надо|требуется|сделать)\s+([^.!?\n]{15,80})/i,
-  ];
+      const uniqueNewTasks = newTasks.filter((newTask: Task) =>
+        !currentTasks.some((existingTask: Task) =>
+          existingTask.title.toLowerCase() === newTask.title.toLowerCase()
+        )
+      );
 
-  for (const pattern of titlePatterns) {
-    const match = pattern.exec(text);
-    if (match && match[1]) {
-      const title = match[1].trim();
-      if (title.length >= 10) {
-        return title.slice(0, 100);
+      if (uniqueNewTasks.length > 0) {
+        updates.tasks = [...currentTasks, ...uniqueNewTasks];
       }
     }
-  }
 
-  return null;
+    return updates;
+
+  } catch (error) {
+    console.error('AI Analysis error:', error);
+    return {};
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -228,90 +221,7 @@ Deno.serve(async (req: Request) => {
       crmContext = newContext;
     }
 
-    const updates: Partial<CRMContext> = {};
-    const text = message_text.toLowerCase();
-
-    const priceChanges = extractPriceChanges(message_text);
-    if (priceChanges.additions > 0 || priceChanges.subtractions > 0) {
-      const currentPrice = crmContext?.total_price || 0;
-      updates.total_price = currentPrice + priceChanges.total;
-    }
-
-    const pricePatterns = [
-      /(?:цена|стоимость|бюджет|оплата)[:\s]*([\d,\.]+)\s*(usd|eur|rub|kzt|pln|\$|€|₽|₸|zł)?/gi,
-      /(\d+)\s*(usd|eur|rub|kzt|pln|\$|€|₽|₸|zł)/gi,
-    ];
-
-    for (const pattern of pricePatterns) {
-      const match = pattern.exec(text);
-      if (match) {
-        const price = parseFloat(match[1].replace(',', '.'));
-        if (price > 0 && !isNaN(price) && !updates.total_price) {
-          updates.total_price = price;
-          const currencyMatch = match[2]?.toLowerCase();
-          if (currencyMatch) {
-            const currencyMap: Record<string, string> = {
-              '$': 'USD', '€': 'EUR', '₽': 'RUB', '₸': 'KZT', 'zł': 'PLN',
-              'usd': 'USD', 'eur': 'EUR', 'rub': 'RUB', 'kzt': 'KZT', 'pln': 'PLN',
-            };
-            updates.currency = currencyMap[currencyMatch] || 'USD';
-          }
-        }
-        break;
-      }
-    }
-
-    let deadline = parseDayOfWeek(message_text);
-    if (!deadline) deadline = parseRelativeDate(message_text);
-    if (!deadline) deadline = parseAbsoluteDate(message_text);
-
-    if (deadline && deadline > new Date()) {
-      updates.deadline = deadline.toISOString();
-    }
-
-    if (/\b(срочно|urgent|высок|критич|важно)\b/i.test(text)) {
-      updates.priority = 'high';
-    } else if (/\b(средний|нормальн|обычн)\b/i.test(text)) {
-      updates.priority = 'medium';
-    } else if (/\b(не\s*срочно|низк|можно\s*подождать)\b/i.test(text)) {
-      updates.priority = 'low';
-    }
-
-    const orderTitle = extractOrderTitle(message_text, crmContext?.order_title);
-    if (orderTitle) {
-      updates.order_title = orderTitle;
-    }
-
-    const taskPatterns = [
-      /(?:задач[аи]|task)[:\s]*([^.!?\n]{5,100})/gi,
-      /(?:\d+[.):]\s*)([^\n]{5,100})/g,
-      /(?:^|\n)[-•*]\s+([^\n]{5,100})/g,
-    ];
-
-    const currentTasks = (crmContext?.tasks as Task[]) || [];
-
-    for (const pattern of taskPatterns) {
-      let match;
-      while ((match = pattern.exec(message_text)) !== null) {
-        const taskTitle = match[1]?.trim();
-        if (taskTitle && taskTitle.length > 5) {
-          const taskExists = currentTasks.some((t: Task) =>
-            t.title.toLowerCase() === taskTitle.toLowerCase()
-          );
-          if (!taskExists) {
-            currentTasks.push({
-              title: taskTitle.slice(0, 200),
-              status: 'pending',
-              description: '',
-            });
-          }
-        }
-      }
-    }
-
-    if (currentTasks.length > ((crmContext?.tasks as Task[])?.length || 0)) {
-      updates.tasks = currentTasks;
-    }
+    const updates = await analyzeWithAI(message_text, crmContext);
 
     const existingNotes = crmContext?.notes || '';
     const timestamp = new Date().toLocaleString('ru-RU');
@@ -319,7 +229,7 @@ Deno.serve(async (req: Request) => {
 
     if (Object.keys(updates).length > 0) {
       const noteUpdates = [];
-      if (updates.total_price) noteUpdates.push(`цена ${updates.total_price} ${updates.currency || 'USD'}`);
+      if (updates.total_price !== undefined) noteUpdates.push(`цена ${updates.total_price} ${updates.currency || crmContext?.currency || 'USD'}`);
       if (updates.deadline) noteUpdates.push(`срок до ${new Date(updates.deadline).toLocaleDateString('ru-RU')}`);
       if (updates.priority) noteUpdates.push(`приоритет ${updates.priority}`);
       if (updates.order_title) noteUpdates.push(`проект: ${updates.order_title}`);
