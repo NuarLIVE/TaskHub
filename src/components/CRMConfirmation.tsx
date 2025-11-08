@@ -140,33 +140,35 @@ export function CRMConfirmation({ chatId }: CRMConfirmationProps) {
   if (confirmations.length === 0) return null;
 
   return (
-    <div className="absolute left-4 top-32 z-20 w-80">
+    <div className="absolute left-1/2 -translate-x-1/2 top-2 z-30 w-full max-w-2xl px-4">
       <AnimatePresence>
         {confirmations.map((confirmation, index) => (
           <motion.div
             key={confirmation.id}
-            initial={{ opacity: 0, x: -20, y: -10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, x: -20, height: 0 }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20, height: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
             className="mb-2"
           >
-            <div className="bg-white border-2 border-[#3F7F6E] rounded-lg shadow-lg overflow-hidden">
-              <div className="bg-[#3F7F6E] px-3 py-2 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-white flex-shrink-0" />
-                <span className="text-white font-semibold text-xs">CRM Подтверждение</span>
+            <div className="bg-white border-2 border-[#3F7F6E] rounded-lg shadow-xl overflow-hidden">
+              <div className="bg-[#3F7F6E] px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-white flex-shrink-0" />
+                  <span className="text-white font-semibold text-sm">CRM Подтверждение</span>
+                </div>
                 {getConfidenceBadge(confirmation.confidence)}
               </div>
-              <div className="p-3 bg-[#6FE7C8]/10">
-                <p className="text-sm text-gray-800 mb-3 font-medium">{confirmation.message}</p>
-                <div className="flex gap-2">
+              <div className="px-4 py-3 bg-[#6FE7C8]/10 flex items-center gap-4">
+                <p className="text-sm text-gray-800 font-medium flex-1">{confirmation.message}</p>
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     size="sm"
                     onClick={() => handleConfirm(confirmation)}
                     disabled={loading}
-                    className="flex-1 bg-[#3F7F6E] hover:bg-[#2d5f52] text-white text-xs h-8"
+                    className="bg-[#3F7F6E] hover:bg-[#2d5f52] text-white text-xs h-9 px-4"
                   >
-                    <Check className="h-3 w-3 mr-1" />
+                    <Check className="h-4 w-4 mr-1" />
                     Подтвердить
                   </Button>
                   <Button
@@ -174,9 +176,9 @@ export function CRMConfirmation({ chatId }: CRMConfirmationProps) {
                     variant="outline"
                     onClick={() => handleReject(confirmation.id)}
                     disabled={loading}
-                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50 text-xs h-8"
+                    className="text-red-600 border-red-300 hover:bg-red-50 text-xs h-9 px-4"
                   >
-                    <X className="h-3 w-3 mr-1" />
+                    <X className="h-4 w-4 mr-1" />
                     Отклонить
                   </Button>
                 </div>
