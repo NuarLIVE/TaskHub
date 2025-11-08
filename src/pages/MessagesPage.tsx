@@ -657,7 +657,9 @@ export default function MessagesPage() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      await fetch(`${supabaseUrl}/functions/v1/ai-chat-analyzer`, {
+      console.log('🤖 Analyzing message:', { chatId, text, senderId });
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat-analyzer`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${supabaseKey}`,
@@ -665,12 +667,16 @@ export default function MessagesPage() {
         },
         body: JSON.stringify({
           chat_id: chatId,
+          message_id: crypto.randomUUID(),
           message_text: text,
           sender_id: senderId,
         }),
       });
+
+      const result = await response.json();
+      console.log('🤖 Analysis result:', result);
     } catch (error) {
-      console.error('Error analyzing message:', error);
+      console.error('❌ Error analyzing message:', error);
     }
   };
 
