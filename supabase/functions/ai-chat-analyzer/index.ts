@@ -223,13 +223,36 @@ Deno.serve(async (req: Request) => {
       crmContext = newContext;
     }
 
+    // Mechanical test trigger
+    if (message_text.toLowerCase().includes('тест подтверждения')) {
+      await createPendingConfirmation(
+        supabase,
+        chat_id,
+        'test',
+        { value: 'Механический тест' },
+        0.5,
+        'Это тестовое подтверждение. Всё работает?'
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          updates: 0,
+          confirmations_pending: 1,
+          extracted: {},
+          test: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const analysis = await analyzeWithAI(message_text, crmContext);
 
     console.log('AI Analysis:', JSON.stringify(analysis, null, 2));
 
     const updates: Partial<CRMContext> = {};
     const confirmationsNeeded: string[] = [];
-    const CONFIDENCE_THRESHOLD = 0.85;
+    const CONFIDENCE_THRESHOLD = 0.6;
 
     if (analysis.order_title && analysis.order_title.value) {
       const newTitle = analysis.order_title.value.slice(0, 100);
