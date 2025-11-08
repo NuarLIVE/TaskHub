@@ -28,11 +28,16 @@ const PRIVATE_LINKS = [
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0); // используем как флаг > 0
   const { isAuthenticated, user, logout } = useAuth();
 
+  const hasUnread = unreadCount > 0;
+
   const loadUnreadCount = async () => {
-    if (!user) return;
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
     try {
       const { data } = await getSupabase()
         .from('profiles')
@@ -41,7 +46,9 @@ export default function NavBar() {
         .single();
 
       if (data) {
-        setUnreadCount(Math.min(data.unread_messages_count || 0, 99));
+        setUnreadCount(Math.max(0, data.unread_messages_count || 0));
+      } else {
+        setUnreadCount(0);
       }
     } catch {
       setUnreadCount(0);
@@ -92,7 +99,7 @@ export default function NavBar() {
         },
         (payload) => {
           const updatedProfile = payload.new as any;
-          setUnreadCount(Math.min(updatedProfile.unread_messages_count || 0, 99));
+          setUnreadCount(Math.max(0, updatedProfile.unread_messages_count || 0));
         }
       )
       .subscribe();
@@ -124,22 +131,27 @@ export default function NavBar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-6 text-sm">
-          {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={`transition-colors font-medium relative ${
-                isActiveLink(link.href) ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-foreground'
-              }`}
-            >
-              {link.label}
-              {link.label === 'Сообщения' && unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                  {unreadCount === 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </a>
-          ))}
+          {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => {
+            const isMessages = link.label === 'Сообщения';
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                className={`transition-colors font-medium relative ${
+                  isActiveLink(link.href) ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-foreground'
+                }`}
+              >
+                {link.label}
+                {/* Точка-индикатор только для "Сообщения" */}
+                {isAuthenticated && isMessages && hasUnread && (
+                  <span
+                    aria-label="Есть новые сообщения"
+                    className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-[#6FE7C8]"
+                  />
+                )}
+              </a>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">
@@ -172,6 +184,7 @@ export default function NavBar() {
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Меню"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -181,26 +194,31 @@ export default function NavBar() {
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-[#6FE7C8] bg-background">
           <div className="px-4 py-3 space-y-1">
-            {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
-                  isActiveLink(link.href)
-                    ? 'bg-[#EFFFF8] text-[#6FE7C8]'
-                    : 'text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground'
-                }`}
-              >
-                <span className="flex items-center justify-between">
-                  {link.label}
-                  {link.label === 'Сообщения' && unreadCount > 0 && (
-                    <span className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                      {unreadCount === 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </span>
-              </a>
-            ))}
+            {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => {
+              const isMessages = link.label === 'Сообщения';
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                    isActiveLink(link.href)
+                      ? 'bg-[#EFFFF8] text-[#6FE7C8]'
+                      : 'text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground'
+                  }`}
+                >
+                  <span className="flex items-center justify-between">
+                    {link.label}
+                    {/* Для мобильного — маленькая точка справа */}
+                    {isAuthenticated && isMessages && hasUnread && (
+                      <span
+                        aria-hidden="true"
+                        className="ml-2 h-2 w-2 rounded-full bg-[#6FE7C8]"
+                      />
+                    )}
+                  </span>
+                </a>
+              );
+            })}
             <div className="pt-3 space-y-2 border-t border-[#6FE7C8]/20">
               {isAuthenticated ? (
                 <>
