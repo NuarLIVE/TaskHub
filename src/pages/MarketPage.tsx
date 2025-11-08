@@ -316,8 +316,8 @@ export default function MarketPage() {
                       </div>
                       <div className="font-semibold">
                         {activeTab === 'orders'
-                          ? (item.price_min != null && item.price_max != null ? `${item.price_min}–${item.price_max} ${item.currency}` : `${item.currency}`)
-                          : (item.price != null ? `${item.price} ${item.currency}` : `${item.currency}`)}
+                          ? `${item.price_min}–${item.price_max} ${item.currency}`
+                          : `${item.price} ${item.currency}`}
                       </div>
                     </div>
                   </Card>
@@ -435,12 +435,8 @@ export default function MarketPage() {
                     </div>
                     <div className="text-xl font-semibold">
                       {previewType === 'order'
-                        ? (previewItem.price_min != null && previewItem.price_max != null
-                            ? `${previewItem.price_min}–${previewItem.price_max} ${previewItem.currency}`
-                            : previewItem.currency)
-                        : (previewItem.price != null
-                            ? `${previewItem.price} ${previewItem.currency}`
-                            : previewItem.currency)}
+                        ? `${previewItem.price_min}–${previewItem.price_max} ${previewItem.currency}`
+                        : `${previewItem.price} ${previewItem.currency}`}
                     </div>
                   </div>
                 </div>
