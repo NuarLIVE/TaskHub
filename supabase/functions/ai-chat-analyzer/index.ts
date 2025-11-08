@@ -252,7 +252,7 @@ Deno.serve(async (req: Request) => {
 
     const updates: Partial<CRMContext> = {};
     const confirmationsNeeded: string[] = [];
-    const CONFIDENCE_THRESHOLD = 0.6;
+    const CONFIDENCE_THRESHOLD = 1.0;
 
     if (analysis.order_title && analysis.order_title.value) {
       const newTitle = analysis.order_title.value.slice(0, 100);
