@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, DollarSign } from 'lucide-react';
+import { Clock, DollarSign, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +33,21 @@ function TwoCol({ left, right }: { left: React.ReactNode; right: React.ReactNode
 export default function TaskCreatePage() {
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [price, setPrice] = useState('');
+  const [priceError, setPriceError] = useState('');
+
+  const validatePrice = () => {
+    const priceNum = Number(price);
+
+    if (priceNum <= 0) {
+      setPriceError('Цена должна быть больше нуля');
+      return false;
+    }
+
+    setPriceError('');
+    return true;
+  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,6 +55,10 @@ export default function TaskCreatePage() {
     if (!isAuthenticated) {
       alert('Войдите в систему для создания объявления');
       window.location.hash = '#/login';
+      return;
+    }
+
+    if (!validatePrice()) {
       return;
     }
 
@@ -76,7 +95,7 @@ export default function TaskCreatePage() {
         title: String(fd.get('title')),
         description: String(fd.get('description') || ''),
         category: String(fd.get('category')),
-        price: Number(fd.get('price')),
+        price: Number(price),
         currency: String(fd.get('currency')),
         delivery_days: Number(fd.get('delivery_days')),
         tags,
@@ -136,7 +155,16 @@ export default function TaskCreatePage() {
                     <Field label="Цена">
                       <div className="flex gap-2">
                         <span className="inline-flex items-center px-2 border rounded-md"><DollarSign className="h-4 w-4" /></span>
-                        <Input name="price" type="number" placeholder="300" className="h-11" />
+                        <Input
+                          name="price"
+                          type="number"
+                          placeholder="300"
+                          min="1"
+                          value={price}
+                          onChange={(e) => setPrice(e.target.value)}
+                          required
+                          className="h-11"
+                        />
                       </div>
                     </Field>
                   }
@@ -175,8 +203,44 @@ export default function TaskCreatePage() {
                 <Field label="Теги (через запятую)">
                   <Input name="tags" placeholder="React, Tailwind, SSR" className="h-11" />
                 </Field>
-                <div className="flex justify-between items-center pt-2">
-                  <div className="text-sm text-[#3F7F6E]">Черновик автоматически сохраняется (демо)</div>
+                {priceError && (
+                  <p className="text-sm text-red-500 -mt-2">{priceError}</p>
+                )}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Вложение (необязательно)</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="file-upload"
+                      onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className="flex items-center justify-center gap-2 h-11 px-4 rounded-md border-2 border-dashed border-[#6FE7C8]/30 hover:border-[#6FE7C8] bg-[#EFFFF8]/30 hover:bg-[#EFFFF8]/50 transition cursor-pointer"
+                    >
+                      <Upload className="h-4 w-4 text-[#3F7F6E]" />
+                      <span className="text-sm text-[#3F7F6E]">
+                        {attachment ? attachment.name : 'Выберите файл или перетащите сюда'}
+                      </span>
+                    </label>
+                    {attachment && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAttachment(null)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#3F7F6E] mt-1">
+                    Поддерживаются: PDF, DOC, DOCX, изображения (макс. 10 МБ)
+                  </p>
+                </div>
+                <div className="flex justify-end items-center pt-2">
                   <div className="flex gap-3">
                     <Button type="button" variant="ghost" asChild><a href="#/">Отменить</a></Button>
                     <Button type="submit" disabled={loading}>{loading ? 'Публикация...' : 'Опубликовать'}</Button>

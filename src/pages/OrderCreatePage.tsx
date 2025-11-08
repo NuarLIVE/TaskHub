@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, DollarSign } from 'lucide-react';
+import { Calendar, DollarSign, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +33,33 @@ function TwoCol({ left, right }: { left: React.ReactNode; right: React.ReactNode
 export default function OrderCreatePage() {
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [priceError, setPriceError] = useState('');
+
+  const validatePrices = () => {
+    const min = Number(minPrice);
+    const max = Number(maxPrice);
+
+    if (min <= 0 || max <= 0) {
+      setPriceError('Цены должны быть больше нуля');
+      return false;
+    }
+
+    if (max <= min) {
+      setPriceError('Максимальная цена должна быть строго выше минимальной');
+      return false;
+    }
+
+    setPriceError('');
+    return true;
+  };
+
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,6 +67,10 @@ export default function OrderCreatePage() {
     if (!isAuthenticated) {
       alert('Войдите в систему для создания заказа');
       window.location.hash = '#/login';
+      return;
+    }
+
+    if (!validatePrices()) {
       return;
     }
 
@@ -62,13 +93,13 @@ export default function OrderCreatePage() {
         title: String(fd.get('title')),
         description: String(fd.get('description') || ''),
         category: String(fd.get('category')),
-        price_min: Number(fd.get('budget_min')),
-        price_max: Number(fd.get('budget_max')),
+        price_min: Number(minPrice),
+        price_max: Number(maxPrice),
         currency: String(fd.get('currency')),
         engagement: String(fd.get('engagement')),
         deadline: fd.get('deadline') ? String(fd.get('deadline')) : null,
         tags,
-        use_escrow: fd.get('escrow') === 'on',
+        use_escrow: false,
         status: 'open'
       })
       .select()
@@ -113,7 +144,7 @@ export default function OrderCreatePage() {
                   right={
                     <Field label="Дедлайн">
                       <div className="relative">
-                        <Input name="deadline" type="date" className="h-11 pr-10" />
+                        <Input name="deadline" type="date" min={getTodayDate()} className="h-11 pr-10" />
                         <Calendar className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#3F7F6E]" />
                       </div>
                     </Field>
@@ -124,7 +155,16 @@ export default function OrderCreatePage() {
                     <Field label="Бюджет (мин)">
                       <div className="flex gap-2">
                         <span className="inline-flex items-center px-2 border rounded-md"><DollarSign className="h-4 w-4" /></span>
-                        <Input name="budget_min" type="number" placeholder="300" className="h-11" />
+                        <Input
+                          name="budget_min"
+                          type="number"
+                          placeholder="300"
+                          min="1"
+                          value={minPrice}
+                          onChange={(e) => setMinPrice(e.target.value)}
+                          required
+                          className="h-11"
+                        />
                       </div>
                     </Field>
                   }
@@ -132,11 +172,23 @@ export default function OrderCreatePage() {
                     <Field label="Бюджет (макс)">
                       <div className="flex gap-2">
                         <span className="inline-flex items-center px-2 border rounded-md"><DollarSign className="h-4 w-4" /></span>
-                        <Input name="budget_max" type="number" placeholder="600" className="h-11" />
+                        <Input
+                          name="budget_max"
+                          type="number"
+                          placeholder="600"
+                          min="1"
+                          value={maxPrice}
+                          onChange={(e) => setMaxPrice(e.target.value)}
+                          required
+                          className="h-11"
+                        />
                       </div>
                     </Field>
                   }
                 />
+                {priceError && (
+                  <p className="text-sm text-red-500 -mt-2">{priceError}</p>
+                )}
                 <TwoCol
                   left={
                     <Field label="Валюта">
@@ -164,12 +216,41 @@ export default function OrderCreatePage() {
                 <Field label="Теги (через запятую)">
                   <Input name="tags" placeholder="React, Tailwind, API" className="h-11" />
                 </Field>
-                <div className="flex items-center gap-2">
-                  <input id="escrow" name="escrow" type="checkbox" className="h-4 w-4" defaultChecked />
-                  <label htmlFor="escrow" className="text-sm">Использовать эскроу</label>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Вложение (необязательно)</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="file-upload"
+                      onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className="flex items-center justify-center gap-2 h-11 px-4 rounded-md border-2 border-dashed border-[#6FE7C8]/30 hover:border-[#6FE7C8] bg-[#EFFFF8]/30 hover:bg-[#EFFFF8]/50 transition cursor-pointer"
+                    >
+                      <Upload className="h-4 w-4 text-[#3F7F6E]" />
+                      <span className="text-sm text-[#3F7F6E]">
+                        {attachment ? attachment.name : 'Выберите файл или перетащите сюда'}
+                      </span>
+                    </label>
+                    {attachment && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAttachment(null)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#3F7F6E] mt-1">
+                    Поддерживаются: PDF, DOC, DOCX, изображения (макс. 10 МБ)
+                  </p>
                 </div>
-                <div className="flex justify-between items-center pt-2">
-                  <div className="text-sm text-[#3F7F6E]">Черновик автоматически сохраняется (демо)</div>
+                <div className="flex justify-end items-center pt-2">
                   <div className="flex gap-3">
                     <Button type="button" variant="ghost" asChild><a href="#/">Отменить</a></Button>
                     <Button type="submit" disabled={loading}>{loading ? 'Публикация...' : 'Опубликовать'}</Button>
