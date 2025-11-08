@@ -89,9 +89,6 @@ export default function MarketPage() {
       const ordersData = ordersRes.data || [];
       const tasksData = tasksRes.data || [];
 
-      console.log('Orders loaded from DB:', ordersData.length);
-      console.log('First order:', ordersData[0]);
-
       setOrders(ordersData);
       setTasks(tasksData);
 
@@ -175,8 +172,6 @@ export default function MarketPage() {
   };
 
   const openPreview = (item: any, type: 'order' | 'task') => {
-    console.log('Opening preview for:', type, item);
-    console.log('Price data:', { price_min: item.price_min, price_max: item.price_max, price: item.price, currency: item.currency });
     setPreviewItem(item);
     setPreviewType(type);
     setPreviewOpen(true);
@@ -278,7 +273,7 @@ export default function MarketPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {data.map((item: any) => (
                 <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                  <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer relative" onClick={() => openPreview(item, activeTab as 'order' | 'task')}>
+                  <Card className="h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer relative" onClick={() => openPreview(item, activeTab === 'orders' ? 'order' : 'task')}>
                     {item.is_boosted && (
                       <BoostBadge isBoosted className="absolute top-3 right-3 z-10" />
                     )}
