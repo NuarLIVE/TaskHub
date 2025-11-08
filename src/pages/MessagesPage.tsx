@@ -976,52 +976,38 @@ export default function MessagesPage() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex flex-col items-center gap-1">
-                            <div
-                              className="cursor-pointer relative"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigateToProfile(otherUserId, user?.id);
-                              }}
-                            >
-                              {profile?.avatar_url ? (
-                                <div className="relative">
-                                  <img
-                                    src={profile.avatar_url}
-                                    alt={profile?.name || 'Пользователь'}
-                                    className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
+                          <div
+                            className="cursor-pointer relative"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToProfile(otherUserId, user?.id);
+                            }}
+                          >
+                            {profile?.avatar_url ? (
+                              <div className="relative">
+                                <img
+                                  src={profile.avatar_url}
+                                  alt={profile?.name || 'Пользователь'}
+                                  className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
+                                />
+                                {online && (
+                                  <span
+                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                    style={{ bottom: '2px', right: '2px' }}
                                   />
-                                  {online && (
-                                    <span
-                                      className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
-                                      style={{ bottom: '2px', right: '2px' }}
-                                    />
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                                  <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
-                                  {online && (
-                                    <span
-                                      className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
-                                      style={{ bottom: '2px', right: '2px' }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              ref={chat.id === selectedChatId ? crmButtonRef : undefined}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedChatId(chat.id);
-                                setCrmPanelOpen(true);
-                              }}
-                              className="w-8 h-8 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-[10px] font-semibold transition"
-                              title="CRM"
-                            >
-                              CRM
-                            </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
+                                {online && (
+                                  <span
+                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                    style={{ bottom: '2px', right: '2px' }}
+                                  />
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -1061,26 +1047,36 @@ export default function MessagesPage() {
             {selectedChatId && currentProfile ? (
               <Card className="flex flex-col h-full min-h-0 overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
-                  <div
-                    className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer"
-                    onClick={() => navigateToProfile(currentOtherUserId || '', user?.id)}
-                  >
-                    <div className="relative">
-                      {currentProfile.avatar_url ? (
-                        <img src={currentProfile.avatar_url} alt={currentProfile.name} className="h-10 w-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                          <span className="text-sm font-medium">{currentProfile.name?.charAt(0)}</span>
-                        </div>
-                      )}
-                      {totalUnreadOtherChats > 0 && (
-                        <span
-                          className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10"
-                          title="Непрочитанные в других чатах"
-                        >
-                          {totalUnreadOtherChats > 99 ? '99+' : totalUnreadOtherChats}
-                        </span>
-                      )}
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-center gap-1">
+                      <div
+                        className="relative hover:opacity-80 transition cursor-pointer"
+                        onClick={() => navigateToProfile(currentOtherUserId || '', user?.id)}
+                      >
+                        {currentProfile.avatar_url ? (
+                          <img src={currentProfile.avatar_url} alt={currentProfile.name} className="h-10 w-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                            <span className="text-sm font-medium">{currentProfile.name?.charAt(0)}</span>
+                          </div>
+                        )}
+                        {totalUnreadOtherChats > 0 && (
+                          <span
+                            className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10"
+                            title="Непрочитанные в других чатах"
+                          >
+                            {totalUnreadOtherChats > 99 ? '99+' : totalUnreadOtherChats}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        ref={crmButtonRef}
+                        onClick={() => setCrmPanelOpen(true)}
+                        className="w-8 h-8 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-[10px] font-semibold transition"
+                        title="CRM"
+                      >
+                        CRM
+                      </button>
                     </div>
 
                     <div>
