@@ -89,6 +89,9 @@ export default function MarketPage() {
       const ordersData = ordersRes.data || [];
       const tasksData = tasksRes.data || [];
 
+      console.log('Orders loaded from DB:', ordersData.length);
+      console.log('First order:', ordersData[0]);
+
       setOrders(ordersData);
       setTasks(tasksData);
 
@@ -172,6 +175,8 @@ export default function MarketPage() {
   };
 
   const openPreview = (item: any, type: 'order' | 'task') => {
+    console.log('Opening preview for:', type, item);
+    console.log('Price data:', { price_min: item.price_min, price_max: item.price_max, price: item.price, currency: item.currency });
     setPreviewItem(item);
     setPreviewType(type);
     setPreviewOpen(true);
