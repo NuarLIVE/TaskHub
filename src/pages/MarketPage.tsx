@@ -315,7 +315,9 @@ export default function MarketPage() {
                         <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                       </div>
                       <div className="font-semibold">
-                        {activeTab === 'orders' ? `${item.price_min}–${item.price_max} ${item.currency}` : `${item.price} ${item.currency}`}
+                        {activeTab === 'orders'
+                          ? (item.price_min && item.price_max ? `${item.price_min}–${item.price_max} ${item.currency}` : `${item.currency}`)
+                          : (item.price ? `${item.price} ${item.currency}` : `${item.currency}`)}
                       </div>
                     </div>
                   </Card>
@@ -324,7 +326,7 @@ export default function MarketPage() {
             </div>
           )}
 
-          {data.length === 0 && (
+          {!loading && data.length === 0 && (
             <div className="text-center py-16">
               <p className="text-[#3F7F6E]">Ничего не найдено. Попробуйте изменить фильтры.</p>
             </div>
@@ -433,8 +435,12 @@ export default function MarketPage() {
                     </div>
                     <div className="text-xl font-semibold">
                       {previewType === 'order'
-                        ? `${previewItem.price_min}–${previewItem.price_max} ${previewItem.currency}`
-                        : `${previewItem.price} ${previewItem.currency}`}
+                        ? (previewItem.price_min && previewItem.price_max
+                            ? `${previewItem.price_min}–${previewItem.price_max} ${previewItem.currency}`
+                            : previewItem.currency)
+                        : (previewItem.price
+                            ? `${previewItem.price} ${previewItem.currency}`
+                            : previewItem.currency)}
                     </div>
                   </div>
                 </div>
