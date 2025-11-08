@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -849,6 +849,35 @@ export default function MessagesPage() {
   const formatTime = (timestamp: string) =>
     new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+  // ======== АВТО-РОСТ ТЕКСТОВОГО ПОЛЯ (до 8 строк) ========
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const MAX_ROWS = 8;
+
+  const autosize = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const cs = window.getComputedStyle(ta);
+    const line = parseFloat(cs.lineHeight || '20');
+    const padTop = parseFloat(cs.paddingTop || '0');
+    const padBot = parseFloat(cs.paddingBottom || '0');
+    const maxH = line * MAX_ROWS + padTop + padBot;
+    const newH = Math.min(ta.scrollHeight, maxH);
+    ta.style.height = `${newH}px`;
+    ta.style.overflowY = ta.scrollHeight > maxH ? 'auto' : 'hidden';
+  };
+
+  useEffect(() => { autosize(); }, [message]);
+
+  const handleComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const form = (e.currentTarget as HTMLTextAreaElement).closest('form');
+      form?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+  };
+  // ========================================================
+
   return (
     <motion.div
       initial="initial"
@@ -895,11 +924,11 @@ export default function MessagesPage() {
               <div className="p-4 border-b">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
-                  <Input
+                  <input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Поиск пользователей..."
-                    className="pl-9 h-10"
+                    className="pl-9 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               </div>
@@ -1256,16 +1285,22 @@ export default function MessagesPage() {
                       >
                         <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
                       </Button>
-                      <Input
+
+                      <Textarea
+                        ref={textareaRef}
                         value={message}
                         onChange={(e) => {
                           setMessage(e.target.value);
                           if (e.target.value.trim()) sendTypingIndicator();
+                          autosize();
                         }}
+                        onKeyDown={handleComposerKeyDown}
                         placeholder="Введите сообщение..."
-                        className="h-11"
                         disabled={uploading}
+                        rows={1}
+                        className="min-h-11 h-auto resize-none leading-5 px-3 py-2 flex-1"
                       />
+
                       <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading}>
                         <Send className="h-4 w-4" />
                       </Button>
