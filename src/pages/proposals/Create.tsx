@@ -105,7 +105,9 @@ export default function ProposalsCreate() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="px-6 pt-4">
+
+          {/* 🔽 Добавлен отступ снизу */}
+          <CardContent className="px-6 pt-4 pb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <a href={`#/u/${orderData.author.name.toLowerCase()}`} className="flex items-center gap-2 hover:opacity-80 transition">
