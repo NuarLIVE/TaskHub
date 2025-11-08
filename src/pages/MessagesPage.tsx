@@ -13,6 +13,7 @@ import {
   FileText,
   Check,
   CheckCheck,
+  Briefcase,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,6 +32,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 import { MediaEditor } from '@/components/MediaEditor';
 import { ImageViewer } from '@/components/ImageViewer';
+import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -98,6 +100,7 @@ export default function MessagesPage() {
   const [imageViewerImages, setImageViewerImages] = useState<Array<{ url: string; name?: string }>>([]);
   const [isUserBlocked, setIsUserBlocked] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [crmPanelOpen, setCrmPanelOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -618,10 +621,37 @@ export default function MessagesPage() {
       shouldScrollRef.current = false;
       loadMessages(selectedChatId);
       loadChats(false);
+
+      // Trigger AI analysis
+      if (messageText.trim()) {
+        analyzeMessage(selectedChatId, messageText, user.id);
+      }
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setMessage(messageText);
       alert('Ошибка при отправке сообщения');
+    }
+  };
+
+  const analyzeMessage = async (chatId: string, text: string, senderId: string) => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      await fetch(`${supabaseUrl}/functions/v1/ai-chat-analyzer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_text: text,
+          sender_id: senderId,
+        }),
+      });
+    } catch (error) {
+      console.error('Error analyzing message:', error);
     }
   };
 
@@ -1041,10 +1071,20 @@ export default function MessagesPage() {
                     </div>
                   </div>
 
-                  <div className="relative">
-                    <Button variant="ghost" size="sm" onClick={() => setMenuOpen(!menuOpen)}>
-                      <MoreVertical className="h-4 w-4" />
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCrmPanelOpen(true)}
+                      className="hover:bg-[#EFFFF8]"
+                      title="CRM чата"
+                    >
+                      <Briefcase className="h-4 w-4 text-[#3F7F6E]" />
                     </Button>
+                    <div className="relative">
+                      <Button variant="ghost" size="sm" onClick={() => setMenuOpen(!menuOpen)}>
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
                     {menuOpen && (
                       <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[180px]">
                         <button
@@ -1070,6 +1110,7 @@ export default function MessagesPage() {
                         </button>
                       </div>
                     )}
+                    </div>
                   </div>
                 </div>
 
@@ -1290,6 +1331,15 @@ export default function MessagesPage() {
 
       {showImageViewer && imageViewerImages.length > 0 && (
         <ImageViewer images={imageViewerImages} initialIndex={imageViewerIndex} onClose={() => setShowImageViewer(false)} />
+      )}
+
+      {selectedChatId && user && (
+        <ChatCRMPanel
+          chatId={selectedChatId}
+          isOpen={crmPanelOpen}
+          onClose={() => setCrmPanelOpen(false)}
+          currentUserId={user.id}
+        />
       )}
     </motion.div>
   );
