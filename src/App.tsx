@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
+import { RegionProvider } from './contexts/RegionContext';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import { DbStatus } from './components/DbStatus';
@@ -159,21 +160,23 @@ function App() {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-background text-foreground">
-        {!isAuthPage && <NavBar />}
-        <Suspense fallback={
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
-              <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+      <RegionProvider>
+        <div className="min-h-screen bg-background text-foreground">
+          {!isAuthPage && <NavBar />}
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
+                <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <Page />
-        </Suspense>
-        {!isAuthPage && <Footer />}
-        <DbStatus />
-      </div>
+          }>
+            <Page />
+          </Suspense>
+          {!isAuthPage && <Footer />}
+          <DbStatus />
+        </div>
+      </RegionProvider>
     </AuthProvider>
   );
 }

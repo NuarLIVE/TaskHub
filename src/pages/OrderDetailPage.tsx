@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import FavoriteButton from '@/components/ui/FavoriteButton';
 import { getSupabase } from '@/lib/supabaseClient';
-import { formatPrice } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -42,6 +42,7 @@ interface Profile {
 
 export default function OrderDetailPage() {
   const { user } = useAuth();
+  const { formatPrice } = useRegion();
   const [proposalText, setProposalText] = useState('');
   const [proposalPrice, setProposalPrice] = useState('');
   const [order, setOrder] = useState<Order | null>(null);

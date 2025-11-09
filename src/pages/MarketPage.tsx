@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { BoostBadge } from '@/components/ui/BoostBadge';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { navigateToProfile } from '@/lib/navigation';
 
 const pageVariants = {
@@ -23,6 +24,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function MarketPage() {
   const { user } = useAuth();
+  const { formatPrice } = useRegion();
   const [activeTab, setActiveTab] = useState('orders');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
@@ -364,8 +366,8 @@ export default function MarketPage() {
                       </div>
                       <div className="font-semibold">
                         {activeTab === 'orders'
-                          ? `${item.price_min}–${item.price_max} ${item.currency}`
-                          : `${item.price} ${item.currency}`}
+                          ? `${formatPrice(item.price_min, item.currency)}–${formatPrice(item.price_max, item.currency)}`
+                          : formatPrice(item.price, item.currency)}
                       </div>
                     </div>
                   </Card>
@@ -493,8 +495,8 @@ export default function MarketPage() {
                     </div>
                     <div className="text-xl font-semibold">
                       {previewType === 'order'
-                        ? `${previewItem.price_min}–${previewItem.price_max} ${previewItem.currency}`
-                        : `${previewItem.price} ${previewItem.currency}`}
+                        ? `${formatPrice(previewItem.price_min, previewItem.currency)}–${formatPrice(previewItem.price_max, previewItem.currency)}`
+                        : formatPrice(previewItem.price, previewItem.currency)}
                     </div>
                   </div>
                 </div>

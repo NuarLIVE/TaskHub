@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
 import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
 import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
+import RegionSelector from './RegionSelector';
 
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
@@ -140,6 +141,7 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-2">
+          <RegionSelector />
           {isAuthenticated ? (
             <>
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">

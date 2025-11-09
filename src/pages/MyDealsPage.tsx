@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatPrice } from '@/lib/currency';
+import { useRegion } from '@/contexts/RegionContext';
 import { navigateToProfile } from '@/lib/navigation';
 
 const pageVariants = {
@@ -72,6 +72,7 @@ export default function MyDealsPage() {
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { formatPrice } = useRegion();
 
   const PROPOSALS_PER_PAGE = 5;
 

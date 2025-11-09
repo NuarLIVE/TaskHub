@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import FavoriteButton from '@/components/ui/FavoriteButton';
 import { getSupabase } from '@/lib/supabaseClient';
-import { formatPrice } from '@/lib/currency';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -40,6 +40,7 @@ interface Profile {
 
 export default function TaskDetailPage() {
   const { user } = useAuth();
+  const { formatPrice } = useRegion();
   const [task, setTask] = useState<Task | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
