@@ -387,18 +387,18 @@ export default function MarketPage() {
         </section>
 
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-2xl overflow-hidden">
+          <DialogContent className="max-w-2xl">
             {previewItem && (
               <>
                 {user && previewItem.user_id === user.id && (
-                  <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-[#00FF94] to-[#00D97E] text-black font-semibold text-sm py-3 px-6 shadow-lg -mx-6 -mt-6">
+                  <div className="bg-gradient-to-r from-[#00FF94] to-[#00D97E] text-black font-semibold text-sm py-2.5 px-4 rounded-lg mb-4 shadow-md">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>
                       {previewType === 'order' ? 'Ваш заказ' : 'Ваше объявление'}
                     </div>
                   </div>
                 )}
-                <DialogHeader className={user && previewItem.user_id === user.id ? "mt-8" : ""}>
+                <DialogHeader>
                   <DialogTitle>
                     {previewItem.title}
                   </DialogTitle>
