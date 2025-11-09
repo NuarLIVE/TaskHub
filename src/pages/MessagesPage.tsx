@@ -14,6 +14,8 @@ import {
   Check,
   CheckCheck,
   Briefcase,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -85,6 +87,8 @@ export default function MessagesPage() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [deals, setDeals] = useState<any[]>([]);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -462,6 +466,16 @@ export default function MessagesPage() {
         });
         setProfiles(profilesMap);
       }
+
+      const { data: dealsData } = await queryWithRetry(
+        () => getSupabase()
+          .from('deals')
+          .select('*, orders(title), tasks(title)')
+          .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
+          .eq('status', 'in_progress')
+      );
+
+      setDeals(dealsData || []);
     } catch (error) {
       console.error('❌ Error loading chats:', error);
       throw error;
@@ -874,6 +888,49 @@ export default function MessagesPage() {
     return profile?.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
+  const toggleUserExpanded = (userId: string) => {
+    setExpandedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  const getUserDeals = (userId: string) => {
+    if (!user) return [];
+    return deals.filter(deal => {
+      const otherParty = deal.client_id === user.id ? deal.freelancer_id : deal.client_id;
+      return otherParty === userId;
+    });
+  };
+
+  const groupedChats = useMemo(() => {
+    const groups: Record<string, { mainChat: Chat; dealChats: Array<{ deal: any; chat: Chat | null }> }> = {};
+
+    filteredChats.forEach(chat => {
+      const otherUserId = getOtherParticipant(chat);
+      if (!groups[otherUserId]) {
+        groups[otherUserId] = { mainChat: chat, dealChats: [] };
+      }
+    });
+
+    deals.forEach(deal => {
+      if (!user) return;
+      const otherUserId = deal.client_id === user.id ? deal.freelancer_id : deal.client_id;
+
+      if (groups[otherUserId]) {
+        const dealChat = chats.find(c => c.id === deal.chat_id);
+        groups[otherUserId].dealChats.push({ deal, chat: dealChat || null });
+      }
+    });
+
+    return groups;
+  }, [filteredChats, deals, chats, user]);
+
   const currentChat = chats.find((c) => c.id === selectedChatId);
   const currentOtherUserId = currentChat ? getOtherParticipant(currentChat) : null;
   const currentProfile = currentOtherUserId ? profiles[currentOtherUserId] : null;
@@ -961,88 +1018,160 @@ export default function MessagesPage() {
                 </div>
               </div>
               <div className="overflow-y-auto flex-1 min-h-0">
-                {filteredChats.length === 0 ? (
+                {Object.keys(groupedChats).length === 0 ? (
                   <div className="p-4 text-center text-[#3F7F6E]">
                     {searchQuery ? 'Ничего не найдено' : 'Нет активных чатов'}
                   </div>
                 ) : (
-                  filteredChats.map((chat) => {
-                    const otherUserId = getOtherParticipant(chat);
+                  Object.entries(groupedChats).map(([otherUserId, group]) => {
                     const profile = profiles[otherUserId];
                     const online = isOnlineFresh(profile);
+                    const chat = group.mainChat;
+                    const hasDeals = group.dealChats.length > 0;
+                    const isExpanded = expandedUsers.has(otherUserId);
 
                     const unreadCount =
                       chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0);
 
                     return (
-                      <div
-                        key={chat.id}
-                        onClick={() => setSelectedChatId(chat.id)}
-                        className={`p-4 border-b cursor-pointer hover:bg-[#EFFFF8] ${
-                          selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="cursor-pointer relative"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigateToProfile(otherUserId, user?.id);
-                            }}
-                          >
-                            {profile?.avatar_url ? (
-                              <div className="relative">
-                                <img
-                                  src={profile.avatar_url}
-                                  alt={profile?.name || 'Пользователь'}
-                                  className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
-                                />
-                                {online && (
-                                  <span
-                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
-                                    style={{ bottom: '2px', right: '2px' }}
+                      <div key={otherUserId} className="border-b">
+                        <div
+                          onClick={() => !hasDeals && setSelectedChatId(chat.id)}
+                          className={`p-4 ${!hasDeals ? 'cursor-pointer hover:bg-[#EFFFF8]' : ''} ${
+                            selectedChatId === chat.id && !hasDeals ? 'bg-[#EFFFF8]' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="cursor-pointer relative"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToProfile(otherUserId, user?.id);
+                              }}
+                            >
+                              {profile?.avatar_url ? (
+                                <div className="relative">
+                                  <img
+                                    src={profile.avatar_url}
+                                    alt={profile?.name || 'Пользователь'}
+                                    className="h-10 w-10 rounded-full object-cover transition-opacity hover:opacity-80"
                                   />
-                                )}
-                              </div>
-                            ) : (
-                              <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                                <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
-                                {online && (
-                                  <span
-                                    className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
-                                    style={{ bottom: '2px', right: '2px' }}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="font-semibold truncate">{profile?.name || 'Пользователь'}</div>
-                              <span className="text-xs text-[#3F7F6E]">
-                                {chat.last_message_at
-                                  ? new Date(chat.last_message_at).toLocaleTimeString('ru-RU', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : ''}
-                              </span>
+                                  {online && (
+                                    <span
+                                      className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                      style={{ bottom: '2px', right: '2px' }}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="relative h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                  <span className="text-sm font-medium">{profile?.name?.charAt(0) ?? 'U'}</span>
+                                  {online && (
+                                    <span
+                                      className="absolute block h-3 w-3 rounded-full bg-green-500 ring-2 ring-white pointer-events-none z-10"
+                                      style={{ bottom: '2px', right: '2px' }}
+                                    />
+                                  )}
+                                </div>
+                              )}
                             </div>
 
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm text-[#3F7F6E] truncate">
-                                {chat.last_message_text || 'Нет сообщений'}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="font-semibold truncate">{profile?.name || 'Пользователь'}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-[#3F7F6E]">
+                                    {chat.last_message_at
+                                      ? new Date(chat.last_message_at).toLocaleTimeString('ru-RU', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : ''}
+                                  </span>
+                                  {unreadCount > 0 && (
+                                    <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                                      {unreadCount > 99 ? '99+' : unreadCount}
+                                    </div>
+                                  )}
+                                  {hasDeals && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleUserExpanded(otherUserId);
+                                      }}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronUp className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
 
-                              {unreadCount > 0 && (
-                                <div className="ml-2 h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center pointer-events-none z-10">
-                                  {unreadCount > 99 ? '99+' : unreadCount}
+                              {!hasDeals && (
+                                <div className="text-sm text-[#3F7F6E] truncate">
+                                  {chat.last_message_text || 'Нет сообщений'}
                                 </div>
                               )}
                             </div>
                           </div>
                         </div>
+
+                        {hasDeals && isExpanded && (
+                          <div className="bg-[#EFFFF8]/30">
+                            <div
+                              onClick={() => setSelectedChatId(chat.id)}
+                              className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
+                                selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">Общий чат</span>
+                                {unreadCount > 0 && (
+                                  <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {group.dealChats.map(({ deal, chat: dealChat }) => {
+                              const dealTitle = deal.orders?.[0]?.title || deal.tasks?.[0]?.title || deal.title;
+                              const dealUnread = dealChat
+                                ? (dealChat.participant1_id === user?.id
+                                    ? dealChat.unread_count_p1 || 0
+                                    : dealChat.unread_count_p2 || 0)
+                                : 0;
+
+                              return (
+                                <div
+                                  key={deal.id}
+                                  onClick={() => dealChat && setSelectedChatId(dealChat.id)}
+                                  className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
+                                    selectedChatId === dealChat?.id ? 'bg-[#EFFFF8]' : ''
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <Briefcase className="h-3 w-3 text-[#3F7F6E] flex-shrink-0" />
+                                      <span className="text-sm truncate">{dealTitle}</span>
+                                    </div>
+                                    {dealUnread > 0 && (
+                                      <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                                        {dealUnread > 99 ? '99+' : dealUnread}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })
