@@ -250,6 +250,7 @@ export default function ProposalsPage() {
     if (!user) return;
 
     try {
+      const supabase = getSupabase();
       console.log('Starting proposal acceptance:', proposal);
 
       const item = proposal.order_id ? orders[proposal.order_id] : tasks[proposal.task_id];
