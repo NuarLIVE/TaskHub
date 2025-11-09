@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Send,
@@ -1526,13 +1526,15 @@ export default function MessagesPage() {
             )}
 
             {/* Deal Progress Panel */}
-            {currentDeal && user && (
-              <DealProgressPanel
-                dealId={currentDeal.id}
-                userId={user.id}
-                isFreelancer={isFreelancer}
-              />
-            )}
+            <AnimatePresence mode="wait">
+              {currentDeal && user && (
+                <DealProgressPanel
+                  dealId={currentDeal.id}
+                  userId={user.id}
+                  isFreelancer={isFreelancer}
+                />
+              )}
+            </AnimatePresence>
           </div>
         )}
       </section>
