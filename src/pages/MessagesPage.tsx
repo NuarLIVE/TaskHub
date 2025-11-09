@@ -1006,7 +1006,7 @@ export default function MessagesPage() {
 
   return (
     <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+      <section className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Сообщения</h1>
 
         {loading ? (
@@ -1031,7 +1031,7 @@ export default function MessagesPage() {
             </div>
           </div>
         ) : (
-          <div className={`grid grid-cols-1 ${currentDeal ? 'lg:grid-cols-[280px_1fr_340px]' : 'lg:grid-cols-[280px_1fr]'} gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[800px] min-h-0`}>
+          <div className={`grid grid-cols-1 ${currentDeal ? 'lg:grid-cols-[320px_1fr_380px]' : 'lg:grid-cols-[320px_1fr]'} gap-6 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[800px] min-h-0`}>
             {/* Список чатов */}
             <Card className="overflow-hidden h-full min-h-0 flex flex-col">
               <div className="p-4 border-b">
