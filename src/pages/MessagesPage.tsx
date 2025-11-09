@@ -36,6 +36,7 @@ import { MediaEditor } from '@/components/MediaEditor';
 import { ImageViewer } from '@/components/ImageViewer';
 import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 import { CRMConfirmation } from '@/components/CRMConfirmation';
+import DealProgressPanel from '@/components/DealProgressPanel';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -952,6 +953,16 @@ export default function MessagesPage() {
   const currentOtherUserId = currentChat ? getOtherParticipant(currentChat) : null;
   const currentProfile = currentOtherUserId ? profiles[currentOtherUserId] : null;
 
+  const currentDeal = useMemo(() => {
+    if (!selectedChatId || !user) return null;
+    return deals.find((deal) => deal.chat_id === selectedChatId);
+  }, [selectedChatId, deals, user]);
+
+  const isFreelancer = useMemo(() => {
+    if (!currentDeal || !user) return false;
+    return currentDeal.freelancer_id === user.id;
+  }, [currentDeal, user]);
+
   const totalUnreadOtherChats = useMemo(() => {
     if (!user) return 0;
     return chats.reduce((sum, c) => {
@@ -1020,7 +1031,7 @@ export default function MessagesPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[700px] min-h-0">
+          <div className={`grid grid-cols-1 ${currentDeal ? 'lg:grid-cols-[320px_1fr_384px]' : 'lg:grid-cols-[320px_1fr]'} gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[700px] min-h-0`}>
             {/* Список чатов */}
             <Card className="overflow-hidden h-full min-h-0 flex flex-col">
               <div className="p-4 border-b">
@@ -1512,6 +1523,15 @@ export default function MessagesPage() {
                   )}
                 </div>
               </Card>
+            )}
+
+            {/* Deal Progress Panel */}
+            {currentDeal && user && (
+              <DealProgressPanel
+                dealId={currentDeal.id}
+                userId={user.id}
+                isFreelancer={isFreelancer}
+              />
             )}
           </div>
         )}
