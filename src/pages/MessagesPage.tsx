@@ -910,22 +910,35 @@ export default function MessagesPage() {
   };
 
   const groupedChats = useMemo(() => {
-    const groups: Record<string, { mainChat: Chat; dealChats: Array<{ deal: any; chat: Chat | null }> }> = {};
+    const groups: Record<string, { mainChat: Chat | null; dealChats: Array<{ deal: any; chat: Chat | null }> }> = {};
 
-    filteredChats.forEach(chat => {
-      const otherUserId = getOtherParticipant(chat);
-      if (!groups[otherUserId]) {
-        groups[otherUserId] = { mainChat: chat, dealChats: [] };
-      }
-    });
-
+    // Сначала создаем группы для сделок
     deals.forEach(deal => {
       if (!user) return;
       const otherUserId = deal.client_id === user.id ? deal.freelancer_id : deal.client_id;
 
-      if (groups[otherUserId]) {
-        const dealChat = chats.find(c => c.id === deal.chat_id);
-        groups[otherUserId].dealChats.push({ deal, chat: dealChat || null });
+      if (!groups[otherUserId]) {
+        groups[otherUserId] = { mainChat: null, dealChats: [] };
+      }
+
+      const dealChat = chats.find(c => c.id === deal.chat_id);
+      groups[otherUserId].dealChats.push({ deal, chat: dealChat || null });
+    });
+
+    // Получаем ID всех чатов сделок
+    const dealChatIds = new Set(deals.map(d => d.chat_id).filter(Boolean));
+
+    // Затем добавляем общие чаты (которые не являются чатами сделок)
+    filteredChats.forEach(chat => {
+      const otherUserId = getOtherParticipant(chat);
+
+      if (!dealChatIds.has(chat.id)) {
+        // Это общий чат
+        if (!groups[otherUserId]) {
+          groups[otherUserId] = { mainChat: chat, dealChats: [] };
+        } else if (!groups[otherUserId].mainChat) {
+          groups[otherUserId].mainChat = chat;
+        }
       }
     });
 
@@ -1030,28 +1043,27 @@ export default function MessagesPage() {
                     const chat = group.mainChat;
                     const hasDeals = group.dealChats.length > 0;
                     const isExpanded = expandedUsers.has(otherUserId);
+                    const hasMainChat = chat !== null;
 
-                    const unreadCount =
-                      chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0);
+                    const unreadCount = chat
+                      ? (chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0))
+                      : 0;
 
                     return (
                       <div key={otherUserId} className="border-b">
                         <div
                           onClick={() => {
-                            if (hasDeals) {
-                              const isMainChatAlsoDealChat = group.dealChats.some(({ chat: dealChat }) => dealChat?.id === chat.id);
-                              if (!isExpanded) {
-                                toggleUserExpanded(otherUserId);
-                              }
-                              if (!isMainChatAlsoDealChat) {
-                                setSelectedChatId(chat.id);
-                              }
-                            } else {
+                            if (!isExpanded) {
+                              toggleUserExpanded(otherUserId);
+                            }
+                            if (hasMainChat && !hasDeals) {
+                              setSelectedChatId(chat.id);
+                            } else if (hasMainChat && hasDeals) {
                               setSelectedChatId(chat.id);
                             }
                           }}
                           className={`p-4 cursor-pointer hover:bg-[#EFFFF8] ${
-                            selectedChatId === chat.id && !isExpanded ? 'bg-[#EFFFF8]' : ''
+                            chat && selectedChatId === chat.id && !isExpanded ? 'bg-[#EFFFF8]' : ''
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1126,7 +1138,7 @@ export default function MessagesPage() {
                                 </div>
                               </div>
 
-                              {!hasDeals && (
+                              {!hasDeals && chat && (
                                 <div className="text-sm text-[#3F7F6E] truncate">
                                   {chat.last_message_text || 'Нет сообщений'}
                                 </div>
@@ -1137,11 +1149,11 @@ export default function MessagesPage() {
 
                         {hasDeals && isExpanded && (
                           <div className="bg-[#EFFFF8]/30">
-                            {!group.dealChats.some(({ chat: dealChat }) => dealChat?.id === chat.id) && (
+                            {hasMainChat && (
                               <div
-                                onClick={() => setSelectedChatId(chat.id)}
+                                onClick={() => chat && setSelectedChatId(chat.id)}
                                 className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
-                                  selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
+                                  chat && selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
                                 }`}
                               >
                                 <div className="flex items-center justify-between">

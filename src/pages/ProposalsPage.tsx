@@ -265,8 +265,50 @@ export default function ProposalsPage() {
       const clientId = item.user_id;
       const freelancerId = proposal.user_id;
 
-      console.log('Creating chat between:', clientId, 'and', freelancerId);
+      console.log('Creating chats between:', clientId, 'and', freelancerId);
 
+      // Получаем все чаты между этими пользователями
+      const { data: allChats } = await supabase
+        .from('chats')
+        .select('id')
+        .or(`and(participant1_id.eq.${clientId},participant2_id.eq.${freelancerId}),and(participant1_id.eq.${freelancerId},participant2_id.eq.${clientId})`);
+
+      // Получаем ID чатов, которые используются в сделках
+      const { data: dealChats } = await supabase
+        .from('deals')
+        .select('chat_id')
+        .or(`and(client_id.eq.${clientId},freelancer_id.eq.${freelancerId}),and(client_id.eq.${freelancerId},freelancer_id.eq.${clientId})`);
+
+      const dealChatIds = new Set((dealChats || []).map(d => d.chat_id));
+
+      // Находим общий чат (не используется в сделках)
+      const existingGeneralChat = (allChats || []).find(chat => !dealChatIds.has(chat.id));
+
+      let generalChatId;
+      if (existingGeneralChat) {
+        generalChatId = existingGeneralChat.id;
+        console.log('Using existing general chat:', generalChatId);
+      } else {
+        // Создаем общий чат, если его нет
+        const { data: newGeneralChat, error: generalChatError } = await supabase
+          .from('chats')
+          .insert({
+            participant1_id: clientId,
+            participant2_id: freelancerId
+          })
+          .select()
+          .single();
+
+        if (generalChatError) {
+          console.error('General chat creation error:', generalChatError);
+          throw generalChatError;
+        }
+
+        generalChatId = newGeneralChat.id;
+        console.log('Created new general chat:', generalChatId);
+      }
+
+      // Создаем отдельный чат для сделки
       const { data: newDealChat, error: dealChatError } = await supabase
         .from('chats')
         .insert({
@@ -277,11 +319,11 @@ export default function ProposalsPage() {
         .single();
 
       if (dealChatError) {
-        console.error('Chat creation error:', dealChatError);
+        console.error('Deal chat creation error:', dealChatError);
         throw dealChatError;
       }
 
-      console.log('Chat created:', newDealChat);
+      console.log('Created deal chat:', newDealChat.id);
 
       const dealData = {
         proposal_id: proposal.id,
