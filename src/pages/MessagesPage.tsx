@@ -1152,23 +1152,45 @@ export default function MessagesPage() {
 
                         {hasDeals && isExpanded && (
                           <div className="bg-[#EFFFF8]/30">
-                            {hasMainChat && (
-                              <div
-                                onClick={() => chat && setSelectedChatId(chat.id)}
-                                className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
-                                  chat && selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm">Общий чат</span>
-                                  {unreadCount > 0 && (
-                                    <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                                      {unreadCount > 99 ? '99+' : unreadCount}
-                                    </div>
-                                  )}
-                                </div>
+                            <div
+                              onClick={async () => {
+                                if (chat) {
+                                  setSelectedChatId(chat.id);
+                                } else {
+                                  // Создаем общий чат, если его еще нет
+                                  try {
+                                    const { data: newChat, error } = await getSupabase()
+                                      .from('chats')
+                                      .insert({
+                                        participant1_id: user!.id,
+                                        participant2_id: otherUserId
+                                      })
+                                      .select()
+                                      .single();
+
+                                    if (error) throw error;
+
+                                    // Обновляем состояние чатов
+                                    setChats(prev => [...prev, newChat]);
+                                    setSelectedChatId(newChat.id);
+                                  } catch (error) {
+                                    console.error('Error creating general chat:', error);
+                                  }
+                                }
+                              }}
+                              className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
+                                chat && selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">Общий чат</span>
+                                {unreadCount > 0 && (
+                                  <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
 
                             {group.dealChats.map(({ deal, chat: dealChat }) => {
                               const dealTitle = deal.orders?.[0]?.title || deal.tasks?.[0]?.title || deal.title;
