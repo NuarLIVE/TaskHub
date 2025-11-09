@@ -374,7 +374,7 @@ export default function ProposalsPage() {
       const acceptedDate = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
       const itemType = proposal.order_id ? 'Заказ' : 'Объявление';
 
-      const systemMessage = `${itemType} "${item.title}" был принят ${acceptedDate} за ${proposal.price} ${proposal.currency}, заказчик - ${clientName}, исполнитель - ${freelancerName}. Удачной сделки!`;
+      const systemMessage = `${itemType} "${item.title}" был принят ${acceptedDate} за ${proposal.price} ${proposal.currency}, заказчик - ${clientName}, исполнитель - ${freelancerName}.\nУдачной сделки!`;
 
       const { error: messageError } = await supabase
         .from('messages')
