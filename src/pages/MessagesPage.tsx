@@ -1056,17 +1056,16 @@ export default function MessagesPage() {
                       <div key={otherUserId} className="border-b">
                         <div
                           onClick={() => {
-                            if (!isExpanded) {
+                            if (hasDeals) {
+                              // Если есть сделки - только раскрываем/сворачиваем гармошку
                               toggleUserExpanded(otherUserId);
-                            }
-                            if (hasMainChat && !hasDeals) {
-                              setSelectedChatId(chat.id);
-                            } else if (hasMainChat && hasDeals) {
+                            } else if (hasMainChat) {
+                              // Если сделок нет и есть общий чат - открываем его
                               setSelectedChatId(chat.id);
                             }
                           }}
                           className={`p-4 cursor-pointer hover:bg-[#EFFFF8] ${
-                            chat && selectedChatId === chat.id && !isExpanded ? 'bg-[#EFFFF8]' : ''
+                            !hasDeals && chat && selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
                           }`}
                         >
                           <div className="flex items-center gap-3">
