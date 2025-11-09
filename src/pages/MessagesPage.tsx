@@ -1152,7 +1152,8 @@ export default function MessagesPage() {
                         {hasDeals && isExpanded && (
                           <div className="bg-[#EFFFF8]/30">
                             <div
-                              onClick={async () => {
+                              onClick={async (e) => {
+                                e.stopPropagation();
                                 if (chat) {
                                   setSelectedChatId(chat.id);
                                 } else {
@@ -1169,9 +1170,12 @@ export default function MessagesPage() {
 
                                     if (error) throw error;
 
-                                    // Обновляем состояние чатов
+                                    // Обновляем состояние чатов и выбираем новый чат
                                     setChats(prev => [...prev, newChat]);
                                     setSelectedChatId(newChat.id);
+
+                                    // Перезагружаем список чатов для обновления счетчиков
+                                    await loadChats(false);
                                   } catch (error) {
                                     console.error('Error creating general chat:', error);
                                   }
@@ -1202,7 +1206,10 @@ export default function MessagesPage() {
                               return (
                                 <div
                                   key={deal.id}
-                                  onClick={() => dealChat && setSelectedChatId(dealChat.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (dealChat) setSelectedChatId(dealChat.id);
+                                  }}
                                   className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
                                     selectedChatId === dealChat?.id ? 'bg-[#EFFFF8]' : ''
                                   }`}
