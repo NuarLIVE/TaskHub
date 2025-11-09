@@ -76,7 +76,9 @@ export default function MyDealsPage() {
 
   useEffect(() => {
     loadDeals();
+  }, [user, activeTab]);
 
+  useEffect(() => {
     if (!user) return;
 
     const supabase = getSupabase();
@@ -95,42 +97,41 @@ export default function MyDealsPage() {
             const orderId = newProposal.order_id;
             const taskId = newProposal.task_id;
 
-            if ((orderId && expandedItem === orderId) || (taskId && expandedItem === taskId)) {
-              if (!proposals[expandedItem]?.find((p: any) => p.id === newProposal.id)) {
-                const { data: profileData } = await getSupabase()
-                  .from('profiles')
-                  .select('id, name, avatar_url')
-                  .eq('id', newProposal.user_id)
-                  .single();
+            const { data: profileData } = await getSupabase()
+              .from('profiles')
+              .select('id, name, avatar_url')
+              .eq('id', newProposal.user_id)
+              .maybeSingle();
 
-                const enrichedProposal = {
-                  ...newProposal,
-                  profile: profileData
-                };
+            const enrichedProposal = {
+              ...newProposal,
+              profile: profileData
+            };
 
-                setProposals(prev => ({
-                  ...prev,
-                  [expandedItem]: [enrichedProposal, ...(prev[expandedItem] || [])]
-                }));
-              }
-            }
+            const itemId = orderId || taskId;
+            setProposals(prev => ({
+              ...prev,
+              [itemId]: [enrichedProposal, ...(prev[itemId] || [])]
+            }));
           } else if (payload.eventType === 'UPDATE') {
             const updatedProposal = payload.new as any;
             const itemId = updatedProposal.order_id || updatedProposal.task_id;
 
-            if (proposals[itemId]) {
-              setProposals(prev => ({
+            setProposals(prev => {
+              if (!prev[itemId]) return prev;
+              return {
                 ...prev,
                 [itemId]: prev[itemId].map(p => p.id === updatedProposal.id ? { ...p, ...updatedProposal } : p)
-              }));
-            }
+              };
+            });
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
-            Object.keys(proposals).forEach(itemId => {
-              setProposals(prev => ({
-                ...prev,
-                [itemId]: prev[itemId]?.filter((p: any) => p.id !== deletedId) || []
-              }));
+            setProposals(prev => {
+              const updated = { ...prev };
+              Object.keys(updated).forEach(itemId => {
+                updated[itemId] = updated[itemId]?.filter((p: any) => p.id !== deletedId) || [];
+              });
+              return updated;
             });
           }
         }
@@ -140,7 +141,7 @@ export default function MyDealsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, activeTab, expandedItem, proposals]);
+  }, [user]);
 
   const loadDeals = async () => {
     setLoading(true);
