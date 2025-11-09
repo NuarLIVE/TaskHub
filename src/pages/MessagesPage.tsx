@@ -1163,8 +1163,15 @@ export default function MessagesPage() {
                           </div>
                         </div>
 
-                        {hasDeals && isExpanded && (
-                          <div className="bg-[#EFFFF8]/30">
+                        <AnimatePresence>
+                          {hasDeals && isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                              className="bg-[#EFFFF8]/30 overflow-hidden"
+                            >
                             <div
                               onClick={async (e) => {
                                 e.stopPropagation();
@@ -1243,8 +1250,9 @@ export default function MessagesPage() {
                                 </div>
                               );
                             })}
-                          </div>
-                        )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })
