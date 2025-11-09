@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import PriceDisplay from '@/components/PriceDisplay';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -40,7 +41,6 @@ interface Profile {
 
 export default function TaskDetailPage() {
   const { user } = useAuth();
-  const { formatPrice } = useRegion();
   const [task, setTask] = useState<Task | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,7 +158,9 @@ export default function TaskDetailPage() {
                       <Clock className="h-4 w-4" />
                       <span>{task.delivery_days} дней</span>
                     </div>
-                    <div className="text-xl font-bold text-[#6FE7C8]">{formatPrice(task.price, task.currency)}</div>
+                    <div className="text-xl font-bold text-[#6FE7C8]">
+                      <PriceDisplay amount={task.price} fromCurrency={task.currency} />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-6">
@@ -271,7 +273,9 @@ export default function TaskDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#3F7F6E]">Цена</span>
-                    <span className="font-semibold text-[#6FE7C8]">{formatPrice(task.price, task.currency)}</span>
+                    <span className="font-semibold text-[#6FE7C8]">
+                      <PriceDisplay amount={task.price} fromCurrency={task.currency} />
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#3F7F6E]">Срок выполнения</span>

@@ -4,6 +4,7 @@ import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play,
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import PriceDisplay from '@/components/PriceDisplay';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -72,7 +73,6 @@ export default function MyDealsPage() {
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const { formatPrice } = useRegion();
 
   const PROPOSALS_PER_PAGE = 5;
 
@@ -540,9 +540,9 @@ export default function MyDealsPage() {
                           <span>{proposals[order.id]?.length || 0} откликов</span>
                         </div>
                       </div>
-                      <div className="text-[#3F7F6E]">
+                      <div className="text-[#3F7F6E] flex items-center gap-1">
                         Бюджет: <span className="font-medium text-foreground">
-                          {formatPrice(order.price_min, order.currency)} - {formatPrice(order.price_max, order.currency)}
+                          <PriceDisplay amount={order.price_min} maxAmount={order.price_max} fromCurrency={order.currency} showRange={true} />
                         </span>
                       </div>
                     </div>
@@ -576,7 +576,9 @@ export default function MyDealsPage() {
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                       <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
-                                      <Badge variant="outline">{formatPrice(proposal.price, proposal.currency)}</Badge>
+                                      <Badge variant="outline">
+                                        <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
+                                      </Badge>
                                       <Badge variant="outline">{proposal.delivery_days} дней</Badge>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -601,7 +603,9 @@ export default function MyDealsPage() {
                                           <div className="flex items-center justify-between mb-1">
                                             <span className="font-medium">{option.title}</span>
                                             <div className="flex gap-1">
-                                              <Badge variant="outline" className="text-xs">{formatPrice(option.price, proposal.currency)}</Badge>
+                                              <Badge variant="outline" className="text-xs">
+                                                <PriceDisplay amount={option.price} fromCurrency={proposal.currency} />
+                                              </Badge>
                                               <Badge variant="outline" className="text-xs">{option.delivery_days} дней</Badge>
                                             </div>
                                           </div>
@@ -736,9 +740,9 @@ export default function MyDealsPage() {
                           <span>{proposals[task.id]?.length || 0} заказов</span>
                         </div>
                       </div>
-                      <div className="text-[#3F7F6E]">
+                      <div className="text-[#3F7F6E] flex items-center gap-1">
                         Цена: <span className="font-medium text-foreground">
-                          {formatPrice(task.price, task.currency)}
+                          <PriceDisplay amount={task.price} fromCurrency={task.currency} />
                         </span>
                       </div>
                     </div>
@@ -772,7 +776,9 @@ export default function MyDealsPage() {
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                       <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
-                                      <Badge variant="outline">{formatPrice(proposal.price, proposal.currency)}</Badge>
+                                      <Badge variant="outline">
+                                        <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
+                                      </Badge>
                                       <Badge variant="outline">{proposal.delivery_days} дней</Badge>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -797,7 +803,9 @@ export default function MyDealsPage() {
                                           <div className="flex items-center justify-between mb-1">
                                             <span className="font-medium">{option.title}</span>
                                             <div className="flex gap-1">
-                                              <Badge variant="outline" className="text-xs">{formatPrice(option.price, proposal.currency)}</Badge>
+                                              <Badge variant="outline" className="text-xs">
+                                                <PriceDisplay amount={option.price} fromCurrency={proposal.currency} />
+                                              </Badge>
                                               <Badge variant="outline" className="text-xs">{option.delivery_days} дней</Badge>
                                             </div>
                                           </div>

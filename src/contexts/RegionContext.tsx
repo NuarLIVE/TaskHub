@@ -25,6 +25,7 @@ interface RegionContextType {
   setCurrency: (currency: string) => Promise<void>;
   convertPrice: (amount: number, fromCurrency: string) => number;
   formatPrice: (amount: number, fromCurrency?: string) => string;
+  formatPriceWithOriginal: (amount: number, fromCurrency: string) => { formatted: string; original: string; isConverted: boolean };
   isLoading: boolean;
 }
 
@@ -290,6 +291,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
 
   function formatPrice(amount: number, fromCurrency?: string): string {
     const convertedAmount = fromCurrency ? convertPrice(amount, fromCurrency) : amount;
+    const roundedAmount = Math.floor(convertedAmount);
     const currencyData = currencies.find((c) => c.code === currency);
 
     if (currencyData) {
@@ -297,13 +299,57 @@ export function RegionProvider({ children }: { children: ReactNode }) {
         return new Intl.NumberFormat(currencyData.locale, {
           style: 'currency',
           currency: currency,
-        }).format(convertedAmount);
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(roundedAmount);
       } catch (error) {
-        return `${currencyData.symbol}${convertedAmount.toFixed(2)}`;
+        return `${currencyData.symbol}${roundedAmount}`;
       }
     }
 
-    return `${convertedAmount.toFixed(2)} ${currency}`;
+    return `${roundedAmount} ${currency}`;
+  }
+
+  function formatPriceWithOriginal(amount: number, fromCurrency: string): { formatted: string; original: string; isConverted: boolean } {
+    const isConverted = fromCurrency !== currency;
+    const convertedAmount = convertPrice(amount, fromCurrency);
+    const roundedAmount = Math.floor(convertedAmount);
+    const currencyData = currencies.find((c) => c.code === currency);
+    const originalCurrencyData = currencies.find((c) => c.code === fromCurrency);
+
+    let formatted = '';
+    if (currencyData) {
+      try {
+        formatted = new Intl.NumberFormat(currencyData.locale, {
+          style: 'currency',
+          currency: currency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(roundedAmount);
+      } catch (error) {
+        formatted = `${currencyData.symbol}${roundedAmount}`;
+      }
+    } else {
+      formatted = `${roundedAmount} ${currency}`;
+    }
+
+    let original = '';
+    if (originalCurrencyData) {
+      try {
+        original = new Intl.NumberFormat(originalCurrencyData.locale, {
+          style: 'currency',
+          currency: fromCurrency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(amount);
+      } catch (error) {
+        original = `${originalCurrencyData.symbol}${amount}`;
+      }
+    } else {
+      original = `${amount} ${fromCurrency}`;
+    }
+
+    return { formatted, original, isConverted };
   }
 
   const currencySymbol = currencies.find((c) => c.code === currency)?.symbol || '$';
@@ -319,6 +365,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
         setCurrency,
         convertPrice,
         formatPrice,
+        formatPriceWithOriginal,
         isLoading,
       }}
     >

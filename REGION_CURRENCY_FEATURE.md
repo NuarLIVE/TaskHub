@@ -3,6 +3,12 @@
 ## Overview
 The application now automatically detects the user's region (language and currency) and allows manual switching between languages and currencies. All prices are automatically converted to the user's preferred currency using real-time exchange rates.
 
+**Price Display Features:**
+- Prices are rounded down to whole numbers for better readability
+- Converted prices show an info icon (ⓘ) on hover with tooltip
+- Tooltip displays: "Приблизительная цена. Точное значение: [original price]"
+- No info icon shown when viewing prices in their original currency
+
 ## Features Implemented
 
 ### 1. Auto-Detection
@@ -55,7 +61,25 @@ Provides:
 - `setLanguage(lang)`: Change language
 - `setCurrency(currency)`: Change currency (triggers rate fetch)
 - `convertPrice(amount, fromCurrency)`: Convert price to user's currency
-- `formatPrice(amount, fromCurrency)`: Convert and format price with symbol
+- `formatPrice(amount, fromCurrency)`: Convert, round down, and format price with symbol
+- `formatPriceWithOriginal(amount, fromCurrency)`: Returns formatted price, original price, and conversion status
+
+### UI Component: PriceDisplay
+Located at: `src/components/PriceDisplay.tsx`
+
+Features:
+- Displays converted prices rounded down to whole numbers
+- Shows info icon (ⓘ) for converted prices
+- Tooltip on hover shows original price
+- Supports single prices and price ranges
+- Automatically hides info icon when no conversion occurred
+
+Props:
+- `amount`: Base price amount
+- `fromCurrency`: Original currency code
+- `className?`: Optional CSS classes
+- `showRange?`: Enable range display (for orders)
+- `maxAmount?`: Maximum price for range display
 
 ### UI Component: RegionSelector
 Located at: `src/components/RegionSelector.tsx`
@@ -67,11 +91,11 @@ Features:
 - Auto-closes after selection
 
 ### Updated Pages
-All market and deal pages now use `formatPrice` from RegionContext:
-- `MarketPage.tsx`: Market listings and detail modal
-- `OrderDetailPage.tsx`: Order details
-- `TaskDetailPage.tsx`: Task details
-- `MyDealsPage.tsx`: Deal listings
+All market and deal pages now use `PriceDisplay` component:
+- `MarketPage.tsx`: Market listings and detail modal with info icons
+- `OrderDetailPage.tsx`: Order details with price ranges and tooltips
+- `TaskDetailPage.tsx`: Task details with single prices and tooltips
+- `MyDealsPage.tsx`: Deal listings, proposals, and options with conversion indicators
 
 ### Exchange Rate API
 Uses exchangerate-api.com free tier:
@@ -88,15 +112,36 @@ Uses exchangerate-api.com free tier:
 4. All prices automatically update
 
 ### For Developers
+
+#### Using PriceDisplay Component
 ```typescript
-// Use in any component
+import PriceDisplay from '@/components/PriceDisplay';
+
+// Single price
+<PriceDisplay amount={100} fromCurrency="USD" />
+
+// Price range (for orders)
+<PriceDisplay
+  amount={50}
+  maxAmount={150}
+  fromCurrency="USD"
+  showRange={true}
+/>
+```
+
+#### Using Region Context Directly
+```typescript
 import { useRegion } from '@/contexts/RegionContext';
 
 function MyComponent() {
-  const { formatPrice, currency, setCurrency } = useRegion();
+  const { formatPrice, formatPriceWithOriginal, currency, setCurrency } = useRegion();
 
-  // Convert and format a price
-  const displayPrice = formatPrice(100, 'USD'); // "€92.50" if user's currency is EUR
+  // Convert and format a price (rounded down)
+  const displayPrice = formatPrice(100, 'USD'); // "€92" if user's currency is EUR
+
+  // Get price with original value for tooltip
+  const priceData = formatPriceWithOriginal(100, 'USD');
+  // Returns: { formatted: "€92", original: "$100", isConverted: true }
 
   // Change currency programmatically
   await setCurrency('EUR');
@@ -114,3 +159,7 @@ English, Russian, Spanish, German, French, Chinese, Japanese, Korean, Portuguese
 - For offline users, last cached rates are used
 - Currency conversion is bidirectional (handles both base and inverse rates)
 - All prices maintain their original currency in the database
+- **Price Rounding**: All converted prices are rounded down using `Math.floor()` for consistency
+- **Info Icons**: Only shown when currency conversion occurs (when `fromCurrency !== userCurrency`)
+- **Tooltip Behavior**: Displays "Приблизительная цена. Точное значение: [original]" on hover
+- **Accessibility**: Info icon uses `cursor-help` for better UX indication

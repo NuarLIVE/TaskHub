@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import PriceDisplay from '@/components/PriceDisplay';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -42,7 +43,6 @@ interface Profile {
 
 export default function OrderDetailPage() {
   const { user } = useAuth();
-  const { formatPrice } = useRegion();
   const [proposalText, setProposalText] = useState('');
   const [proposalPrice, setProposalPrice] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
@@ -174,7 +174,9 @@ export default function OrderDetailPage() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2 text-[#3F7F6E]">
                       <DollarSign className="h-4 w-4" />
-                      <span>Бюджет: {formatPrice(order.price_min, order.currency)}–{formatPrice(order.price_max, order.currency)}</span>
+                      <span className="flex items-center gap-1">
+                        Бюджет: <PriceDisplay amount={order.price_min} maxAmount={order.price_max} fromCurrency={order.currency} showRange={true} />
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 text-[#3F7F6E]">
                       <Calendar className="h-4 w-4" />

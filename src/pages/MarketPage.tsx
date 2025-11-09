@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BoostBadge } from '@/components/ui/BoostBadge';
+import PriceDisplay from '@/components/PriceDisplay';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -24,7 +25,6 @@ const ITEMS_PER_PAGE = 20;
 
 export default function MarketPage() {
   const { user } = useAuth();
-  const { formatPrice } = useRegion();
   const [activeTab, setActiveTab] = useState('orders');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
@@ -364,11 +364,19 @@ export default function MarketPage() {
                         )}
                         <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                       </div>
-                      <div className="font-semibold">
-                        {activeTab === 'orders'
-                          ? `${formatPrice(item.price_min, item.currency)}–${formatPrice(item.price_max, item.currency)}`
-                          : formatPrice(item.price, item.currency)}
-                      </div>
+                      {activeTab === 'orders' ? (
+                        <PriceDisplay
+                          amount={item.price_min}
+                          maxAmount={item.price_max}
+                          fromCurrency={item.currency}
+                          showRange={true}
+                        />
+                      ) : (
+                        <PriceDisplay
+                          amount={item.price}
+                          fromCurrency={item.currency}
+                        />
+                      )}
                     </div>
                   </Card>
                 </motion.div>
@@ -493,10 +501,20 @@ export default function MarketPage() {
                         <div className="text-xs text-[#3F7F6E]">Опубликовано: {new Date(previewItem.created_at).toLocaleDateString()}</div>
                       </div>
                     </div>
-                    <div className="text-xl font-semibold">
-                      {previewType === 'order'
-                        ? `${formatPrice(previewItem.price_min, previewItem.currency)}–${formatPrice(previewItem.price_max, previewItem.currency)}`
-                        : formatPrice(previewItem.price, previewItem.currency)}
+                    <div className="text-xl">
+                      {previewType === 'order' ? (
+                        <PriceDisplay
+                          amount={previewItem.price_min}
+                          maxAmount={previewItem.price_max}
+                          fromCurrency={previewItem.currency}
+                          showRange={true}
+                        />
+                      ) : (
+                        <PriceDisplay
+                          amount={previewItem.price}
+                          fromCurrency={previewItem.currency}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
