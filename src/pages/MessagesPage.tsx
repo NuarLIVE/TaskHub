@@ -1045,6 +1045,9 @@ export default function MessagesPage() {
                     const isExpanded = expandedUsers.has(otherUserId);
                     const hasMainChat = chat !== null;
 
+                    // Если нет основного чата, берем информацию из первого чата сделки
+                    const displayChat = chat || (group.dealChats[0]?.chat);
+
                     const unreadCount = chat
                       ? (chat.participant1_id === user?.id ? (chat.unread_count_p1 || 0) : (chat.unread_count_p2 || 0))
                       : 0;
@@ -1106,8 +1109,8 @@ export default function MessagesPage() {
                                 <div className="font-semibold truncate">{profile?.name || 'Пользователь'}</div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-[#3F7F6E]">
-                                    {chat.last_message_at
-                                      ? new Date(chat.last_message_at).toLocaleTimeString('ru-RU', {
+                                    {displayChat?.last_message_at
+                                      ? new Date(displayChat.last_message_at).toLocaleTimeString('ru-RU', {
                                           hour: '2-digit',
                                           minute: '2-digit',
                                         })
