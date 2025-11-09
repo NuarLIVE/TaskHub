@@ -478,7 +478,7 @@ export default function MessagesPage() {
           .from('deals')
           .select('*, orders(title), tasks(title)')
           .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
-          .eq('status', 'in_progress')
+          .in('status', ['in_progress', 'submitted', 'completed'])
       );
 
       setDeals(dealsData || []);
