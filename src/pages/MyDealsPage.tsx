@@ -185,17 +185,46 @@ export default function MyDealsPage() {
         const orderIds = (ordersData || []).map(o => o.id);
         const taskIds = (tasksData || []).map(t => t.id);
 
-        if (orderIds.length > 0) {
-          for (const orderId of orderIds) {
-            await loadProposals(orderId, 'order');
-            setProposalPages(prev => ({ ...prev, [orderId]: 1 }));
-          }
-        }
+        const allIds = [...orderIds, ...taskIds];
+        if (allIds.length > 0) {
+          const { data: allProposalsData } = await getSupabase()
+            .from('proposals')
+            .select('*')
+            .or(
+              orderIds.length > 0 && taskIds.length > 0
+                ? `order_id.in.(${orderIds.join(',')}),task_id.in.(${taskIds.join(',')})`
+                : orderIds.length > 0
+                ? `order_id.in.(${orderIds.join(',')})`
+                : `task_id.in.(${taskIds.join(',')})`
+            )
+            .order('created_at', { ascending: false });
 
-        if (taskIds.length > 0) {
-          for (const taskId of taskIds) {
-            await loadProposals(taskId, 'task');
-            setProposalPages(prev => ({ ...prev, [taskId]: 1 }));
+          if (allProposalsData && allProposalsData.length > 0) {
+            const userIds = Array.from(new Set(allProposalsData.map(p => p.user_id)));
+            const { data: profilesData } = await getSupabase()
+              .from('profiles')
+              .select('id, name, avatar_url')
+              .in('id', userIds);
+
+            const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+            const proposalsByItem: Record<string, Proposal[]> = {};
+            const pages: Record<string, number> = {};
+
+            allProposalsData.forEach(p => {
+              const itemId = p.order_id || p.task_id;
+              if (!proposalsByItem[itemId]) {
+                proposalsByItem[itemId] = [];
+                pages[itemId] = 1;
+              }
+              proposalsByItem[itemId].push({
+                ...p,
+                profile: profilesMap.get(p.user_id)
+              });
+            });
+
+            setProposals(proposalsByItem);
+            setProposalPages(pages);
           }
         }
       }
