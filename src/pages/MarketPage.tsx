@@ -38,6 +38,7 @@ export default function MarketPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Record<string, any>>({});
+  const [userProposals, setUserProposals] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -107,6 +108,34 @@ export default function MarketPage() {
           profilesMap[p.id] = p;
         });
         setProfiles(profilesMap);
+      }
+
+      if (user) {
+        const orderIds = ordersData.map(o => o.id);
+        const taskIds = tasksData.map(t => t.id);
+
+        if (orderIds.length > 0 || taskIds.length > 0) {
+          const conditions: string[] = [];
+          if (orderIds.length > 0) conditions.push(`order_id.in.(${orderIds.join(',')})`);
+          if (taskIds.length > 0) conditions.push(`task_id.in.(${taskIds.join(',')})`);
+
+          const { data: proposalsData } = await getSupabase()
+            .from('proposals')
+            .select('order_id, task_id')
+            .eq('user_id', user.id)
+            .or(conditions.join(','));
+
+          const proposalsMap: Record<string, boolean> = {};
+          (proposalsData || []).forEach((p: any) => {
+            if (p.order_id) {
+              proposalsMap[`order-${p.order_id}`] = true;
+            }
+            if (p.task_id) {
+              proposalsMap[`task-${p.task_id}`] = true;
+            }
+          });
+          setUserProposals(proposalsMap);
+        }
       }
     } catch (error) {
       setOrders([]);
@@ -459,9 +488,17 @@ export default function MarketPage() {
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Закрыть</Button>
                   {(!user || previewItem.user_id !== user.id) && (
-                    <Button onClick={handleProposalClick}>
-                      Откликнуться
-                    </Button>
+                    <>
+                      {userProposals[`${previewType}-${previewItem.id}`] ? (
+                        <Button variant="outline" onClick={() => window.location.hash = '/proposals'}>
+                          Ваш отклик
+                        </Button>
+                      ) : (
+                        <Button onClick={handleProposalClick}>
+                          Откликнуться
+                        </Button>
+                      )}
+                    </>
                   )}
                 </DialogFooter>
               </>
