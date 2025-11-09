@@ -58,6 +58,7 @@ interface Message {
   chat_id: string;
   sender_id: string;
   text: string;
+  content?: string;
   file_url?: string;
   file_name?: string;
   file_type?: 'image' | 'video' | 'file';
@@ -645,6 +646,8 @@ export default function MessagesPage() {
         chat_id: selectedChatId,
         sender_id: user.id,
         text: messageText || '',
+        content: messageText || '',
+        type: 'text',
         file_url: fileUrl,
         file_name: fileName,
         file_type: fileType,
@@ -1350,7 +1353,7 @@ export default function MessagesPage() {
                           <div key={msg.id} className="flex justify-center my-4">
                             <div className="max-w-[80%] rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
                               <div className="text-sm text-amber-900 text-center whitespace-pre-wrap break-words">
-                                {msg.text}
+                                {msg.content || msg.text}
                               </div>
                               <div className="text-xs text-amber-700 text-center mt-2">
                                 {formatTime(msg.created_at)}
@@ -1391,9 +1394,9 @@ export default function MessagesPage() {
                                 </div>
                               </a>
                             )}
-                            {msg.text && (
+                            {(msg.content || msg.text) && (
                               <div className="p-3">
-                                <div className="text-sm whitespace-pre-wrap break-words">{msg.text}</div>
+                                <div className="text-sm whitespace-pre-wrap break-words">{msg.content || msg.text}</div>
                               </div>
                             )}
                             <div className={`px-3 pb-2 text-xs flex items-center justify-between gap-2 ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
