@@ -254,29 +254,16 @@ export default function ProposalsPage() {
       const clientId = item.user_id;
       const freelancerId = proposal.user_id;
 
-      let chatId = null;
-
-      const { data: existingChat } = await supabase
+      const { data: newDealChat, error: dealChatError } = await supabase
         .from('chats')
-        .select('id')
-        .or(`and(participant1_id.eq.${clientId},participant2_id.eq.${freelancerId}),and(participant1_id.eq.${freelancerId},participant2_id.eq.${clientId})`)
-        .maybeSingle();
+        .insert({
+          participant1_id: clientId,
+          participant2_id: freelancerId
+        })
+        .select()
+        .single();
 
-      if (existingChat) {
-        chatId = existingChat.id;
-      } else {
-        const { data: newChat, error: chatError } = await supabase
-          .from('chats')
-          .insert({
-            participant1_id: clientId,
-            participant2_id: freelancerId
-          })
-          .select()
-          .single();
-
-        if (chatError) throw chatError;
-        chatId = newChat.id;
-      }
+      if (dealChatError) throw dealChatError;
 
       const { error: dealError } = await supabase
         .from('deals')
@@ -286,7 +273,7 @@ export default function ProposalsPage() {
           task_id: proposal.task_id,
           client_id: clientId,
           freelancer_id: freelancerId,
-          chat_id: chatId,
+          chat_id: newDealChat.id,
           title: item.title,
           description: proposal.message,
           price: proposal.price,
