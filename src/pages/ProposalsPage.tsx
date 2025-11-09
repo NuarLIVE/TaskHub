@@ -31,6 +31,84 @@ export default function ProposalsPage() {
 
   useEffect(() => {
     loadProposals();
+
+    if (!user) return;
+
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel('proposals_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'proposals'
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newProposal = payload.new as any;
+
+            if (newProposal.user_id === user.id) {
+              setSentProposals(prev => [newProposal, ...prev]);
+            }
+
+            const orderIds = await getUserOrderIds();
+            const taskIds = await getUserTaskIds();
+            const isForMyOrder = newProposal.order_id && orderIds.includes(newProposal.order_id);
+            const isForMyTask = newProposal.task_id && taskIds.includes(newProposal.task_id);
+
+            if (isForMyOrder || isForMyTask) {
+              setReceivedProposals(prev => [newProposal, ...prev]);
+            }
+
+            if (!profiles[newProposal.user_id]) {
+              const { data: profileData } = await getSupabase()
+                .from('profiles')
+                .select('id, name, avatar_url')
+                .eq('id', newProposal.user_id)
+                .single();
+              if (profileData) {
+                setProfiles(prev => ({ ...prev, [profileData.id]: profileData }));
+              }
+            }
+
+            if (newProposal.order_id && !orders[newProposal.order_id]) {
+              const { data: orderData } = await getSupabase()
+                .from('orders')
+                .select('id, title, user_id')
+                .eq('id', newProposal.order_id)
+                .single();
+              if (orderData) {
+                setOrders(prev => ({ ...prev, [orderData.id]: orderData }));
+              }
+            }
+
+            if (newProposal.task_id && !tasks[newProposal.task_id]) {
+              const { data: taskData } = await getSupabase()
+                .from('tasks')
+                .select('id, title, user_id')
+                .eq('id', newProposal.task_id)
+                .single();
+              if (taskData) {
+                setTasks(prev => ({ ...prev, [taskData.id]: taskData }));
+              }
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedProposal = payload.new as any;
+            setSentProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+            setReceivedProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setSentProposals(prev => prev.filter(p => p.id !== deletedId));
+            setReceivedProposals(prev => prev.filter(p => p.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const loadProposals = async () => {
