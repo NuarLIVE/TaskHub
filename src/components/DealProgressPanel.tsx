@@ -7,6 +7,7 @@ interface DealProgressPanelProps {
   dealId: string;
   userId: string;
   isFreelancer: boolean;
+  chatId?: string;
 }
 
 interface ProgressReport {
@@ -34,9 +35,12 @@ interface TimeExtension {
 interface Deal {
   current_progress: number;
   last_progress_update: string | null;
+  status: string;
+  submitted_at: string | null;
+  chat_id: string | null;
 }
 
-export default function DealProgressPanel({ dealId, userId, isFreelancer }: DealProgressPanelProps) {
+export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId }: DealProgressPanelProps) {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
   const [taskItems, setTaskItems] = useState<TaskItem[]>([]);
@@ -48,6 +52,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
   const [extensionDays, setExtensionDays] = useState(1);
   const [showExtensionForm, setShowExtensionForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -182,19 +187,131 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
     setLoading(true);
     const supabase = getSupabase();
 
-    const { error } = await supabase
+    const targetChatId = chatId || deal?.chat_id;
+    if (!targetChatId) {
+      alert('Не найден чат для отправки уведомления');
+      setLoading(false);
+      return;
+    }
+
+    const { error: dealError } = await supabase
       .from('deals')
-      .update({ status: 'pending_review' })
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString()
+      })
       .eq('id', dealId);
 
-    if (error) {
+    if (dealError) {
       alert('Ошибка при отправке на проверку');
       setLoading(false);
       return;
     }
 
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: targetChatId,
+        sender_id: userId,
+        text: 'Заказ сдан на проверку, если работа выполнена - подтвердите завершение заказа.',
+        is_system: true,
+        system_type: 'deal_submitted'
+      });
+
+    if (messageError) {
+      console.error('Ошибка при создании системного сообщения:', messageError);
+    }
+
+    await loadData();
     setLoading(false);
     alert('Работа отправлена на проверку');
+  };
+
+  const handleAcceptWork = async () => {
+    setLoading(true);
+    const supabase = getSupabase();
+
+    const targetChatId = chatId || deal?.chat_id;
+    if (!targetChatId) {
+      alert('Не найден чат для отправки уведомления');
+      setLoading(false);
+      return;
+    }
+
+    const { error: dealError } = await supabase
+      .from('deals')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', dealId);
+
+    if (dealError) {
+      alert('Ошибка при подтверждении работы');
+      setLoading(false);
+      return;
+    }
+
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: targetChatId,
+        sender_id: userId,
+        text: 'Работа подтверждена',
+        is_system: true,
+        system_type: 'work_accepted'
+      });
+
+    if (messageError) {
+      console.error('Ошибка при создании системного сообщения:', messageError);
+    }
+
+    await loadData();
+    setLoading(false);
+  };
+
+  const handleRequestRevision = async () => {
+    setLoading(true);
+    const supabase = getSupabase();
+
+    const targetChatId = chatId || deal?.chat_id;
+    if (!targetChatId) {
+      alert('Не найден чат для отправки уведомления');
+      setLoading(false);
+      return;
+    }
+
+    const { error: dealError } = await supabase
+      .from('deals')
+      .update({
+        status: 'in_progress',
+        review_requested_at: new Date().toISOString()
+      })
+      .eq('id', dealId);
+
+    if (dealError) {
+      alert('Ошибка при запросе доработки');
+      setLoading(false);
+      return;
+    }
+
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: targetChatId,
+        sender_id: userId,
+        text: 'Запрошена доработка заказа',
+        is_system: true,
+        system_type: 'revision_requested'
+      });
+
+    if (messageError) {
+      console.error('Ошибка при создании системного сообщения:', messageError);
+    }
+
+    await loadData();
+    setLoading(false);
+    alert('Запрос на доработку отправлен');
   };
 
   const formatDate = (dateString: string) => {
@@ -404,7 +521,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
       </div>
 
       {/* Action Buttons */}
-      {isFreelancer && (
+      {isFreelancer && deal?.status !== 'submitted' && deal?.status !== 'completed' && (
         <div className="p-4 border-t border-gray-200 space-y-2 bg-white">
           <button
             onClick={handleSubmitForReview}
@@ -471,6 +588,88 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
               </motion.button>
             )}
           </AnimatePresence>
+        </div>
+      )}
+
+      {/* Status Message for Freelancer when submitted */}
+      {isFreelancer && deal?.status === 'submitted' && (
+        <div className="p-4 border-t border-gray-200 bg-amber-50">
+          <p className="text-sm text-amber-800 text-center font-medium">
+            Заказ сдан на проверку. Ожидайте подтверждения от заказчика.
+          </p>
+        </div>
+      )}
+
+      {/* Status Message for Freelancer when completed */}
+      {isFreelancer && deal?.status === 'completed' && (
+        <div className="p-4 border-t border-gray-200 bg-green-50">
+          <p className="text-sm text-green-800 text-center font-medium">
+            Работа принята заказчиком. Сделка завершена.
+          </p>
+        </div>
+      )}
+
+      {/* Client Actions when work is submitted */}
+      {!isFreelancer && deal?.status === 'submitted' && (
+        <div className="p-4 border-t border-gray-200 space-y-2 bg-white">
+          <button
+            onClick={() => setShowAcceptDialog(true)}
+            disabled={loading}
+            className="w-full bg-[#6FE7C8] text-white py-3 rounded-lg hover:bg-[#5dd4b5] disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200 hover:shadow-lg"
+          >
+            Принять работу
+          </button>
+          <button
+            onClick={handleRequestRevision}
+            disabled={loading}
+            className="w-full bg-white border-2 border-[#3F7F6E] text-[#3F7F6E] py-3 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
+          >
+            Запросить доработку
+          </button>
+
+          {/* Confirmation Dialog for Accepting Work */}
+          {showAcceptDialog && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
+              >
+                <h3 className="text-lg font-semibold mb-3">Подтверждение приемки</h3>
+                <p className="text-gray-700 mb-6">
+                  Подтвердите что вы проверили работу полностью.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowAcceptDialog(false);
+                      handleAcceptWork();
+                    }}
+                    disabled={loading}
+                    className="flex-1 bg-[#6FE7C8] text-white py-2.5 rounded-lg hover:bg-[#5dd4b5] disabled:opacity-50 font-medium transition-all"
+                  >
+                    Подтвердить
+                  </button>
+                  <button
+                    onClick={() => setShowAcceptDialog(false)}
+                    disabled={loading}
+                    className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-medium transition-all"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Status Message for Client when completed */}
+      {!isFreelancer && deal?.status === 'completed' && (
+        <div className="p-4 border-t border-gray-200 bg-green-50">
+          <p className="text-sm text-green-800 text-center font-medium">
+            Работа принята. Сделка завершена.
+          </p>
         </div>
       )}
     </motion.div>

@@ -37,6 +37,7 @@ import { ImageViewer } from '@/components/ImageViewer';
 import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 import { CRMConfirmation } from '@/components/CRMConfirmation';
 import DealProgressPanel from '@/components/DealProgressPanel';
+import { ReviewInChat } from '@/components/ReviewInChat';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -109,6 +110,8 @@ export default function MessagesPage() {
   const [isUserBlocked, setIsUserBlocked] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [crmPanelOpen, setCrmPanelOpen] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -518,9 +521,30 @@ export default function MessagesPage() {
       setMessages(data || []);
       await checkIfUserBlocked(chatId);
       await markMessagesAsRead(chatId);
+      await checkIfReviewed();
     } catch (error) {
       console.error('❌ Error loading messages:', error);
       throw error;
+    }
+  };
+
+  const checkIfReviewed = async () => {
+    if (!user || !currentDeal) {
+      setHasReviewed(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await getSupabase()
+        .from('reviews')
+        .select('id')
+        .eq('deal_id', currentDeal.id)
+        .eq('reviewer_id', user.id)
+        .maybeSingle();
+
+      setHasReviewed(!!data);
+    } catch (error) {
+      console.error('Error checking review status:', error);
     }
   };
 
@@ -1363,21 +1387,40 @@ export default function MessagesPage() {
                   {messages.length === 0 ? (
                     <div className="text-center text-[#3F7F6E] mt-8">Начните разговор</div>
                   ) : (
-                    messages.map((msg) => {
+                    messages.map((msg, index) => {
                       const isOwn = msg.sender_id === user?.id;
-                      const isSystem = msg.type === 'system';
+                      const isSystem = (msg as any).is_system || msg.type === 'system';
+                      const systemType = (msg as any).system_type;
 
                       if (isSystem) {
+                        const isWorkAccepted = systemType === 'work_accepted';
+                        const isLastMessage = index === messages.length - 1;
+
                         return (
-                          <div key={msg.id} className="flex justify-center my-4">
-                            <div className="max-w-[80%] rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-                              <div className="text-sm text-amber-900 text-center whitespace-pre-wrap break-words">
-                                {msg.content || msg.text}
-                              </div>
-                              <div className="text-xs text-amber-700 text-center mt-2">
-                                {formatTime(msg.created_at)}
+                          <div key={msg.id}>
+                            <div className="flex justify-center my-4">
+                              <div className="max-w-[80%] rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                                <div className="text-sm text-amber-900 text-center whitespace-pre-wrap break-words">
+                                  {msg.content || msg.text}
+                                </div>
+                                <div className="text-xs text-amber-700 text-center mt-2">
+                                  {formatTime(msg.created_at)}
+                                </div>
                               </div>
                             </div>
+
+                            {/* Show review form after work accepted message for client */}
+                            {isWorkAccepted && isLastMessage && !isFreelancer && currentDeal && !hasReviewed && (
+                              <ReviewInChat
+                                dealId={currentDeal.id}
+                                revieweeId={currentDeal.freelancer_id}
+                                reviewerId={user!.id}
+                                onSubmitted={() => {
+                                  setHasReviewed(true);
+                                  alert('Спасибо за отзыв!');
+                                }}
+                              />
+                            )}
                           </div>
                         );
                       }
@@ -1540,6 +1583,7 @@ export default function MessagesPage() {
                   dealId={currentDeal.id}
                   userId={user.id}
                   isFreelancer={isFreelancer}
+                  chatId={selectedChatId || undefined}
                 />
               )}
             </AnimatePresence>
