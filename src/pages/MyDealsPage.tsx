@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase } from 'lucide-react';
+import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,8 +68,11 @@ export default function MyDealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
+  const [proposalPages, setProposalPages] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  const PROPOSALS_PER_PAGE = 5;
 
   useEffect(() => {
     loadDeals();
@@ -223,8 +226,35 @@ export default function MyDealsPage() {
       setExpandedItem(itemId);
       if (!proposals[itemId]) {
         await loadProposals(itemId, type);
+        setProposalPages(prev => ({ ...prev, [itemId]: 1 }));
       }
     }
+  };
+
+  const changePage = (itemId: string, direction: 'next' | 'prev') => {
+    setProposalPages(prev => {
+      const currentPage = prev[itemId] || 1;
+      const totalPages = Math.ceil((proposals[itemId]?.length || 0) / PROPOSALS_PER_PAGE);
+
+      if (direction === 'next' && currentPage < totalPages) {
+        return { ...prev, [itemId]: currentPage + 1 };
+      } else if (direction === 'prev' && currentPage > 1) {
+        return { ...prev, [itemId]: currentPage - 1 };
+      }
+      return prev;
+    });
+  };
+
+  const getPaginatedProposals = (itemId: string) => {
+    const allProposals = proposals[itemId] || [];
+    const currentPage = proposalPages[itemId] || 1;
+    const startIdx = (currentPage - 1) * PROPOSALS_PER_PAGE;
+    const endIdx = startIdx + PROPOSALS_PER_PAGE;
+    return allProposals.slice(startIdx, endIdx);
+  };
+
+  const getTotalPages = (itemId: string) => {
+    return Math.ceil((proposals[itemId]?.length || 0) / PROPOSALS_PER_PAGE);
   };
 
   const handlePauseResume = async (itemId: string, currentStatus: string, type: 'order' | 'task') => {
@@ -430,23 +460,57 @@ export default function MyDealsPage() {
                         {proposals[order.id].length === 0 ? (
                           <p className="text-sm text-[#3F7F6E] text-center">Откликов пока нет</p>
                         ) : (
-                          proposals[order.id].map((proposal) => (
-                            <Card key={proposal.id}>
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
-                                    <Badge variant="outline">{formatPrice(proposal.price, proposal.currency)}</Badge>
-                                    <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                          <>
+                            {getPaginatedProposals(order.id).map((proposal) => (
+                              <Card key={proposal.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
+                                      <Badge variant="outline">{formatPrice(proposal.price, proposal.currency)}</Badge>
+                                      <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => window.location.hash = '/proposals'}
+                                      >
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                      <div className="text-xs text-[#3F7F6E]">
+                                        {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-[#3F7F6E]">
-                                    {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
-                                  </div>
-                                </div>
-                                <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
-                              </CardContent>
-                            </Card>
-                          ))
+                                  <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                            {getTotalPages(order.id) > 1 && (
+                              <div className="flex items-center justify-center gap-2 pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(order.id, 'prev')}
+                                  disabled={(proposalPages[order.id] || 1) === 1}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm text-[#3F7F6E]">
+                                  Страница {proposalPages[order.id] || 1} из {getTotalPages(order.id)}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(order.id, 'next')}
+                                  disabled={(proposalPages[order.id] || 1) === getTotalPages(order.id)}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -555,23 +619,57 @@ export default function MyDealsPage() {
                         {proposals[task.id].length === 0 ? (
                           <p className="text-sm text-[#3F7F6E] text-center">Заказов пока нет</p>
                         ) : (
-                          proposals[task.id].map((proposal) => (
-                            <Card key={proposal.id}>
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
-                                    <Badge variant="outline">{formatPrice(proposal.price, proposal.currency)}</Badge>
-                                    <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                          <>
+                            {getPaginatedProposals(task.id).map((proposal) => (
+                              <Card key={proposal.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
+                                      <Badge variant="outline">{formatPrice(proposal.price, proposal.currency)}</Badge>
+                                      <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => window.location.hash = '/proposals'}
+                                      >
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                      <div className="text-xs text-[#3F7F6E]">
+                                        {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-[#3F7F6E]">
-                                    {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
-                                  </div>
-                                </div>
-                                <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
-                              </CardContent>
-                            </Card>
-                          ))
+                                  <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                            {getTotalPages(task.id) > 1 && (
+                              <div className="flex items-center justify-center gap-2 pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(task.id, 'prev')}
+                                  disabled={(proposalPages[task.id] || 1) === 1}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm text-[#3F7F6E]">
+                                  Страница {proposalPages[task.id] || 1} из {getTotalPages(task.id)}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(task.id, 'next')}
+                                  disabled={(proposalPages[task.id] || 1) === getTotalPages(task.id)}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

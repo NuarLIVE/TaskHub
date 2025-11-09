@@ -297,6 +297,7 @@ export default function ProposalsPage() {
     if (!confirmed) return;
 
     try {
+      const supabase = getSupabase();
       const { error } = await supabase
         .from('proposals')
         .update({ status: 'rejected' })
@@ -310,6 +311,28 @@ export default function ProposalsPage() {
     } catch (error) {
       console.error('Error rejecting proposal:', error);
       alert('Ошибка при отклонении отклика');
+    }
+  };
+
+  const handleWithdraw = async (proposalId: string) => {
+    const confirmed = confirm('Вы уверены, что хотите отозвать этот отклик?');
+    if (!confirmed) return;
+
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase
+        .from('proposals')
+        .delete()
+        .eq('id', proposalId);
+
+      if (error) throw error;
+
+      alert('Отклик отозван');
+      loadProposals();
+      setDetailsOpen(false);
+    } catch (error) {
+      console.error('Error withdrawing proposal:', error);
+      alert('Ошибка при отзыве отклика');
     }
   };
 
@@ -508,6 +531,12 @@ export default function ProposalsPage() {
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setDetailsOpen(false)}>Закрыть</Button>
+                {activeTab === 'sent' && selectedProposal.status === 'pending' && (
+                  <Button variant="destructive" onClick={() => handleWithdraw(selectedProposal.id)}>
+                    <X className="h-4 w-4 mr-1" />
+                    Отозвать отклик
+                  </Button>
+                )}
                 {activeTab === 'received' && selectedProposal.status === 'pending' && (
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => handleReject(selectedProposal.id)}>
