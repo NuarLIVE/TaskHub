@@ -87,8 +87,19 @@ export default function MarketPage() {
 
       const [ordersRes, tasksRes] = await Promise.all([ordersQuery, tasksQuery]);
 
-      const ordersData = ordersRes.data || [];
-      const tasksData = tasksRes.data || [];
+      let ordersData = ordersRes.data || [];
+      let tasksData = tasksRes.data || [];
+
+      const { data: acceptedProposals } = await getSupabase()
+        .from('proposals')
+        .select('order_id, task_id')
+        .eq('status', 'accepted');
+
+      const acceptedOrderIds = new Set((acceptedProposals || []).filter(p => p.order_id).map(p => p.order_id));
+      const acceptedTaskIds = new Set((acceptedProposals || []).filter(p => p.task_id).map(p => p.task_id));
+
+      ordersData = ordersData.filter((o: any) => !acceptedOrderIds.has(o.id));
+      tasksData = tasksData.filter((t: any) => !acceptedTaskIds.has(t.id));
 
       setOrders(ordersData);
       setTasks(tasksData);

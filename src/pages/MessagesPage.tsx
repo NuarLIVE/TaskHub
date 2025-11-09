@@ -61,6 +61,7 @@ interface Message {
   file_url?: string;
   file_name?: string;
   file_type?: 'image' | 'video' | 'file';
+  type?: 'system' | 'text';
   created_at: string;
   is_read: boolean;
 }
@@ -1284,6 +1285,23 @@ export default function MessagesPage() {
                   ) : (
                     messages.map((msg) => {
                       const isOwn = msg.sender_id === user?.id;
+                      const isSystem = msg.type === 'system';
+
+                      if (isSystem) {
+                        return (
+                          <div key={msg.id} className="flex justify-center my-4">
+                            <div className="max-w-[80%] rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                              <div className="text-sm text-amber-900 text-center whitespace-pre-wrap break-words">
+                                {msg.text}
+                              </div>
+                              <div className="text-xs text-amber-700 text-center mt-2">
+                                {formatTime(msg.created_at)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[70%] rounded-lg overflow-hidden ${isOwn ? 'bg-[#6FE7C8] text-white' : 'bg-gray-100'}`}>

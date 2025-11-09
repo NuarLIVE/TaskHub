@@ -154,20 +154,28 @@ export default function MyDealsPage() {
         const { data: dealsData } = await getSupabase()
           .from('deals')
           .select('*')
-          .eq('freelancer_id', authUser.id)
+          .or(`freelancer_id.eq.${authUser.id},client_id.eq.${authUser.id}`)
           .order('created_at', { ascending: false});
 
         const clientIds = Array.from(new Set((dealsData || []).map(d => d.client_id)));
+        const freelancerIds = Array.from(new Set((dealsData || []).map(d => d.freelancer_id)));
+        const allUserIds = Array.from(new Set([...clientIds, ...freelancerIds]));
+
         let profilesMap: any = {};
-        if (clientIds.length > 0) {
+        if (allUserIds.length > 0) {
           const { data: profilesData } = await getSupabase()
             .from('profiles')
             .select('id, name, avatar_url')
-            .in('id', clientIds);
+            .in('id', allUserIds);
           profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
         }
 
-        setDeals((dealsData || []).map(d => ({ ...d, client: profilesMap[d.client_id] })));
+        setDeals((dealsData || []).map(d => ({
+          ...d,
+          client: profilesMap[d.client_id],
+          freelancer: profilesMap[d.freelancer_id],
+          isMyOrder: d.client_id === authUser.id
+        })));
       } else {
         const { data: ordersData } = await getSupabase()
           .from('orders')
@@ -789,8 +797,18 @@ export default function MyDealsPage() {
               </Card>
             ) : (
               deals.map((deal) => (
-                <Card key={deal.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
+                <Card key={deal.id} className="hover:shadow-lg transition-shadow relative overflow-hidden">
+                  {deal.isMyOrder && (
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-[#6FE7C8] to-[#4ECDB0] text-white px-6 py-1 text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
+                      {deal.order_id ? 'Ваш заказ' : 'Ваше объявление'}
+                    </div>
+                  )}
+                  {!deal.isMyOrder && (
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-500 to-blue-400 text-white px-6 py-1 text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
+                      {deal.order_id ? 'Принятый заказ' : 'Принятое объявление'}
+                    </div>
+                  )}
+                  <CardContent className="p-6 pt-8">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold mb-2">{deal.title}</h3>
@@ -822,6 +840,19 @@ export default function MyDealsPage() {
                               </div>
                             )}
                             <span className="text-sm font-medium">Заказчик: {deal.client?.name || 'Пользователь'}</span>
+                          </div>
+                          <div
+                            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
+                            onClick={() => navigateToProfile(deal.freelancer_id, user?.id)}
+                          >
+                            {deal.freelancer?.avatar_url ? (
+                              <img src={deal.freelancer.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">{deal.freelancer?.name?.charAt(0)}</span>
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">Исполнитель: {deal.freelancer?.name || 'Пользователь'}</span>
                           </div>
                         </div>
                         {deal.description && (

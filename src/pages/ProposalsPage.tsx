@@ -124,6 +124,7 @@ export default function ProposalsPage() {
         .from('proposals')
         .select('*')
         .eq('user_id', user.id)
+        .in('status', ['pending', 'withdrawn'])
         .order('created_at', { ascending: false });
 
       const orderIds = await getUserOrderIds();
@@ -140,6 +141,7 @@ export default function ProposalsPage() {
           .from('proposals')
           .select('*')
           .or(conditions.join(','))
+          .eq('status', 'pending')
           .order('created_at', { ascending: false });
 
         received = receivedData || [];
@@ -308,6 +310,38 @@ export default function ProposalsPage() {
       }
 
       console.log('Deal created successfully');
+
+      const { data: clientProfile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', clientId)
+        .maybeSingle();
+
+      const { data: freelancerProfile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', freelancerId)
+        .maybeSingle();
+
+      const clientName = clientProfile?.name || 'Пользователь';
+      const freelancerName = freelancerProfile?.name || 'Пользователь';
+      const acceptedDate = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const itemType = proposal.order_id ? 'Заказ' : 'Объявление';
+
+      const systemMessage = `${itemType} "${item.title}" был принят ${acceptedDate} за ${proposal.price} ${proposal.currency}, заказчик - ${clientName}, исполнитель - ${freelancerName}. Удачной сделки!`;
+
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          chat_id: newDealChat.id,
+          sender_id: clientId,
+          content: systemMessage,
+          type: 'system'
+        });
+
+      if (messageError) {
+        console.error('System message creation error:', messageError);
+      }
 
       const { error: proposalError } = await supabase
         .from('proposals')
