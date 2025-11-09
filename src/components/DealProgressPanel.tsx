@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Send, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getSupabase } from '../lib/supabaseClient';
 
 interface DealProgressPanelProps {
@@ -206,49 +207,75 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
   };
 
   const hasNoTasks = taskItems.length === 0;
+  const progressSteps = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 h-full overflow-y-auto flex flex-col">
+    <motion.div
+      initial={{ x: '100%', opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: '100%', opacity: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="w-96 bg-white border-l border-gray-200 h-full overflow-y-auto flex flex-col"
+    >
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-800">Текущий прогресс</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-6">
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600">Готовность проекта</span>
-              <span className="text-lg font-semibold text-[#3F7F6E]">{deal?.current_progress || 0}%</span>
+          {/* Progress Bar - В РАМКЕ */}
+          <div className="border-2 border-[#6FE7C8] rounded-lg p-4 bg-gradient-to-br from-white to-[#EFFFF8]">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-700">Готовность проекта</span>
+              <span className="text-2xl font-bold text-[#3F7F6E]">{deal?.current_progress || 0}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-[#6FE7C8] h-3 rounded-full transition-all duration-300"
-                style={{ width: `${deal?.current_progress || 0}%` }}
+            <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+              <motion.div
+                className="bg-gradient-to-r from-[#6FE7C8] to-[#3F7F6E] h-4 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${deal?.current_progress || 0}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             </div>
             {deal?.last_progress_update && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 text-center">
                 Обновлено: {formatDate(deal.last_progress_update)}
               </p>
             )}
           </div>
 
           {isFreelancer && (
-            <div className="space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-4"
+            >
+              {/* Плиточный выбор прогресса */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Прогресс (%)
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Установить прогресс
                 </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={newProgress}
-                  onChange={(e) => setNewProgress(parseInt(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-center text-sm font-semibold text-[#3F7F6E]">{newProgress}%</div>
+                <div className="grid grid-cols-11 gap-1">
+                  {progressSteps.map((step) => (
+                    <button
+                      key={step}
+                      onClick={() => setNewProgress(step)}
+                      className={`
+                        aspect-square rounded-md text-xs font-semibold transition-all duration-200
+                        ${newProgress >= step
+                          ? 'bg-[#6FE7C8] text-white shadow-md scale-105'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        }
+                      `}
+                    >
+                      {step}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-lg font-bold text-[#3F7F6E]">{newProgress}%</span>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -257,7 +284,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm resize-none"
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm resize-none focus:border-[#6FE7C8] focus:ring-2 focus:ring-[#6FE7C8] focus:ring-opacity-20 transition-all"
                   rows={3}
                   placeholder="Опишите проделанную работу..."
                 />
@@ -265,132 +292,187 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
               <button
                 onClick={handleSubmitProgress}
                 disabled={loading || !newComment.trim()}
-                className="w-full bg-[#3F7F6E] text-white py-2 rounded-lg hover:bg-[#2d5f52] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="w-full bg-[#3F7F6E] text-white py-2.5 rounded-lg hover:bg-[#2d5f52] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all duration-200 hover:shadow-lg"
               >
                 Сохранить прогресс
               </button>
-            </div>
+            </motion.div>
           )}
 
           {/* Progress Reports Accordion */}
-          <div className="border border-gray-200 rounded-lg">
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
             <button
               onClick={() => setReportsExpanded(!reportsExpanded)}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50"
+              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
             >
               <span className="font-medium text-gray-800">Промежуточные отчеты</span>
-              {reportsExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              <motion.div
+                animate={{ rotate: reportsExpanded ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ChevronDown className="w-5 h-5" />
+              </motion.div>
             </button>
-            {reportsExpanded && (
-              <div className="border-t border-gray-200 p-3 space-y-3 max-h-64 overflow-y-auto">
-                {progressReports.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center">Отчетов пока нет</p>
-                ) : (
-                  progressReports.map((report) => (
-                    <div key={report.id} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold text-[#3F7F6E]">{report.progress_percentage}%</span>
-                        <span className="text-xs text-gray-500">{formatDate(report.created_at)}</span>
-                      </div>
-                      <p className="text-sm text-gray-700">{report.comment}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+            <AnimatePresence>
+              {reportsExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="border-t border-gray-200 overflow-hidden"
+                >
+                  <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+                    {progressReports.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">Отчетов пока нет</p>
+                    ) : (
+                      progressReports.map((report, index) => (
+                        <motion.div
+                          key={report.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="bg-gradient-to-r from-gray-50 to-white rounded-lg p-3 border border-gray-100"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-semibold text-[#3F7F6E] text-lg">{report.progress_percentage}%</span>
+                            <span className="text-xs text-gray-500">{formatDate(report.created_at)}</span>
+                          </div>
+                          <p className="text-sm text-gray-700">{report.comment}</p>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Tasks Accordion */}
-          <div className={`border border-gray-200 rounded-lg ${hasNoTasks ? 'opacity-50' : ''}`}>
+          <div className={`border border-gray-200 rounded-lg overflow-hidden ${hasNoTasks ? 'opacity-50' : ''}`}>
             <button
               onClick={() => !hasNoTasks && setTasksExpanded(!tasksExpanded)}
               disabled={hasNoTasks}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 disabled:cursor-not-allowed transition-colors"
             >
               <span className="font-medium text-gray-800">Задачи</span>
-              {!hasNoTasks && (tasksExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />)}
+              {!hasNoTasks && (
+                <motion.div
+                  animate={{ rotate: tasksExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </motion.div>
+              )}
             </button>
-            {tasksExpanded && !hasNoTasks && (
-              <div className="border-t border-gray-200 p-3 space-y-2">
-                {taskItems.map((task) => (
-                  <label key={task.id} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={task.is_completed}
-                      onChange={() => isFreelancer && handleToggleTask(task.id, task.is_completed)}
-                      disabled={!isFreelancer}
-                      className="w-4 h-4 text-[#3F7F6E] rounded focus:ring-[#3F7F6E]"
-                    />
-                    <span className={`text-sm ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                      {task.task_name}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
+            <AnimatePresence>
+              {tasksExpanded && !hasNoTasks && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="border-t border-gray-200 overflow-hidden"
+                >
+                  <div className="p-3 space-y-2">
+                    {taskItems.map((task, index) => (
+                      <motion.label
+                        key={task.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-50 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={task.is_completed}
+                          onChange={() => isFreelancer && handleToggleTask(task.id, task.is_completed)}
+                          disabled={!isFreelancer}
+                          className="w-5 h-5 text-[#6FE7C8] rounded focus:ring-[#6FE7C8] transition-all"
+                        />
+                        <span className={`text-sm flex-1 transition-all ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                          {task.task_name}
+                        </span>
+                      </motion.label>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
       {isFreelancer && (
-        <div className="p-4 border-t border-gray-200 space-y-2">
+        <div className="p-4 border-t border-gray-200 space-y-2 bg-white">
           <button
             onClick={handleSubmitForReview}
             disabled={loading || newProgress !== 100}
-            className="w-full bg-[#6FE7C8] text-white py-2.5 rounded-lg hover:bg-[#5dd4b5] disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2"
+            className="w-full bg-[#6FE7C8] text-white py-3 rounded-lg hover:bg-[#5dd4b5] disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-lg"
           >
             <Send className="w-4 h-4" />
             Отправить на проверку
           </button>
-          {showExtensionForm ? (
-            <div className="space-y-2 p-3 bg-gray-50 rounded-lg">
-              <textarea
-                value={extensionReason}
-                onChange={(e) => setExtensionReason(e.target.value)}
-                placeholder="Причина запроса продления..."
-                className="w-full border border-gray-300 rounded p-2 text-sm resize-none"
-                rows={2}
-              />
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={extensionDays}
-                  onChange={(e) => setExtensionDays(parseInt(e.target.value))}
-                  className="w-20 border border-gray-300 rounded p-2 text-sm"
+          <AnimatePresence>
+            {showExtensionForm ? (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-2 p-3 bg-gray-50 rounded-lg overflow-hidden"
+              >
+                <textarea
+                  value={extensionReason}
+                  onChange={(e) => setExtensionReason(e.target.value)}
+                  placeholder="Причина запроса продления..."
+                  className="w-full border border-gray-300 rounded p-2 text-sm resize-none focus:border-[#6FE7C8] focus:ring-2 focus:ring-[#6FE7C8] focus:ring-opacity-20 transition-all"
+                  rows={2}
                 />
-                <span className="text-sm text-gray-600">дней</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleRequestExtension}
-                  disabled={loading || !extensionReason.trim()}
-                  className="flex-1 bg-[#3F7F6E] text-white py-2 rounded hover:bg-[#2d5f52] disabled:opacity-50 text-sm"
-                >
-                  Отправить
-                </button>
-                <button
-                  onClick={() => setShowExtensionForm(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400 text-sm"
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowExtensionForm(true)}
-              disabled={loading}
-              className="w-full bg-white border border-[#3F7F6E] text-[#3F7F6E] py-2.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2"
-            >
-              <Clock className="w-4 h-4" />
-              Запросить дополнительное время
-            </button>
-          )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={extensionDays}
+                    onChange={(e) => setExtensionDays(parseInt(e.target.value))}
+                    className="w-20 border border-gray-300 rounded p-2 text-sm focus:border-[#6FE7C8] focus:ring-2 focus:ring-[#6FE7C8] focus:ring-opacity-20 transition-all"
+                  />
+                  <span className="text-sm text-gray-600">дней</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleRequestExtension}
+                    disabled={loading || !extensionReason.trim()}
+                    className="flex-1 bg-[#3F7F6E] text-white py-2 rounded hover:bg-[#2d5f52] disabled:opacity-50 text-sm transition-all"
+                  >
+                    Отправить
+                  </button>
+                  <button
+                    onClick={() => setShowExtensionForm(false)}
+                    className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400 text-sm transition-all"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowExtensionForm(true)}
+                disabled={loading}
+                className="w-full bg-white border-2 border-[#3F7F6E] text-[#3F7F6E] py-3 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2 transition-all duration-200"
+              >
+                <Clock className="w-4 h-4" />
+                Запросить дополнительное время
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
