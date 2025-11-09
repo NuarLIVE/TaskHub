@@ -187,6 +187,12 @@ export default function MarketPage() {
       window.location.hash = '/login';
       return;
     }
+
+    if (previewItem.user_id === user.id) {
+      alert(previewType === 'order' ? 'Вы не можете отправить отклик на свой собственный заказ' : 'Вы не можете отправить отклик на своё собственное объявление');
+      return;
+    }
+
     window.location.hash = `/proposals/create?type=${previewType}&id=${previewItem.id}`;
   };
 

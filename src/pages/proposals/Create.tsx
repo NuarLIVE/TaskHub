@@ -61,6 +61,13 @@ export default function ProposalsCreate() {
           .select('*, profiles(name, avatar_url)')
           .eq('id', id)
           .single();
+
+        if (data && data.user_id === user?.id) {
+          alert('Вы не можете отправить отклик на свой собственный заказ');
+          window.location.hash = `/orders/${id}`;
+          return;
+        }
+
         setOrderOrTaskData(data);
         if (data?.currency) setCurrency(data.currency);
       } else {
@@ -69,6 +76,13 @@ export default function ProposalsCreate() {
           .select('*, profiles(name, avatar_url)')
           .eq('id', id)
           .single();
+
+        if (data && data.user_id === user?.id) {
+          alert('Вы не можете отправить отклик на своё собственное объявление');
+          window.location.hash = `/tasks/${id}`;
+          return;
+        }
+
         setOrderOrTaskData(data);
         if (data?.currency) setCurrency(data.currency);
       }
