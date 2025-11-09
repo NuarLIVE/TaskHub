@@ -1037,9 +1037,21 @@ export default function MessagesPage() {
                     return (
                       <div key={otherUserId} className="border-b">
                         <div
-                          onClick={() => !hasDeals && setSelectedChatId(chat.id)}
-                          className={`p-4 ${!hasDeals ? 'cursor-pointer hover:bg-[#EFFFF8]' : ''} ${
-                            selectedChatId === chat.id && !hasDeals ? 'bg-[#EFFFF8]' : ''
+                          onClick={() => {
+                            if (hasDeals) {
+                              const isMainChatAlsoDealChat = group.dealChats.some(({ chat: dealChat }) => dealChat?.id === chat.id);
+                              if (!isExpanded) {
+                                toggleUserExpanded(otherUserId);
+                              }
+                              if (!isMainChatAlsoDealChat) {
+                                setSelectedChatId(chat.id);
+                              }
+                            } else {
+                              setSelectedChatId(chat.id);
+                            }
+                          }}
+                          className={`p-4 cursor-pointer hover:bg-[#EFFFF8] ${
+                            selectedChatId === chat.id && !isExpanded ? 'bg-[#EFFFF8]' : ''
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1125,21 +1137,23 @@ export default function MessagesPage() {
 
                         {hasDeals && isExpanded && (
                           <div className="bg-[#EFFFF8]/30">
-                            <div
-                              onClick={() => setSelectedChatId(chat.id)}
-                              className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
-                                selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm">Общий чат</span>
-                                {unreadCount > 0 && (
-                                  <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                  </div>
-                                )}
+                            {!group.dealChats.some(({ chat: dealChat }) => dealChat?.id === chat.id) && (
+                              <div
+                                onClick={() => setSelectedChatId(chat.id)}
+                                className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
+                                  selectedChatId === chat.id ? 'bg-[#EFFFF8]' : ''
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm">Общий чат</span>
+                                  {unreadCount > 0 && (
+                                    <div className="h-5 min-w-5 px-1.5 rounded-full bg-[#6FE7C8] text-white text-xs font-semibold flex items-center justify-center">
+                                      {unreadCount > 99 ? '99+' : unreadCount}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             {group.dealChats.map(({ deal, chat: dealChat }) => {
                               const dealTitle = deal.orders?.[0]?.title || deal.tasks?.[0]?.title || deal.title;
