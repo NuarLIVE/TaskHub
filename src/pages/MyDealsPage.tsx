@@ -69,6 +69,7 @@ export default function MyDealsPage() {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
   const [proposalPages, setProposalPages] = useState<Record<string, number>>({});
+  const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -226,6 +227,24 @@ export default function MyDealsPage() {
 
             setProposals(proposalsByItem);
             setProposalPages(pages);
+
+            const allProposalIds = allProposalsData.map(p => p.id);
+            const { data: optionsData } = await getSupabase()
+              .from('proposal_options')
+              .select('*')
+              .in('proposal_id', allProposalIds)
+              .order('order_index', { ascending: true });
+
+            if (optionsData) {
+              const optionsByProposal: Record<string, any[]> = {};
+              optionsData.forEach(opt => {
+                if (!optionsByProposal[opt.proposal_id]) {
+                  optionsByProposal[opt.proposal_id] = [];
+                }
+                optionsByProposal[opt.proposal_id].push(opt);
+              });
+              setProposalOptions(optionsByProposal);
+            }
           }
         }
       }
@@ -527,6 +546,25 @@ export default function MyDealsPage() {
                                     </div>
                                   </div>
                                   <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
+                                  {proposalOptions[proposal.id] && proposalOptions[proposal.id].length > 0 && (
+                                    <div className="mt-3 pt-3 border-t space-y-2">
+                                      <div className="text-xs font-medium text-[#3F7F6E]">Опции:</div>
+                                      {proposalOptions[proposal.id].map((option) => (
+                                        <div key={option.id} className="text-xs bg-[#EFFFF8] p-2 rounded">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="font-medium">{option.title}</span>
+                                            <div className="flex gap-1">
+                                              <Badge variant="outline" className="text-xs">{formatPrice(option.price, proposal.currency)}</Badge>
+                                              <Badge variant="outline" className="text-xs">{option.delivery_days} дней</Badge>
+                                            </div>
+                                          </div>
+                                          {option.description && (
+                                            <p className="text-[#3F7F6E]">{option.description}</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </CardContent>
                               </Card>
                             ))}
@@ -686,6 +724,25 @@ export default function MyDealsPage() {
                                     </div>
                                   </div>
                                   <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
+                                  {proposalOptions[proposal.id] && proposalOptions[proposal.id].length > 0 && (
+                                    <div className="mt-3 pt-3 border-t space-y-2">
+                                      <div className="text-xs font-medium text-[#3F7F6E]">Опции:</div>
+                                      {proposalOptions[proposal.id].map((option) => (
+                                        <div key={option.id} className="text-xs bg-[#EFFFF8] p-2 rounded">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="font-medium">{option.title}</span>
+                                            <div className="flex gap-1">
+                                              <Badge variant="outline" className="text-xs">{formatPrice(option.price, proposal.currency)}</Badge>
+                                              <Badge variant="outline" className="text-xs">{option.delivery_days} дней</Badge>
+                                            </div>
+                                          </div>
+                                          {option.description && (
+                                            <p className="text-[#3F7F6E]">{option.description}</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </CardContent>
                               </Card>
                             ))}

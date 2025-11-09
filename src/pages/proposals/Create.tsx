@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, X, Paperclip, Briefcase, Tag, Upload, Plus, ExternalLink } from 'lucide-react';
+import { Send, X, Paperclip, Briefcase, Tag, Upload, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,8 @@ export default function ProposalsCreate() {
   const [loading, setLoading] = useState(false);
   const [orderOrTaskData, setOrderOrTaskData] = useState<any>(null);
   const [currency, setCurrency] = useState('USD');
+  const [options, setOptions] = useState<Array<{title: string; description: string; price: string; days: string}>>([]);
+  const [showOptions, setShowOptions] = useState(false);
 
   const params = new URLSearchParams(window.location.hash.split('?')[1]);
   const type = params.get('type') || 'order';
@@ -106,6 +108,20 @@ export default function ProposalsCreate() {
     author: { name: orderOrTaskData.profiles?.name || 'User', avatar: orderOrTaskData.profiles?.avatar_url }
   } : null;
 
+  const addOption = () => {
+    setOptions([...options, { title: '', description: '', price: '', days: '' }]);
+  };
+
+  const removeOption = (index: number) => {
+    setOptions(options.filter((_, i) => i !== index));
+  };
+
+  const updateOption = (index: number, field: string, value: string) => {
+    const newOptions = [...options];
+    newOptions[index] = { ...newOptions[index], [field]: value };
+    setOptions(newOptions);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -117,6 +133,15 @@ export default function ProposalsCreate() {
     if (!price || !days || !message) {
       alert('Заполните все обязательные поля');
       return;
+    }
+
+    if (showOptions && options.length > 0) {
+      for (const opt of options) {
+        if (!opt.title || !opt.price || !opt.days) {
+          alert('Заполните все поля опций или удалите пустые');
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -137,14 +162,35 @@ export default function ProposalsCreate() {
         proposalData.task_id = id;
       }
 
-      const { error } = await getSupabase()
+      const { data: proposalResult, error } = await getSupabase()
         .from('proposals')
-        .insert(proposalData);
+        .insert(proposalData)
+        .select()
+        .single();
 
       if (error) {
         console.error('Error creating proposal:', error);
         alert('Ошибка при отправке отклика: ' + error.message);
         return;
+      }
+
+      if (showOptions && options.length > 0 && proposalResult) {
+        const optionsData = options.map((opt, index) => ({
+          proposal_id: proposalResult.id,
+          title: opt.title,
+          description: opt.description,
+          price: Number(opt.price),
+          delivery_days: Number(opt.days),
+          order_index: index
+        }));
+
+        const { error: optionsError } = await getSupabase()
+          .from('proposal_options')
+          .insert(optionsData);
+
+        if (optionsError) {
+          console.error('Error creating options:', optionsError);
+        }
       }
 
       alert('Отклик успешно отправлен!');
@@ -266,6 +312,77 @@ export default function ProposalsCreate() {
                   className="w-full rounded-md border px-3 py-2 bg-background"
                   required
                 />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium">Опции заказа (необязательно)</label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowOptions(!showOptions)}
+                    className="h-8 text-xs"
+                  >
+                    {showOptions ? 'Скрыть опции' : 'Добавить опции'}
+                  </Button>
+                </div>
+                {showOptions && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-[#3F7F6E] mb-2">
+                      Разбейте заказ на этапы или варианты с разной ценой и сроками
+                    </p>
+                    {options.map((option, index) => (
+                      <div key={index} className="p-4 border rounded-lg bg-[#EFFFF8]/20 space-y-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">Опция {index + 1}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeOption(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Input
+                          placeholder="Название опции"
+                          value={option.title}
+                          onChange={(e) => updateOption(index, 'title', e.target.value)}
+                        />
+                        <Input
+                          placeholder="Описание (необязательно)"
+                          value={option.description}
+                          onChange={(e) => updateOption(index, 'description', e.target.value)}
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input
+                            type="number"
+                            placeholder="Цена"
+                            value={option.price}
+                            onChange={(e) => updateOption(index, 'price', e.target.value)}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Срок (дней)"
+                            value={option.days}
+                            onChange={(e) => updateOption(index, 'days', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addOption}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Добавить опцию
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -28,6 +28,7 @@ export default function ProposalsPage() {
   const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [orders, setOrders] = useState<Record<string, any>>({});
   const [tasks, setTasks] = useState<Record<string, any>>({});
+  const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     loadProposals();
@@ -199,6 +200,26 @@ export default function ProposalsPage() {
           tasksMap[t.id] = t;
         });
         setTasks(tasksMap);
+      }
+
+      const allProposalIds = [...(sent || []), ...(received || [])].map(p => p.id);
+      if (allProposalIds.length > 0) {
+        const { data: optionsData } = await getSupabase()
+          .from('proposal_options')
+          .select('*')
+          .in('proposal_id', allProposalIds)
+          .order('order_index', { ascending: true });
+
+        if (optionsData) {
+          const optionsByProposal: Record<string, any[]> = {};
+          optionsData.forEach(opt => {
+            if (!optionsByProposal[opt.proposal_id]) {
+              optionsByProposal[opt.proposal_id] = [];
+            }
+            optionsByProposal[opt.proposal_id].push(opt);
+          });
+          setProposalOptions(optionsByProposal);
+        }
       }
     } catch (error) {
       console.error('Error loading proposals:', error);
@@ -541,6 +562,27 @@ export default function ProposalsPage() {
                     {selectedProposal.message || 'Сообщение не указано'}
                   </div>
                 </div>
+                {proposalOptions[selectedProposal.id] && proposalOptions[selectedProposal.id].length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium mb-2">Опции заказа</div>
+                    <div className="space-y-2">
+                      {proposalOptions[selectedProposal.id].map((option, index) => (
+                        <div key={option.id} className="p-3 border rounded-lg bg-background">
+                          <div className="flex items-start justify-between mb-1">
+                            <div className="font-medium text-sm">{option.title}</div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <Badge variant="outline">{selectedProposal.currency} {option.price}</Badge>
+                              <Badge variant="outline">{option.delivery_days} дней</Badge>
+                            </div>
+                          </div>
+                          {option.description && (
+                            <p className="text-xs text-[#3F7F6E] mt-1">{option.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="grid sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-[#3F7F6E]">Дата отправки: </span>
