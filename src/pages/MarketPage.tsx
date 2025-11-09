@@ -90,16 +90,18 @@ export default function MarketPage() {
       let ordersData = ordersRes.data || [];
       let tasksData = tasksRes.data || [];
 
-      const { data: acceptedProposals } = await getSupabase()
-        .from('proposals')
+      // Получаем все заказы/задачи, у которых есть активные сделки
+      const { data: activeDeals } = await getSupabase()
+        .from('deals')
         .select('order_id, task_id')
-        .eq('status', 'accepted');
+        .neq('status', 'completed');
 
-      const acceptedOrderIds = new Set((acceptedProposals || []).filter(p => p.order_id).map(p => p.order_id));
-      const acceptedTaskIds = new Set((acceptedProposals || []).filter(p => p.task_id).map(p => p.task_id));
+      const activeOrderIds = new Set((activeDeals || []).filter(d => d.order_id).map(d => d.order_id));
+      const activeTaskIds = new Set((activeDeals || []).filter(d => d.task_id).map(d => d.task_id));
 
-      ordersData = ordersData.filter((o: any) => !acceptedOrderIds.has(o.id));
-      tasksData = tasksData.filter((t: any) => !acceptedTaskIds.has(t.id));
+      // Фильтруем заказы и задачи, убирая те, что уже в работе
+      ordersData = ordersData.filter((o: any) => !activeOrderIds.has(o.id));
+      tasksData = tasksData.filter((t: any) => !activeTaskIds.has(t.id));
 
       setOrders(ordersData);
       setTasks(tasksData);

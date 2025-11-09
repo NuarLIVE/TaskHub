@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -189,8 +189,28 @@ export default function MyDealsPage() {
           .eq('user_id', authUser.id)
           .order('created_at', { ascending: false });
 
-        setOrders(ordersData || []);
-        setTasks(tasksData || []);
+        // Получаем информацию об активных сделках
+        const { data: activeDeals } = await getSupabase()
+          .from('deals')
+          .select('order_id, task_id, id')
+          .neq('status', 'completed');
+
+        const ordersWithDeals = new Set((activeDeals || []).filter(d => d.order_id).map(d => d.order_id));
+        const tasksWithDeals = new Set((activeDeals || []).filter(d => d.task_id).map(d => d.task_id));
+
+        // Добавляем информацию о наличии сделки к заказам и задачам
+        const enrichedOrders = (ordersData || []).map(o => ({
+          ...o,
+          hasActiveDeal: ordersWithDeals.has(o.id)
+        }));
+
+        const enrichedTasks = (tasksData || []).map(t => ({
+          ...t,
+          hasActiveDeal: tasksWithDeals.has(t.id)
+        }));
+
+        setOrders(enrichedOrders);
+        setTasks(enrichedTasks);
 
         const orderIds = (ordersData || []).map(o => o.id);
         const taskIds = (tasksData || []).map(t => t.id);
@@ -465,28 +485,46 @@ export default function MyDealsPage() {
                         <div className="flex gap-2 mt-2">
                           <Badge variant="secondary">{order.category}</Badge>
                           {getStatusBadge(order.status)}
+                          {order.hasActiveDeal && (
+                            <Badge className="bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]">
+                              В работе
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={`#/order/${order.id}/edit`}>
-                            <Edit className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePauseResume(order.id, order.status, 'order')}
-                        >
-                          {order.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(order.id, 'order')}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!order.hasActiveDeal ? (
+                          <>
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={`#/order/${order.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePauseResume(order.id, order.status, 'order')}
+                            >
+                              {order.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(order.id, 'order')}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                            title="Начать спор"
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <p className="text-[#3F7F6E] mb-4 line-clamp-2">{order.description}</p>
@@ -643,28 +681,46 @@ export default function MyDealsPage() {
                         <div className="flex gap-2 mt-2">
                           <Badge variant="secondary">{task.category}</Badge>
                           {getStatusBadge(task.status)}
+                          {task.hasActiveDeal && (
+                            <Badge className="bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]">
+                              В работе
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={`#/task/${task.id}/edit`}>
-                            <Edit className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePauseResume(task.id, task.status, 'task')}
-                        >
-                          {task.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(task.id, 'task')}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!task.hasActiveDeal ? (
+                          <>
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={`#/task/${task.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePauseResume(task.id, task.status, 'task')}
+                            >
+                              {task.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(task.id, 'task')}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                            title="Начать спор"
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <p className="text-[#3F7F6E] mb-4 line-clamp-2">{task.description}</p>
@@ -870,9 +926,18 @@ export default function MyDealsPage() {
                             onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
                           >
                             <MessageSquare className="h-4 w-4 mr-2" />
-                            Чат
+                            Перейти
                           </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                          title="Начать спор"
+                        >
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          Начать спор
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
