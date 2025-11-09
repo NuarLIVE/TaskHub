@@ -1154,13 +1154,10 @@ export default function MessagesPage() {
                             <div
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                console.log('🟢 Клик на Общий чат', { chat, otherUserId });
 
                                 if (chat) {
-                                  console.log('✅ Открываем существующий чат:', chat.id);
                                   setSelectedChatId(chat.id);
                                 } else {
-                                  console.log('🆕 Создаем новый общий чат');
                                   // Создаем общий чат, если его еще нет
                                   try {
                                     const { data: newChat, error } = await getSupabase()
@@ -1172,12 +1169,7 @@ export default function MessagesPage() {
                                       .select()
                                       .single();
 
-                                    if (error) {
-                                      console.error('❌ Ошибка создания чата:', error);
-                                      throw error;
-                                    }
-
-                                    console.log('✅ Чат создан:', newChat);
+                                    if (error) throw error;
 
                                     // Обновляем состояние чатов и выбираем новый чат
                                     setChats(prev => [...prev, newChat]);
@@ -1186,7 +1178,7 @@ export default function MessagesPage() {
                                     // Перезагружаем список чатов для обновления счетчиков
                                     await loadChats(false);
                                   } catch (error) {
-                                    console.error('❌ Error creating general chat:', error);
+                                    console.error('Error creating general chat:', error);
                                   }
                                 }
                               }}

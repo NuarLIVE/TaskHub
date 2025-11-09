@@ -287,7 +287,6 @@ export default function ProposalsPage() {
       let generalChatId;
       if (existingGeneralChat) {
         generalChatId = existingGeneralChat.id;
-        console.log('Using existing general chat:', generalChatId);
       } else {
         // Создаем общий чат, если его нет
         const { data: newGeneralChat, error: generalChatError } = await supabase
@@ -305,7 +304,6 @@ export default function ProposalsPage() {
         }
 
         generalChatId = newGeneralChat.id;
-        console.log('Created new general chat:', generalChatId);
       }
 
       // Создаем отдельный чат для сделки
@@ -322,8 +320,6 @@ export default function ProposalsPage() {
         console.error('Deal chat creation error:', dealChatError);
         throw dealChatError;
       }
-
-      console.log('Created deal chat:', newDealChat.id);
 
       const dealData = {
         proposal_id: proposal.id,
