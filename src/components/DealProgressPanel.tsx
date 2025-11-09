@@ -359,6 +359,26 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
                 Обновлено: {formatDate(deal.last_progress_update)}
               </p>
             )}
+
+            {/* Client Actions for submitted work - В РАМКЕ */}
+            {!isFreelancer && deal?.status === 'submitted' && (
+              <div className="mt-4 pt-4 border-t border-[#6FE7C8] space-y-2">
+                <button
+                  onClick={() => setShowAcceptDialog(true)}
+                  disabled={loading}
+                  className="w-full bg-[#6FE7C8] text-white py-2.5 rounded-lg hover:bg-[#5dd4b5] disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200 hover:shadow-lg"
+                >
+                  Подтвердить заказ
+                </button>
+                <button
+                  onClick={handleRequestRevision}
+                  disabled={loading}
+                  className="w-full bg-white border-2 border-[#3F7F6E] text-[#3F7F6E] py-2.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
+                >
+                  Запросить доработку
+                </button>
+              </div>
+            )}
           </div>
 
           {isFreelancer && (
