@@ -70,6 +70,21 @@ export default function ProposalsCreate() {
           return;
         }
 
+        if (user) {
+          const { data: existingProposal } = await getSupabase()
+            .from('proposals')
+            .select('id')
+            .eq('order_id', id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (existingProposal) {
+            alert('Вы уже отправили отклик на этот заказ');
+            window.location.hash = '/proposals';
+            return;
+          }
+        }
+
         setOrderOrTaskData(data);
         if (data?.currency) setCurrency(data.currency);
       } else {
@@ -83,6 +98,21 @@ export default function ProposalsCreate() {
           alert('Вы не можете отправить отклик на своё собственное объявление');
           window.location.hash = `/tasks/${id}`;
           return;
+        }
+
+        if (user) {
+          const { data: existingProposal } = await getSupabase()
+            .from('proposals')
+            .select('id')
+            .eq('task_id', id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (existingProposal) {
+            alert('Вы уже отправили отклик на это объявление');
+            window.location.hash = '/proposals';
+            return;
+          }
         }
 
         setOrderOrTaskData(data);

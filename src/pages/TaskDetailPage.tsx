@@ -43,6 +43,8 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<Task | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasProposal, setHasProposal] = useState(false);
+  const [userProposal, setUserProposal] = useState<any>(null);
   const isOwner = user && task && user.id === task.user_id;
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function TaskDetailPage() {
     if (!taskId) return;
 
     try {
+      const supabase = getSupabase();
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('*')
@@ -80,6 +83,20 @@ export default function TaskDetailPage() {
 
       if (!profileError && profileData) {
         setProfile(profileData);
+      }
+
+      if (user) {
+        const { data: existingProposal } = await supabase
+          .from('proposals')
+          .select('*')
+          .eq('task_id', taskId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingProposal) {
+          setHasProposal(true);
+          setUserProposal(existingProposal);
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -174,7 +191,22 @@ export default function TaskDetailPage() {
                     )}
                     {!isOwner && (
                       <>
-                        <Button asChild>
+                        {hasProposal ? (
+                          <Button asChild variant="outline">
+                            <a href="#/proposals">
+                              <Send className="h-4 w-4 mr-2" />
+                              Ваш отклик
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button asChild>
+                            <a href={`#/proposals/create?type=task&id=${task.id}`}>
+                              <Send className="h-4 w-4 mr-2" />
+                              Откликнуться
+                            </a>
+                          </Button>
+                        )}
+                        <Button asChild variant="outline">
                           <a href={`#/deal/open?type=task&id=${task.id}`}>
                             <Handshake className="h-4 w-4 mr-2" />
                             Открыть сделку

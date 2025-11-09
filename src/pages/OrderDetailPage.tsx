@@ -47,6 +47,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasProposal, setHasProposal] = useState(false);
+  const [userProposal, setUserProposal] = useState<any>(null);
   const isOwner = user && order && user.id === order.user_id;
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export default function OrderDetailPage() {
     if (!orderId) return;
 
     try {
+      const supabase = getSupabase();
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select('*')
@@ -84,6 +87,20 @@ export default function OrderDetailPage() {
 
       if (!profileError && profileData) {
         setProfile(profileData);
+      }
+
+      if (user) {
+        const { data: existingProposal } = await supabase
+          .from('proposals')
+          .select('*')
+          .eq('order_id', orderId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingProposal) {
+          setHasProposal(true);
+          setUserProposal(existingProposal);
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -175,12 +192,21 @@ export default function OrderDetailPage() {
                     )}
                     {!isOwner && (
                       <>
-                        <Button asChild>
-                          <a href={`#/proposals/create?type=order&id=${order.id}`}>
-                            <Send className="h-4 w-4 mr-2" />
-                            Откликнуться
-                          </a>
-                        </Button>
+                        {hasProposal ? (
+                          <Button asChild variant="outline">
+                            <a href="#/proposals">
+                              <Send className="h-4 w-4 mr-2" />
+                              Ваш отклик
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button asChild>
+                            <a href={`#/proposals/create?type=order&id=${order.id}`}>
+                              <Send className="h-4 w-4 mr-2" />
+                              Откликнуться
+                            </a>
+                          </Button>
+                        )}
                         <Button asChild variant="outline">
                           <a href={`#/deal/open?type=order&id=${order.id}`}>
                             <Handshake className="h-4 w-4 mr-2" />
