@@ -1031,7 +1031,7 @@ export default function MessagesPage() {
             </div>
           </div>
         ) : (
-          <div className={`grid grid-cols-1 ${currentDeal ? 'lg:grid-cols-[320px_1fr_384px]' : 'lg:grid-cols-[320px_1fr]'} gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[700px] min-h-0`}>
+          <div className={`grid grid-cols-1 ${currentDeal ? 'lg:grid-cols-[280px_1fr_340px]' : 'lg:grid-cols-[280px_1fr]'} gap-4 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[800px] min-h-0`}>
             {/* Список чатов */}
             <Card className="overflow-hidden h-full min-h-0 flex flex-col">
               <div className="p-4 border-b">

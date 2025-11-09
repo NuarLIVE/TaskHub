@@ -215,7 +215,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer }: Deal
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="w-96 bg-white border-l border-gray-200 h-full overflow-y-auto flex flex-col"
+      className="w-full bg-white border-l border-gray-200 h-full overflow-y-auto flex flex-col"
     >
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-800">Текущий прогресс</h2>
