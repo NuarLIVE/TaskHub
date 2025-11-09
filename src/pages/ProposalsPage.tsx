@@ -250,9 +250,19 @@ export default function ProposalsPage() {
     if (!user) return;
 
     try {
+      console.log('Starting proposal acceptance:', proposal);
+
       const item = proposal.order_id ? orders[proposal.order_id] : tasks[proposal.task_id];
+      console.log('Item:', item);
+
+      if (!item) {
+        throw new Error('Order or task not found');
+      }
+
       const clientId = item.user_id;
       const freelancerId = proposal.user_id;
+
+      console.log('Creating chat between:', clientId, 'and', freelancerId);
 
       const { data: newDealChat, error: dealChatError } = await supabase
         .from('chats')
@@ -263,40 +273,59 @@ export default function ProposalsPage() {
         .select()
         .single();
 
-      if (dealChatError) throw dealChatError;
+      if (dealChatError) {
+        console.error('Chat creation error:', dealChatError);
+        throw dealChatError;
+      }
+
+      console.log('Chat created:', newDealChat);
+
+      const dealData = {
+        proposal_id: proposal.id,
+        order_id: proposal.order_id || null,
+        task_id: proposal.task_id || null,
+        client_id: clientId,
+        freelancer_id: freelancerId,
+        chat_id: newDealChat.id,
+        title: item.title,
+        description: proposal.message || '',
+        price: proposal.price,
+        currency: proposal.currency,
+        delivery_days: proposal.delivery_days,
+        status: 'in_progress'
+      };
+
+      console.log('Creating deal:', dealData);
 
       const { error: dealError } = await supabase
         .from('deals')
-        .insert({
-          proposal_id: proposal.id,
-          order_id: proposal.order_id,
-          task_id: proposal.task_id,
-          client_id: clientId,
-          freelancer_id: freelancerId,
-          chat_id: newDealChat.id,
-          title: item.title,
-          description: proposal.message,
-          price: proposal.price,
-          currency: proposal.currency,
-          delivery_days: proposal.delivery_days,
-          status: 'in_progress'
-        });
+        .insert(dealData);
 
-      if (dealError) throw dealError;
+      if (dealError) {
+        console.error('Deal creation error:', dealError);
+        throw dealError;
+      }
+
+      console.log('Deal created successfully');
 
       const { error: proposalError } = await supabase
         .from('proposals')
         .update({ status: 'accepted' })
         .eq('id', proposal.id);
 
-      if (proposalError) throw proposalError;
+      if (proposalError) {
+        console.error('Proposal update error:', proposalError);
+        throw proposalError;
+      }
+
+      console.log('Proposal updated to accepted');
 
       alert('Отклик принят! Сделка создана.');
       loadProposals();
       setDetailsOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting proposal:', error);
-      alert('Ошибка при принятии отклика');
+      alert(`Ошибка при принятии отклика: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
