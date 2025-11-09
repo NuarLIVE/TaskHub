@@ -29,6 +29,7 @@ export default function ProposalsPage() {
   const [orders, setOrders] = useState<Record<string, any>>({});
   const [tasks, setTasks] = useState<Record<string, any>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
+  const [acceptingProposal, setAcceptingProposal] = useState<string | null>(null);
 
   useEffect(() => {
     loadProposals();
@@ -249,23 +250,34 @@ export default function ProposalsPage() {
   };
 
   const handleAccept = async (proposal: any) => {
-    if (!user) return;
+    if (!user || acceptingProposal) return;
+
+    setAcceptingProposal(proposal.id);
 
     try {
       const supabase = getSupabase();
-      console.log('Starting proposal acceptance:', proposal);
 
       const item = proposal.order_id ? orders[proposal.order_id] : tasks[proposal.task_id];
-      console.log('Item:', item);
 
       if (!item) {
-        throw new Error('Order or task not found');
+        throw new Error('Заказ или задача не найдены');
       }
 
       const clientId = item.user_id;
       const freelancerId = proposal.user_id;
 
-      console.log('Creating chats between:', clientId, 'and', freelancerId);
+      // Проверяем, есть ли уже сделка по этому заказу/задаче
+      const { data: existingDeal } = await supabase
+        .from('deals')
+        .select('id')
+        .eq(proposal.order_id ? 'order_id' : 'task_id', proposal.order_id || proposal.task_id)
+        .maybeSingle();
+
+      if (existingDeal) {
+        alert('Сделка по этому заказу уже существует');
+        setAcceptingProposal(null);
+        return;
+      }
 
       // Получаем все чаты между этими пользователями
       const { data: allChats } = await supabase
@@ -336,8 +348,6 @@ export default function ProposalsPage() {
         status: 'in_progress'
       };
 
-      console.log('Creating deal:', dealData);
-
       const { error: dealError } = await supabase
         .from('deals')
         .insert(dealData);
@@ -346,8 +356,6 @@ export default function ProposalsPage() {
         console.error('Deal creation error:', dealError);
         throw dealError;
       }
-
-      console.log('Deal created successfully');
 
       const { data: clientProfile } = await supabase
         .from('profiles')
@@ -391,14 +399,17 @@ export default function ProposalsPage() {
         throw proposalError;
       }
 
-      console.log('Proposal updated to accepted');
+      // Убираем отклик из списка немедленно
+      setReceivedProposals(prev => prev.filter(p => p.id !== proposal.id));
+      setSentProposals(prev => prev.filter(p => p.id !== proposal.id));
 
       alert('Отклик принят! Сделка создана.');
-      loadProposals();
       setDetailsOpen(false);
     } catch (error: any) {
       console.error('Error accepting proposal:', error);
       alert(`Ошибка при принятии отклика: ${error?.message || JSON.stringify(error)}`);
+    } finally {
+      setAcceptingProposal(null);
     }
   };
 
@@ -582,11 +593,25 @@ export default function ProposalsPage() {
                       {getStatusBadge(proposal.status)}
                       {activeTab === 'received' && proposal.status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => handleAccept(proposal)} className="px-4">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Принять
+                          <Button
+                            size="sm"
+                            onClick={() => handleAccept(proposal)}
+                            className="px-4"
+                            disabled={acceptingProposal === proposal.id}
+                          >
+                            {acceptingProposal === proposal.id ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                            )}
+                            {acceptingProposal === proposal.id ? 'Принимаю...' : 'Принять'}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleReject(proposal.id)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReject(proposal.id)}
+                            disabled={acceptingProposal === proposal.id}
+                          >
                             <X className="h-4 w-4 mr-1" />
                             Отклонить
                           </Button>
@@ -699,13 +724,25 @@ export default function ProposalsPage() {
                 )}
                 {activeTab === 'received' && selectedProposal.status === 'pending' && (
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => handleReject(selectedProposal.id)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleReject(selectedProposal.id)}
+                      disabled={acceptingProposal === selectedProposal.id}
+                    >
                       <X className="h-4 w-4 mr-1" />
                       Отклонить
                     </Button>
-                    <Button onClick={() => handleAccept(selectedProposal)} className="px-6">
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Принять
+                    <Button
+                      onClick={() => handleAccept(selectedProposal)}
+                      className="px-6"
+                      disabled={acceptingProposal === selectedProposal.id}
+                    >
+                      {acceptingProposal === selectedProposal.id ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                      )}
+                      {acceptingProposal === selectedProposal.id ? 'Принимаю...' : 'Принять'}
                     </Button>
                   </div>
                 )}
