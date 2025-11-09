@@ -322,7 +322,7 @@ export default function ProposalsPage() {
       const supabase = getSupabase();
       const { error } = await supabase
         .from('proposals')
-        .delete()
+        .update({ status: 'withdrawn' })
         .eq('id', proposalId);
 
       if (error) throw error;
@@ -336,6 +336,28 @@ export default function ProposalsPage() {
     }
   };
 
+  const handleDelete = async (proposalId: string) => {
+    const confirmed = confirm('Вы уверены, что хотите окончательно удалить этот отклик?');
+    if (!confirmed) return;
+
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase
+        .from('proposals')
+        .delete()
+        .eq('id', proposalId);
+
+      if (error) throw error;
+
+      alert('Отклик удалён');
+      loadProposals();
+      setDetailsOpen(false);
+    } catch (error) {
+      console.error('Error deleting proposal:', error);
+      alert('Ошибка при удалении отклика');
+    }
+  };
+
   const showDetails = (proposal: any) => {
     setSelectedProposal(proposal);
     setDetailsOpen(true);
@@ -346,6 +368,7 @@ export default function ProposalsPage() {
   const getStatusBadge = (status: string) => {
     if (status === 'accepted') return <Badge className="bg-green-100 text-green-800">Принят</Badge>;
     if (status === 'rejected') return <Badge variant="destructive">Отклонён</Badge>;
+    if (status === 'withdrawn') return <Badge className="bg-orange-100 text-orange-800">Отозван</Badge>;
     return <Badge variant="secondary">На рассмотрении</Badge>;
   };
 
@@ -449,7 +472,7 @@ export default function ProposalsPage() {
                       {getStatusBadge(proposal.status)}
                       {activeTab === 'received' && proposal.status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => handleAccept(proposal)}>
+                          <Button size="sm" onClick={() => handleAccept(proposal)} className="px-4">
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Принять
                           </Button>
@@ -529,12 +552,18 @@ export default function ProposalsPage() {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2">
                 <Button variant="ghost" onClick={() => setDetailsOpen(false)}>Закрыть</Button>
                 {activeTab === 'sent' && selectedProposal.status === 'pending' && (
                   <Button variant="destructive" onClick={() => handleWithdraw(selectedProposal.id)}>
                     <X className="h-4 w-4 mr-1" />
                     Отозвать отклик
+                  </Button>
+                )}
+                {activeTab === 'sent' && selectedProposal.status === 'withdrawn' && (
+                  <Button variant="destructive" onClick={() => handleDelete(selectedProposal.id)}>
+                    <X className="h-4 w-4 mr-1" />
+                    Удалить окончательно
                   </Button>
                 )}
                 {activeTab === 'received' && selectedProposal.status === 'pending' && (
@@ -543,7 +572,7 @@ export default function ProposalsPage() {
                       <X className="h-4 w-4 mr-1" />
                       Отклонить
                     </Button>
-                    <Button onClick={() => handleAccept(selectedProposal)}>
+                    <Button onClick={() => handleAccept(selectedProposal)} className="px-6">
                       <CheckCircle className="h-4 w-4 mr-1" />
                       Принять
                     </Button>
