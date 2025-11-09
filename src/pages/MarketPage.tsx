@@ -391,7 +391,14 @@ export default function MarketPage() {
             {previewItem && (
               <>
                 <DialogHeader>
-                  <DialogTitle>{previewItem.title}</DialogTitle>
+                  <DialogTitle className="flex items-center gap-3">
+                    {previewItem.title}
+                    {user && previewItem.user_id === user.id && (
+                      <Badge variant="outline" className="text-xs">
+                        {previewType === 'order' ? 'Ваш заказ' : 'Ваше объявление'}
+                      </Badge>
+                    )}
+                  </DialogTitle>
                   <DialogDescription className="flex items-center gap-2 mt-2">
                     <Badge variant="secondary">{previewItem.category}</Badge>
                     {previewType === 'order' && previewItem.engagement && <Badge variant="outline">{previewItem.engagement}</Badge>}
@@ -448,9 +455,11 @@ export default function MarketPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Закрыть</Button>
-                  <Button onClick={handleProposalClick}>
-                    Откликнуться
-                  </Button>
+                  {(!user || previewItem.user_id !== user.id) && (
+                    <Button onClick={handleProposalClick}>
+                      Откликнуться
+                    </Button>
+                  )}
                 </DialogFooter>
               </>
             )}
