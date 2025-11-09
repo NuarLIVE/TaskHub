@@ -181,6 +181,23 @@ export default function MyDealsPage() {
 
         setOrders(ordersData || []);
         setTasks(tasksData || []);
+
+        const orderIds = (ordersData || []).map(o => o.id);
+        const taskIds = (tasksData || []).map(t => t.id);
+
+        if (orderIds.length > 0) {
+          for (const orderId of orderIds) {
+            await loadProposals(orderId, 'order');
+            setProposalPages(prev => ({ ...prev, [orderId]: 1 }));
+          }
+        }
+
+        if (taskIds.length > 0) {
+          for (const taskId of taskIds) {
+            await loadProposals(taskId, 'task');
+            setProposalPages(prev => ({ ...prev, [taskId]: 1 }));
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading deals:', error);
@@ -224,10 +241,6 @@ export default function MyDealsPage() {
       setExpandedItem(null);
     } else {
       setExpandedItem(itemId);
-      if (!proposals[itemId]) {
-        await loadProposals(itemId, type);
-        setProposalPages(prev => ({ ...prev, [itemId]: 1 }));
-      }
     }
   };
 
