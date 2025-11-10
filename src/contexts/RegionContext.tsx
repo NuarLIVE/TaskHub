@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getSupabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
-import { translations, Translation } from '../locales';
 
 interface Currency {
   code: string;
@@ -22,7 +21,6 @@ interface RegionContextType {
   currency: string;
   currencySymbol: string;
   currencies: Currency[];
-  t: Translation;
   setLanguage: (lang: string) => Promise<void>;
   setCurrency: (currency: string) => Promise<void>;
   convertPrice: (amount: number, fromCurrency: string) => number;
@@ -393,7 +391,6 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   }
 
   const currencySymbol = currencies.find((c) => c.code === currency)?.symbol || '$';
-  const t = translations[language] || translations.en;
 
   return (
     <RegionContext.Provider
@@ -402,7 +399,6 @@ export function RegionProvider({ children }: { children: ReactNode }) {
         currency,
         currencySymbol,
         currencies,
-        t,
         setLanguage,
         setCurrency,
         convertPrice,

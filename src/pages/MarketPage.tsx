@@ -25,7 +25,6 @@ const ITEMS_PER_PAGE = 20;
 
 export default function MarketPage() {
   const { user } = useAuth();
-  const { t } = useRegion();
   const [activeTab, setActiveTab] = useState('orders');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
@@ -254,10 +253,10 @@ export default function MarketPage() {
       >
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.market.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Биржа</h1>
             <div className="flex gap-2">
-              <Button variant={activeTab === 'orders' ? 'default' : 'ghost'} onClick={() => setActiveTab('orders')}>{t.market.orders}</Button>
-              <Button variant={activeTab === 'tasks' ? 'default' : 'ghost'} onClick={() => setActiveTab('tasks')}>{t.market.tasks}</Button>
+              <Button variant={activeTab === 'orders' ? 'default' : 'ghost'} onClick={() => setActiveTab('orders')}>Заказы</Button>
+              <Button variant={activeTab === 'tasks' ? 'default' : 'ghost'} onClick={() => setActiveTab('tasks')}>Tasks</Button>
             </div>
           </div>
 
@@ -266,11 +265,11 @@ export default function MarketPage() {
               <div className="flex flex-col gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
-                  <Input value={q} onChange={e => setQ(e.target.value)} placeholder={t.market.searchPlaceholder} className="pl-9 h-11" />
+                  <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по названию или тегам" className="pl-9 h-11" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   <select value={category} onChange={e => setCategory(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
-                    <option value="">{t.market.allCategories}</option>
+                    <option value="">Все категории</option>
                     <option>Разработка</option>
                     <option>Дизайн</option>
                     <option>Маркетинг</option>
@@ -279,7 +278,7 @@ export default function MarketPage() {
                     <option>QA / Безопасность</option>
                   </select>
                   <select value={currency} onChange={e => setCurrency(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
-                    <option value="">{t.market.currency}</option>
+                    <option value="">Валюта</option>
                     <option>USD</option>
                     <option>EUR</option>
                     <option>KZT</option>
@@ -288,17 +287,17 @@ export default function MarketPage() {
                   </select>
                   {activeTab === 'orders' && (
                     <select value={engagement} onChange={e => setEngagement(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
-                      <option value="">{t.market.engagement}</option>
+                      <option value="">Тип занятости</option>
                       <option>Фикс-прайс</option>
                       <option>Почасовая</option>
                     </select>
                   )}
-                  <Input type="number" value={min} onChange={e => setMin(e.target.value)} placeholder={t.common.min} className="h-10" />
-                  <Input type="number" value={max} onChange={e => setMax(e.target.value)} placeholder={t.common.max} className="h-10" />
+                  <Input type="number" value={min} onChange={e => setMin(e.target.value)} placeholder="Мин. цена" className="h-10" />
+                  <Input type="number" value={max} onChange={e => setMax(e.target.value)} placeholder="Макс. цена" className="h-10" />
                   <select value={sort} onChange={e => setSort(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
-                    <option value="new">{t.market.newest}</option>
-                    <option value="priceUp">{t.market.priceLowToHigh}</option>
-                    <option value="priceDown">{t.market.priceHighToLow}</option>
+                    <option value="new">Новые</option>
+                    <option value="priceUp">Цена ↑</option>
+                    <option value="priceDown">Цена ↓</option>
                   </select>
                 </div>
                 <div className="flex items-center justify-between">

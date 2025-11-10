@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -22,7 +21,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
-  const { t } = useRegion();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
