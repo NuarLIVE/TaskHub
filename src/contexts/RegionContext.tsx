@@ -82,6 +82,22 @@ export function RegionProvider({ children }: { children: ReactNode }) {
     loadCurrencies();
   }, []);
 
+  // Auto-refresh exchange rates every hour
+  useEffect(() => {
+    if (!currency) return;
+
+    // Initial fetch
+    fetchExchangeRates(currency);
+
+    // Set up hourly refresh
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing exchange rates...');
+      fetchExchangeRates(currency);
+    }, 60 * 60 * 1000); // 1 hour
+
+    return () => clearInterval(intervalId);
+  }, [currency]);
+
   async function detectRegion() {
     try {
       // Try to detect language from browser
@@ -167,32 +183,35 @@ export function RegionProvider({ children }: { children: ReactNode }) {
       // Check if we have recent rates in database (less than 1 hour old)
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
+      // Try to get rates from any recent base currency (USD preferred for most conversions)
       const { data: recentRates, error: dbError } = await getSupabase()
         .from('exchange_rates')
         .select('from_currency, to_currency, rate, fetched_at')
-        .eq('from_currency', baseCurrency)
         .gte('fetched_at', oneHourAgo)
         .order('fetched_at', { ascending: false });
 
-      if (!dbError && recentRates && recentRates.length > 0) {
-        // Use cached rates
+      if (!dbError && recentRates && recentRates.length > 10) {
+        // We have fresh rates, use them
         const ratesMap = new Map<string, ExchangeRate>();
         recentRates.forEach((rate) => {
           const key = `${rate.from_currency}-${rate.to_currency}`;
-          ratesMap.set(key, {
-            from: rate.from_currency,
-            to: rate.to_currency,
-            rate: parseFloat(rate.rate),
-            timestamp: new Date(rate.fetched_at).getTime(),
-          });
+          if (!ratesMap.has(key)) {
+            ratesMap.set(key, {
+              from: rate.from_currency,
+              to: rate.to_currency,
+              rate: parseFloat(rate.rate),
+              timestamp: new Date(rate.fetched_at).getTime(),
+            });
+          }
         });
         setExchangeRates(ratesMap);
         return;
       }
 
-      // Fetch fresh rates from API
+      // Fetch fresh rates from API using USD as base (most complete)
+      console.log('Fetching fresh exchange rates from API...');
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-exchange-rates?base=${baseCurrency}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-exchange-rates?base=USD`,
         {
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -201,23 +220,27 @@ export function RegionProvider({ children }: { children: ReactNode }) {
       );
 
       if (!response.ok) {
+        console.error('Failed to fetch exchange rates:', response.status, response.statusText);
         throw new Error('Failed to fetch exchange rates');
       }
 
       const result = await response.json();
 
       if (result.success && result.rates) {
+        console.log(`Loaded ${Object.keys(result.rates).length} exchange rates`);
         const ratesMap = new Map<string, ExchangeRate>();
         Object.entries(result.rates).forEach(([toCurrency, rate]) => {
-          const key = `${baseCurrency}-${toCurrency}`;
+          const key = `USD-${toCurrency}`;
           ratesMap.set(key, {
-            from: baseCurrency,
+            from: 'USD',
             to: toCurrency,
             rate: rate as number,
             timestamp: result.timestamp,
           });
         });
         setExchangeRates(ratesMap);
+      } else {
+        console.error('Invalid response from exchange rate API:', result);
       }
     } catch (error) {
       console.error('Error fetching exchange rates:', error);
@@ -270,11 +293,12 @@ export function RegionProvider({ children }: { children: ReactNode }) {
   function convertPrice(amount: number, fromCurrency: string): number {
     if (fromCurrency === currency) return amount;
 
-    const key = `${fromCurrency}-${currency}`;
-    const rate = exchangeRates.get(key);
+    // Try direct conversion
+    const directKey = `${fromCurrency}-${currency}`;
+    const directRate = exchangeRates.get(directKey);
 
-    if (rate) {
-      return amount * rate.rate;
+    if (directRate) {
+      return amount * directRate.rate;
     }
 
     // Try inverse conversion
@@ -285,7 +309,21 @@ export function RegionProvider({ children }: { children: ReactNode }) {
       return amount / inverseRate.rate;
     }
 
+    // Try conversion through USD as intermediate currency
+    // Convert from source to USD, then USD to target
+    const fromUsdKey = `USD-${fromCurrency}`;
+    const toUsdKey = `USD-${currency}`;
+    const fromUsdRate = exchangeRates.get(fromUsdKey);
+    const toUsdRate = exchangeRates.get(toUsdKey);
+
+    if (fromUsdRate && toUsdRate) {
+      // Convert to USD first, then to target currency
+      const amountInUsd = amount / fromUsdRate.rate;
+      return amountInUsd * toUsdRate.rate;
+    }
+
     // If no rate found, return original amount
+    console.warn(`No exchange rate found for ${fromCurrency} -> ${currency}`);
     return amount;
   }
 

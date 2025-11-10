@@ -155,11 +155,14 @@ USD, EUR, RUB, GBP, JPY, CNY, KRW, INR, BRL, AUD, CAD, CHF, SEK, NOK, PLN, TRY, 
 English, Russian, Spanish, German, French, Chinese, Japanese, Korean, Portuguese, Arabic
 
 ## Notes
-- Exchange rates update every hour automatically
-- For offline users, last cached rates are used
-- Currency conversion is bidirectional (handles both base and inverse rates)
-- All prices maintain their original currency in the database
+- **Auto-Update**: Exchange rates automatically refresh every hour in the background
+- **Smart Caching**: Rates cached in database for 1 hour to reduce API calls
+- **USD as Base**: All rates fetched using USD as base currency for maximum compatibility
+- **Multi-Path Conversion**: Supports direct conversion, inverse conversion, and conversion through USD
+  - Example: RUB → EUR converts as: RUB → USD → EUR
+- **Offline Fallback**: Last cached rates used when API unavailable
 - **Price Rounding**: All converted prices are rounded down using `Math.floor()` for consistency
 - **Info Icons**: Only shown when currency conversion occurs (when `fromCurrency !== userCurrency`)
 - **Tooltip Behavior**: Displays "Приблизительная цена. Точное значение: [original]" on hover
 - **Accessibility**: Info icon uses `cursor-help` for better UX indication
+- **Data Integrity**: All prices maintain their original currency in the database
