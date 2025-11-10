@@ -131,6 +131,46 @@ export default function WalletPage() {
     if (user) {
       loadWalletData();
       loadEntries();
+
+      // Subscribe to real-time updates for ledger accounts
+      const accountSubscription = getSupabase()
+        .channel('wallet-balance-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'ledger_accounts',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            console.log('Balance updated, reloading...');
+            loadWalletData();
+          }
+        )
+        .subscribe();
+
+      // Subscribe to real-time updates for ledger entries
+      const entrySubscription = getSupabase()
+        .channel('wallet-entry-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'ledger_entries',
+          },
+          () => {
+            console.log('New transaction added, reloading...');
+            loadEntries();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        accountSubscription.unsubscribe();
+        entrySubscription.unsubscribe();
+      };
     }
   }, [user]);
 
