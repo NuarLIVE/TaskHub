@@ -17,6 +17,7 @@
     "seed": "cd server && npm run seed"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^8.3.0",
     "@supabase/supabase-js": "^2.57.4",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.344.0",
