@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabaseClient';
 import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -33,6 +34,69 @@ const pageTransition = {
   damping: 20,
   mass: 0.9
 };
+
+function CheckoutForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setProcessing(true);
+    setErrorMessage(null);
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/wallet',
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        setErrorMessage(error.message || 'Произошла ошибка обработки.');
+      } else {
+        onSuccess();
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Произошла ошибка обработки.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      {errorMessage && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
+          {errorMessage}
+        </div>
+      )}
+      <div className="flex gap-3">
+        <Button type="submit" className="flex-1" disabled={processing || !stripe}>
+          {processing ? 'Обработка...' : 'Оплатить'}
+        </Button>
+        <Button
+          type="button"
+          onClick={onCancel}
+          variant="outline"
+          className="flex-1"
+          disabled={processing}
+        >
+          Отмена
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 interface LedgerAccount {
   id: string;
@@ -61,6 +125,7 @@ export default function WalletPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -119,7 +184,7 @@ export default function WalletPage() {
     }
   };
 
-  const handleDeposit = async () => {
+  const handleDepositInit = async () => {
     if (!depositAmount || processing) return;
 
     const amount = parseFloat(depositAmount);
@@ -156,39 +221,30 @@ export default function WalletPage() {
         throw new Error(error.error || 'Ошибка создания платежа');
       }
 
-      const { clientSecret } = await response.json();
-
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error('Stripe не загружен');
-      }
-
-      const { error: stripeError } = await stripe.confirmPayment({
-        clientSecret,
-        confirmParams: {
-          return_url: window.location.origin + '/wallet',
-        },
-        redirect: 'if_required',
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message);
-      }
-
-      setShowDepositModal(false);
-      setDepositAmount('');
-      alert('Платеж успешно обработан! Баланс будет обновлен в течение минуты.');
-
-      setTimeout(() => {
-        loadWalletData();
-        loadEntries();
-      }, 2000);
+      const { clientSecret: secret } = await response.json();
+      setClientSecret(secret);
     } catch (error: any) {
       console.error('Deposit error:', error);
-      alert(error.message || 'Ошибка при пополнении баланса');
+      alert(error.message || 'Ошибка при создании платежа');
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowDepositModal(false);
+    setDepositAmount('');
+    setClientSecret(null);
+    alert('Платеж успешно обработан! Баланс будет обновлен в течение минуты.');
+
+    setTimeout(() => {
+      loadWalletData();
+      loadEntries();
+    }, 2000);
+  };
+
+  const handlePaymentCancel = () => {
+    setClientSecret(null);
   };
 
   const handleWithdraw = async () => {
@@ -455,45 +511,60 @@ export default function WalletPage() {
                   <CreditCard className="h-5 w-5" />
                   Пополнение баланса
                 </CardTitle>
-                <button onClick={() => setShowDepositModal(false)} className="hover:opacity-70 transition">
+                <button onClick={() => {
+                  setShowDepositModal(false);
+                  setClientSecret(null);
+                  setDepositAmount('');
+                }} className="hover:opacity-70 transition">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 p-6 pt-0">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Сумма пополнения (USD)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.50"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="Минимум $0.50"
-                  disabled={processing}
-                />
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                <div className="flex items-start gap-2">
-                  <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              {!clientSecret ? (
+                <>
                   <div>
-                    Платеж обрабатывается через Stripe. Средства зачисляются моментально после подтверждения.
+                    <label className="text-sm font-medium mb-2 block">Сумма пополнения (USD)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.50"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      placeholder="Минимум $0.50"
+                      disabled={processing}
+                    />
                   </div>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Button onClick={handleDeposit} className="flex-1" disabled={processing}>
-                  {processing ? 'Обработка...' : 'Пополнить'}
-                </Button>
-                <Button
-                  onClick={() => setShowDepositModal(false)}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={processing}
-                >
-                  Отмена
-                </Button>
-              </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                    <div className="flex items-start gap-2">
+                      <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        Платеж обрабатывается через Stripe. Средства зачисляются моментально после подтверждения.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button onClick={handleDepositInit} className="flex-1" disabled={processing}>
+                      {processing ? 'Создание...' : 'Продолжить'}
+                    </Button>
+                    <Button
+                      onClick={() => setShowDepositModal(false)}
+                      variant="outline"
+                      className="flex-1"
+                      disabled={processing}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <CheckoutForm
+                    onSuccess={handlePaymentSuccess}
+                    onCancel={handlePaymentCancel}
+                  />
+                </Elements>
+              )}
             </CardContent>
           </Card>
         </div>
