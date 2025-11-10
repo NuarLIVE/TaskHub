@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Award, TrendingUp, CheckCircle, Briefcase, DollarSign, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -17,8 +18,11 @@ const pageVariants = {
 
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
+const supabase = getSupabase();
+
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { t } = useRegion();
   const [tab, setTab] = useState('portfolio');
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userTasks, setUserTasks] = useState<any[]>([]);
@@ -98,55 +102,25 @@ export default function ProfilePage() {
     setPortfolioProjects(data || []);
   };
 
-  const handlePortfolioProjectClick = (project: any) => {
-    setSelectedPortfolioProject(project);
-    setPortfolioPreviewOpen(true);
+  const saveProfile = (p: any) => {
+    setProfile(p);
+    localStorage.setItem('fh_profile', JSON.stringify(p));
   };
 
-  const toggleHelpful = async (reviewId: number) => {
-    if (!user) {
-      alert('Необходимо войти в систему');
-      return;
-    }
-
-    const newVotes = new Set(helpfulVotes);
-    if (newVotes.has(reviewId)) {
-      newVotes.delete(reviewId);
-      await supabase
-        .from('review_helpful_votes')
-        .delete()
-        .eq('review_id', reviewId)
-        .eq('user_id', user.id);
-    } else {
-      newVotes.add(reviewId);
-      await supabase
-        .from('review_helpful_votes')
-        .insert({
-          review_id: reviewId,
-          user_id: user.id
-        });
-    }
-    setHelpfulVotes(newVotes);
-  };
-
-  const openPreview = (item: any, type: 'order' | 'task') => {
+  const openPreview = (item: any, type: 'order' | 'task' | 'portfolio') => {
     setPreviewItem(item);
     setPreviewType(type);
     setPreviewOpen(true);
   };
 
-  const saveProfile = (p: typeof profile) => {
-    setProfile(p);
-    if (typeof window !== 'undefined') localStorage.setItem('fh_profile', JSON.stringify(p));
+  const handlePortfolioProjectClick = (project: any) => {
+    setSelectedPortfolioProject(project);
+    setPortfolioPreviewOpen(true);
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Размер файла не должен превышать 5 МБ');
-        return;
-      }
       setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -156,47 +130,25 @@ export default function ProfilePage() {
     }
   };
 
-  const handleRemoveAvatar = () => {
-    setAvatarFile(null);
-    setAvatarPreview('');
-    if (avatarInputRef.current) {
-      avatarInputRef.current.value = '';
-    }
-  };
-
-  const onEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const bioText = String(fd.get('bio') || '');
-    if (bioText.length > 700) {
-      alert('Текст "О себе" не должен превышать 700 символов');
-      return;
-    }
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+    const bioText = (form.querySelector('textarea[name="bio"]') as HTMLTextAreaElement)?.value || '';
 
-    let uploadedAvatarUrl = String(fd.get('avatar') || '');
-
-    if (avatarFile && user) {
+    let uploadedAvatarUrl = profile.avatar;
+    if (avatarFile) {
       try {
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${user.id}-avatar-${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
-
-        const { error: uploadError } = await getSupabase().storage
+        const fileName = `avatar-${user?.id}-${Date.now()}.${avatarFile.name.split('.').pop()}`;
+        const { error: uploadError } = await supabase.storage
           .from('portfolio-images')
-          .upload(filePath, avatarFile, {
-            cacheControl: '3600',
-            upsert: true
-          });
+          .upload(fileName, avatarFile, { upsert: true });
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          alert(`Ошибка при загрузке аватара: ${uploadError.message}`);
-          return;
-        }
+        if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = getSupabase().storage
+        const { data: { publicUrl } } = supabase.storage
           .from('portfolio-images')
-          .getPublicUrl(filePath);
+          .getPublicUrl(fileName);
 
         uploadedAvatarUrl = publicUrl;
         setAvatarFile(null);
@@ -225,7 +177,7 @@ export default function ProfilePage() {
     };
     saveProfile(next);
     alert('Профиль обновлён');
-    setTab('about');
+    setTab('portfolio');
   };
 
   return (
@@ -237,159 +189,259 @@ export default function ProfilePage() {
         exit="out"
         variants={pageVariants}
         transition={pageTransition}
-        className="min-h-screen bg-background"
+        className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white"
       >
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
-            <div className="grid gap-6 sticky top-24 self-start">
-              <Card>
-                <CardContent className="p-6 grid gap-4">
-                  <div className="flex items-center gap-4">
-                    <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
-                    <div>
-                      <div className="font-semibold">{profile.name} • {profile.headline}</div>
-                      <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
+        {/* Hero Section with Cover */}
+        <div className="relative bg-gradient-to-br from-[#6FE7C8] via-[#5DD6B7] to-[#3F7F6E] h-64">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNnoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9Ii4xIiBzdHJva2Utd2lkdGg9IjIiLz48L2c+PC9zdmc+')] opacity-10"></div>
+        </div>
+
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-32 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Main Profile Card */}
+              <Card className="border-2 shadow-xl bg-white">
+                <CardContent className="p-6">
+                  <div className="text-center mb-6">
+                    <div className="relative inline-block mb-4">
+                      <img
+                        src={profile.avatar}
+                        alt="avatar"
+                        className="h-28 w-28 rounded-2xl object-cover ring-4 ring-white shadow-lg mx-auto"
+                      />
+                      <div className="absolute -bottom-2 -right-2 h-8 w-8 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center">
+                        <CheckCircle className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                    <h1 className="text-2xl font-bold mb-1">{profile.name}</h1>
+                    <p className="text-lg text-[#6FE7C8] font-medium mb-2">{profile.headline}</p>
+                    <p className="text-sm text-gray-600 mb-3">{profile.role}</p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-4">
+                      <MapPin className="h-4 w-4" />
+                      <span>{profile.location}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-xl border p-2">
-                      <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
-                      <div className="font-semibold flex items-center justify-center gap-1"><Star className="h-4 w-4" />4.9</div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-gradient-to-br from-[#EFFFF8] to-gray-50 rounded-xl">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
+                        <Star className="h-5 w-5 fill-current" />
+                        <span className="font-bold text-lg">4.9</span>
+                      </div>
+                      <div className="text-xs text-gray-600">{t.profile.rating}</div>
                     </div>
-                    <div className="rounded-xl border p-2">
-                      <div className="text-xs text-[#3F7F6E]">Проекты</div>
-                      <div className="font-semibold">27</div>
+                    <div className="text-center border-x border-gray-200">
+                      <div className="font-bold text-lg text-[#6FE7C8] mb-1">27</div>
+                      <div className="text-xs text-gray-600">{t.profile.completedOrders}</div>
                     </div>
-                    <div className="rounded-xl border p-2">
-                      <div className="text-xs text-[#3F7F6E]">Онлайн</div>
-                      <div className="font-semibold text-emerald-600">сейчас</div>
+                    <div className="text-center">
+                      <div className="font-bold text-lg text-emerald-600 mb-1">98%</div>
+                      <div className="text-xs text-gray-600">Success Rate</div>
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Button asChild><a href="#/task/new">Создать Task</a></Button>
-                    <Button asChild variant="secondary"><a href="#/order/new">Создать заказ</a></Button>
+
+                  {/* Rate */}
+                  <div className="mb-6 p-4 bg-gradient-to-br from-[#6FE7C8]/10 to-transparent rounded-xl border border-[#6FE7C8]/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Hourly Rate</span>
+                      <DollarSign className="h-4 w-4 text-[#6FE7C8]" />
+                    </div>
+                    <div className="text-2xl font-bold text-[#3F7F6E]">
+                      ${profile.rateMin}–${profile.rateMax}
+                      <span className="text-sm font-normal text-gray-500 ml-1">/hr</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm text-[#3F7F6E]">
-                    <a className="underline" href="#">Поделиться профилем</a>
-                    <button className="underline" onClick={() => setTab('edit')}>Редактировать</button>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2 mb-6">
+                    <Button className="w-full h-11 bg-gradient-to-r from-[#6FE7C8] to-[#5DD6B7] hover:from-[#5DD6B7] hover:to-[#4CC5A6] shadow-md">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Send Message
+                    </Button>
+                    <Button variant="outline" className="w-full h-11">
+                      <Heart className="h-4 w-4 mr-2" />
+                      Add to Favorites
+                    </Button>
+                  </div>
+
+                  {/* Quick Links */}
+                  <div className="flex items-center justify-between text-sm border-t pt-4">
+                    <button className="text-[#6FE7C8] hover:text-[#5DD6B7] font-medium flex items-center gap-1">
+                      <LinkIcon className="h-4 w-4" />
+                      Share
+                    </button>
+                    <button
+                      className="text-[#6FE7C8] hover:text-[#5DD6B7] font-medium"
+                      onClick={() => setTab('edit')}
+                    >
+                      {t.profile.editProfile}
+                    </button>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-[#EFFFF8] to-white border-[#6FE7C8]/30">
-                <CardContent className="p-6 grid gap-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="h-8 w-8 rounded-lg bg-[#6FE7C8] flex items-center justify-center">
-                      <Star className="h-4 w-4 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-lg">Советы фрилансеру</h3>
+              {/* Skills Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Award className="h-5 w-5 text-[#6FE7C8]" />
+                    {t.profile.skills}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {profile.skills.map((skill: string) => (
+                      <Badge
+                        key={skill}
+                        variant="secondary"
+                        className="px-3 py-1 bg-gradient-to-r from-[#EFFFF8] to-[#6FE7C8]/10 border border-[#6FE7C8]/20 text-[#3F7F6E] font-medium"
+                      >
+                        {skill}
+                      </Badge>
+                    ))}
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="grid gap-3">
-                    <div className="flex gap-3 items-start">
-                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-semibold text-[#3F7F6E]">1</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm leading-relaxed text-gray-700">
-                          <span className="font-medium">Пополните портфолио</span> — добавьте минимум 3 проекта, чтобы увеличить доверие клиентов
-                        </p>
-                      </div>
+              {/* Contact Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Contact Info</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="h-9 w-9 rounded-lg bg-[#EFFFF8] flex items-center justify-center flex-shrink-0">
+                      <AtSign className="h-4 w-4 text-[#3F7F6E]" />
                     </div>
-
-                    <div className="flex gap-3 items-start">
-                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-semibold text-[#3F7F6E]">2</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm leading-relaxed text-gray-700">
-                          <span className="font-medium">Быстро отвечайте</span> — ответ в течение часа повышает шансы получить заказ на 40%
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3 items-start">
-                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-semibold text-[#3F7F6E]">3</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm leading-relaxed text-gray-700">
-                          <span className="font-medium">Обновляйте профиль</span> — детальное описание и актуальные навыки привлекают больше клиентов
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3 items-start">
-                      <div className="h-6 w-6 rounded-full bg-[#6FE7C8]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-semibold text-[#3F7F6E]">4</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm leading-relaxed text-gray-700">
-                          <span className="font-medium">Собирайте отзывы</span> — попросите клиентов оставить отзыв после завершения проекта
-                        </p>
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-500 mb-0.5">{t.auth.email}</div>
+                      <div className="font-medium truncate">{profile.contactEmail}</div>
                     </div>
                   </div>
-
-                  <div className="mt-2 pt-3 border-t border-[#6FE7C8]/20">
-                    <p className="text-xs text-[#3F7F6E] text-center">
-                      Следуйте этим советам, чтобы получать больше заказов
-                    </p>
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="h-9 w-9 rounded-lg bg-[#EFFFF8] flex items-center justify-center flex-shrink-0">
+                      <MessageSquare className="h-4 w-4 text-[#3F7F6E]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-500 mb-0.5">Telegram</div>
+                      <div className="font-medium">{profile.contactTelegram}</div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid gap-6">
+            {/* Main Content */}
+            <div className="space-y-6">
+              {/* Tabs */}
               <Card>
-                <CardContent className="p-6 flex flex-wrap items-center gap-3">
-                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
-                    <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
-                  ))}
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'portfolio', label: t.profile.portfolio, icon: Briefcase },
+                      { id: 'about', label: t.profile.bio, icon: Users },
+                      { id: 'market', label: t.nav.market, icon: TrendingUp },
+                      { id: 'reviews', label: t.profile.reviews, icon: Star }
+                    ].map((tabItem) => {
+                      const Icon = tabItem.icon;
+                      return (
+                        <Button
+                          key={tabItem.id}
+                          variant={tab === tabItem.id ? 'default' : 'ghost'}
+                          onClick={() => setTab(tabItem.id)}
+                          className={`h-10 ${tab === tabItem.id ? 'shadow-md' : ''}`}
+                        >
+                          <Icon className="h-4 w-4 mr-2" />
+                          {tabItem.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
 
+              {/* About Tab */}
+              {tab === 'about' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">{t.profile.bio}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">About</h3>
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-line">{profile.about}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Bio</h3>
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-line">{profile.bio}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Portfolio Tab */}
               {tab === 'portfolio' && (
                 <>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-bold">Портфолио</h2>
-                    <Button asChild>
-                      <a href="#/me/portfolio/add">+ Добавить проект</a>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-3xl font-bold">{t.profile.portfolio}</h2>
+                    <Button asChild className="shadow-md">
+                      <a href="#/me/portfolio/add">
+                        <Upload className="h-4 w-4 mr-2" />
+                        {t.profile.addPortfolio}
+                      </a>
                     </Button>
                   </div>
                   {portfolioProjects.length === 0 ? (
-                    <Card>
+                    <Card className="border-2 border-dashed">
                       <CardContent className="p-12 text-center">
-                        <p className="text-[#3F7F6E] mb-4">У вас пока нет проектов в портфолио</p>
-                        <Button asChild>
-                          <a href="#/me/portfolio/add">Добавить первый проект</a>
+                        <div className="h-20 w-20 rounded-full bg-[#EFFFF8] mx-auto mb-4 flex items-center justify-center">
+                          <ImageIcon className="h-10 w-10 text-[#3F7F6E]" />
+                        </div>
+                        <p className="text-gray-600 mb-4 text-lg">{t.profile.noPortfolio}</p>
+                        <Button asChild size="lg">
+                          <a href="#/me/portfolio/add">{t.profile.addPortfolio}</a>
                         </Button>
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                       {portfolioProjects.map((project) => (
                         <Card
                           key={project.id}
-                          className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                          className="overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-pointer group"
                           onClick={() => handlePortfolioProjectClick(project)}
                         >
                           {project.image_url ? (
-                            <img src={project.image_url} alt={project.title} className="aspect-[16/10] object-cover" />
+                            <div className="relative aspect-[16/10] overflow-hidden">
+                              <img
+                                src={project.image_url}
+                                alt={project.title}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            </div>
                           ) : (
-                            <div className="aspect-[16/10] bg-gradient-to-br from-[#EFFFF8] to-[#6FE7C8]/20 flex items-center justify-center">
+                            <div className="aspect-[16/10] bg-gradient-to-br from-[#EFFFF8] via-[#6FE7C8]/10 to-[#5DD6B7]/10 flex items-center justify-center">
                               <ImageIcon className="h-12 w-12 text-[#3F7F6E]/30" />
                             </div>
                           )}
-                          <CardContent className="p-4">
-                            <div className="font-medium mb-1">{project.title}</div>
-                            <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{project.description}</p>
-                            <div className="flex flex-wrap gap-1">
+                          <CardContent className="p-5">
+                            <h3 className="font-bold text-lg mb-2 line-clamp-1 group-hover:text-[#6FE7C8] transition-colors">
+                              {project.title}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
+                            <div className="flex flex-wrap gap-1.5">
                               {project.tags?.slice(0, 3).map((tag: string) => (
-                                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
                               ))}
                               {project.tags?.length > 3 && (
-                                <Badge variant="outline" className="text-xs">+{project.tags.length - 3}</Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  +{project.tags.length - 3}
+                                </Badge>
                               )}
                             </div>
                           </CardContent>
@@ -400,57 +452,55 @@ export default function ProfilePage() {
                 </>
               )}
 
+              {/* Market Tab */}
               {tab === 'market' && (
-                <>
+                <div className="space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold mb-4">Мои заказы</h2>
+                    <h2 className="text-2xl font-bold mb-4">{t.deals.myOrders}</h2>
                     {loadingMarket ? (
                       <Card>
                         <CardContent className="p-12 text-center">
                           <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
-                          <p className="text-[#3F7F6E]">Загрузка...</p>
+                          <p className="text-gray-600">{t.common.loading}</p>
                         </CardContent>
                       </Card>
                     ) : userOrders.length === 0 ? (
-                      <Card>
-                        <CardContent className="p-6 text-center text-[#3F7F6E]">
-                          Вы ещё не создали ни одного заказа
+                      <Card className="border-2 border-dashed">
+                        <CardContent className="p-8 text-center text-gray-600">
+                          {t.deals.noOrders}
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid gap-4">
                         {userOrders.map((order) => (
-                          <Card key={order.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(order, 'order')}>
+                          <Card
+                            key={order.id}
+                            className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all"
+                            onClick={() => openPreview(order, 'order')}
+                          >
                             <CardContent className="p-6">
                               <div className="flex items-start justify-between gap-6">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-lg mb-2">{order.title}</h4>
+                                  <h4 className="font-bold text-xl mb-3">{order.title}</h4>
                                   <div className="flex items-center gap-2 mb-3">
                                     <Badge variant="secondary">{order.category}</Badge>
                                     <Badge variant="outline">{order.status}</Badge>
                                   </div>
-                                  <div className="flex flex-wrap gap-2 mb-3">
-                                    {(order.tags || []).map((t: string) => (
-                                      <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                    ))}
-                                  </div>
-                                  <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{order.description}</p>
-                                  <div className="font-semibold text-[#6FE7C8]">
-                                    {order.currency} {order.price_min}–{order.price_max}
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>{new Date(order.created_at).toLocaleDateString('ru-RU')}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Eye className="h-4 w-4" />
-                                    <span>{order.views_count || 0}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Heart className="h-4 w-4" />
-                                    <span>{order.likes_count || 0}</span>
+                                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">{order.description}</p>
+                                  <div className="flex items-center gap-4">
+                                    <div className="font-bold text-xl text-[#6FE7C8]">
+                                      {order.currency} {order.price_min}–{order.price_max}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                                      <span className="flex items-center gap-1">
+                                        <Eye className="h-4 w-4" />
+                                        {order.views_count || 0}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Calendar className="h-4 w-4" />
+                                        {new Date(order.created_at).toLocaleDateString()}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -462,59 +512,42 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <h2 className="text-2xl font-bold mb-4">Мои объявления</h2>
-                    {loadingMarket ? (
-                      <Card>
-                        <CardContent className="p-12 text-center">
-                          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
-                          <p className="text-[#3F7F6E]">Загрузка...</p>
-                        </CardContent>
-                      </Card>
-                    ) : userTasks.length === 0 ? (
-                      <Card>
-                        <CardContent className="p-6 text-center text-[#3F7F6E]">
-                          Вы ещё не создали ни одного объявления
+                    <h2 className="text-2xl font-bold mb-4">{t.deals.myTasks}</h2>
+                    {userTasks.length === 0 ? (
+                      <Card className="border-2 border-dashed">
+                        <CardContent className="p-8 text-center text-gray-600">
+                          {t.deals.noTasks}
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid gap-4">
                         {userTasks.map((task) => (
-                          <Card key={task.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(task, 'task')}>
+                          <Card
+                            key={task.id}
+                            className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all"
+                            onClick={() => openPreview(task, 'task')}
+                          >
                             <CardContent className="p-6">
                               <div className="flex items-start justify-between gap-6">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-lg mb-2">{task.title}</h4>
+                                  <h4 className="font-bold text-xl mb-3">{task.title}</h4>
                                   <div className="flex items-center gap-2 mb-3">
                                     <Badge variant="secondary">{task.category}</Badge>
-                                    <Badge variant="outline">{task.status}</Badge>
-                                    {task.delivery_days && (
-                                      <Badge variant="outline" className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" /> {task.delivery_days}д
-                                      </Badge>
-                                    )}
+                                    <Badge variant={task.status === 'active' ? 'default' : 'outline'}>
+                                      {task.status}
+                                    </Badge>
                                   </div>
-                                  <div className="flex flex-wrap gap-2 mb-3">
-                                    {(task.tags || []).map((t: string) => (
-                                      <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                    ))}
-                                  </div>
-                                  <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{task.description}</p>
-                                  <div className="font-semibold text-[#6FE7C8]">
-                                    {task.currency} {task.price}
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>{new Date(task.created_at).toLocaleDateString('ru-RU')}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Eye className="h-4 w-4" />
-                                    <span>{task.views_count || 0}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Heart className="h-4 w-4" />
-                                    <span>{task.likes_count || 0}</span>
+                                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">{task.description}</p>
+                                  <div className="flex items-center gap-4">
+                                    <div className="font-bold text-xl text-[#6FE7C8]">
+                                      {task.currency} {task.price}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-4 w-4" />
+                                        {task.delivery_days}d
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -524,317 +557,156 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
-                </>
-              )}
-
-              {tab === 'about' && (
-                <div className="grid gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-2xl">О фрилансере</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0 grid gap-6">
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">{profile.headline}</h3>
-                        <p className="text-[#3F7F6E] leading-relaxed mb-4">{profile.about}</p>
-                        {profile.bio && (
-                          <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-[#EFFFF8] to-white border">
-                            <h4 className="font-medium mb-2 text-sm text-[#3F7F6E]">Подробнее обо мне</h4>
-                            <p className="text-sm leading-relaxed">{profile.bio}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                          <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
-                          <div className="font-semibold">{profile.role}</div>
-                        </div>
-                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                          <div className="text-sm text-[#3F7F6E] mb-1">Опыт работы</div>
-                          <div className="font-semibold">5+ лет</div>
-                        </div>
-                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                          <div className="text-sm text-[#3F7F6E] mb-1">Возраст</div>
-                          <div className="font-semibold">28 лет</div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <Star className="h-5 w-5 text-[#6FE7C8]" />
-                          Рейтинг и статистика
-                        </h4>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div>
-                            <div className="text-sm text-[#3F7F6E]">Общий рейтинг</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="text-2xl font-bold text-[#6FE7C8]">4.9</div>
-                              <div className="flex">
-                                {[1,2,3,4,5].map(i => (
-                                  <Star key={i} className="h-4 w-4 fill-[#6FE7C8] text-[#6FE7C8]" />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-[#3F7F6E]">Завершено проектов</div>
-                            <div className="text-2xl font-bold mt-1">27</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-[#3F7F6E]">Среднее время отклика</div>
-                            <div className="text-2xl font-bold mt-1 text-emerald-600">2ч</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-[#3F7F6E]">Повторных заказов</div>
-                            <div className="text-2xl font-bold mt-1">18</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-3">Стоимость работ</h4>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold text-[#6FE7C8]">${profile.rateMin}–${profile.rateMax}</span>
-                          <span className="text-[#3F7F6E]">/ час</span>
-                        </div>
-                        <p className="text-sm text-[#3F7F6E] mt-2">Итоговая стоимость зависит от сложности и объёма проекта</p>
-                      </div>
-
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-4">Навыки и технологии</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.skills.map((s) => (
-                            <Badge key={s} variant="secondary" className="px-3 py-1.5 text-sm">
-                              {s}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-4">Контактная информация</h4>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                              <MapPin className="h-5 w-5 text-[#6FE7C8]" />
-                            </div>
-                            <div>
-                              <div className="text-xs text-[#3F7F6E]">Локация</div>
-                              <div className="font-medium">{profile.location}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                              <AtSign className="h-5 w-5 text-[#6FE7C8]" />
-                            </div>
-                            <div>
-                              <div className="text-xs text-[#3F7F6E]">Telegram</div>
-                              <div className="font-medium">{profile.contactTelegram}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                              <LinkIcon className="h-5 w-5 text-[#6FE7C8]" />
-                            </div>
-                            <div>
-                              <div className="text-xs text-[#3F7F6E]">Email</div>
-                              <div className="font-medium">{profile.contactEmail}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               )}
 
+              {/* Reviews Tab */}
               {tab === 'reviews' && (
-                <div className="grid gap-6">
-                  <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6 grid gap-3">
-                          <div className="flex items-center gap-3">
-                            <img src={`https://i.pravatar.cc/64?img=${10 + i}`} className="h-10 w-10 rounded-full object-cover" alt={`Заказчик ${i}`} />
-                            <div>
-                              <div className="font-medium">Заказчик #{i}</div>
-                              <div className="text-xs text-[#3F7F6E]">2 недели назад</div>
-                            </div>
-                            <div className="ml-auto flex items-center gap-1 text-emerald-600">
-                              <Star className="h-4 w-4 fill-emerald-600" />
-                              <span className="font-semibold">5.0</span>
-                            </div>
-                          </div>
-                          <p className="text-sm text-[#3F7F6E] leading-relaxed">
-                            Отличная коммуникация, аккуратные коммиты, демо вовремя. Рекомендую!
-                          </p>
-                          <div className="flex items-center gap-4 pt-2 border-t">
-                            <button
-                              onClick={() => toggleHelpful(i)}
-                              className={`flex items-center gap-1.5 text-sm transition-colors ${
-                                helpfulVotes.has(i)
-                                  ? 'text-[#6FE7C8] font-medium'
-                                  : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
-                              }`}
-                            >
-                              <Heart
-                                className={`h-4 w-4 transition-all ${
-                                  helpfulVotes.has(i) ? 'fill-[#6FE7C8]' : ''
-                                }`}
-                              />
-                              <span>Полезно</span>
-                              {helpfulVotes.has(i) && <span className="text-xs">(1)</span>}
-                            </button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">{t.profile.reviews}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-12">
+                      <div className="h-20 w-20 rounded-full bg-[#EFFFF8] mx-auto mb-4 flex items-center justify-center">
+                        <Star className="h-10 w-10 text-[#3F7F6E]" />
+                      </div>
+                      <p className="text-gray-600 text-lg">{t.profile.noReviews}</p>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
+              {/* Edit Tab */}
               {tab === 'edit' && (
                 <Card>
-                  <CardContent className="p-6">
-                    <form className="grid gap-4" onSubmit={onEditSubmit}>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Фото профиля</label>
-                        <input
-                          ref={avatarInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarChange}
-                          className="hidden"
-                        />
-                        {!avatarPreview ? (
-                          <div className="flex items-center gap-4">
-                            {profile.avatar && (
-                              <img
-                                src={profile.avatar}
-                                alt="Current avatar"
-                                className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
-                              />
-                            )}
+                  <CardHeader>
+                    <CardTitle className="text-2xl">{t.profile.editProfile}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={onSubmitEdit} className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Avatar</label>
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={avatarPreview || profile.avatar}
+                            alt="avatar"
+                            className="h-20 w-20 rounded-xl object-cover border-2"
+                          />
+                          <div>
+                            <input
+                              type="file"
+                              ref={avatarInputRef}
+                              onChange={handleAvatarChange}
+                              accept="image/*"
+                              className="hidden"
+                            />
                             <Button
                               type="button"
                               variant="outline"
                               onClick={() => avatarInputRef.current?.click()}
-                              className="flex items-center gap-2"
                             >
-                              <Upload className="h-4 w-4" />
-                              Загрузить новое фото
+                              <Upload className="h-4 w-4 mr-2" />
+                              {t.common.uploadImage}
                             </Button>
+                            {avatarFile && (
+                              <p className="text-xs text-gray-500 mt-1">{avatarFile.name}</p>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-4">
-                            <img
-                              src={avatarPreview}
-                              alt="Avatar preview"
-                              className="h-24 w-24 rounded-full object-cover border-2 border-[#6FE7C8]"
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => avatarInputRef.current?.click()}
-                              >
-                                Изменить
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                onClick={handleRemoveAvatar}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                        <p className="text-xs text-[#3F7F6E] mt-2">
-                          PNG, JPG, GIF до 5 МБ. Рекомендуемый размер: 400x400 пикселей
-                        </p>
+                        </div>
                       </div>
 
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Имя</span>
-                          <Input name="name" defaultValue={profile.name} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Заголовок</span>
-                          <Input name="headline" defaultValue={profile.headline} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Роль</span>
-                          <Input name="role" defaultValue={profile.role} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Аватар (URL)</span>
-                          <Input name="avatar" defaultValue={profile.avatar} className="h-11" placeholder="Или укажите URL изображения" />
-                        </label>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">{t.profile.name}</label>
+                          <Input name="name" defaultValue={profile.name} required />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Headline</label>
+                          <Input name="headline" defaultValue={profile.headline} />
+                        </div>
                       </div>
-                      <label className="grid gap-1">
-                        <span className="text-sm font-medium">О себе (краткое описание)</span>
-                        <textarea name="about" defaultValue={profile.about} rows={3} className="rounded-md border px-3 py-2 bg-background" />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-sm font-medium">Подробнее обо мне (до 700 символов)</span>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Role</label>
+                        <Input name="role" defaultValue={profile.role} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">About</label>
+                        <Input name="about" defaultValue={profile.about} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">{t.profile.bio}</label>
                         <textarea
                           name="bio"
-                          defaultValue={profile.bio || ''}
+                          defaultValue={profile.bio}
                           rows={6}
-                          maxLength={700}
-                          className="rounded-md border px-3 py-2 bg-background"
-                          placeholder="Расскажите подробнее о своём опыте, навыках и интересах..."
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         />
-                        <div className="text-xs text-[#3F7F6E] text-right">
-                          {profile.bio?.length || 0} / 700
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">{t.profile.skills}</label>
+                        <Input
+                          name="skills"
+                          defaultValue={profile.skills.join(', ')}
+                          placeholder="React, Node, etc."
+                        />
+                      </div>
+
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Min Rate</label>
+                          <Input name="rateMin" type="number" defaultValue={profile.rateMin} />
                         </div>
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-sm font-medium">Навыки (через запятую)</span>
-                        <Input name="skills" defaultValue={profile.skills.join(', ')} className="h-11" />
-                      </label>
-                      <div className="grid sm:grid-cols-3 gap-4">
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Ставка min</span>
-                          <Input type="number" name="rateMin" defaultValue={profile.rateMin} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Ставка max</span>
-                          <Input type="number" name="rateMax" defaultValue={profile.rateMax} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Валюта</span>
-                          <select name="currency" defaultValue={profile.currency} className="h-11 rounded-md border px-3 bg-background">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Max Rate</label>
+                          <Input name="rateMax" type="number" defaultValue={profile.rateMax} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">{t.market.currency}</label>
+                          <select
+                            name="currency"
+                            defaultValue={profile.currency}
+                            className="w-full h-10 rounded-md border px-3 bg-background"
+                          >
                             <option>USD</option>
                             <option>EUR</option>
-                            <option>KZT</option>
                             <option>RUB</option>
-                            <option>PLN</option>
                           </select>
-                        </label>
+                        </div>
                       </div>
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Локация</span>
-                          <Input name="location" defaultValue={profile.location} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Email</span>
-                          <Input name="contactEmail" type="email" defaultValue={profile.contactEmail} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Telegram</span>
-                          <Input name="contactTelegram" defaultValue={profile.contactTelegram} className="h-11" />
-                        </label>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Location</label>
+                        <Input name="location" defaultValue={profile.location} />
                       </div>
-                      <div className="flex justify-end gap-3">
-                        <Button type="button" variant="ghost" onClick={() => setTab('about')}>Отмена</Button>
-                        <Button type="submit">Сохранить</Button>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">{t.auth.email}</label>
+                          <Input name="contactEmail" type="email" defaultValue={profile.contactEmail} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Telegram</label>
+                          <Input name="contactTelegram" defaultValue={profile.contactTelegram} />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 pt-4 border-t">
+                        <Button type="submit" size="lg" className="flex-1">
+                          {t.common.save}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          onClick={() => setTab('portfolio')}
+                        >
+                          {t.common.cancel}
+                        </Button>
                       </div>
                     </form>
                   </CardContent>
@@ -844,141 +716,41 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-2xl">
-            {previewItem && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>{previewItem.title}</DialogTitle>
-                  <DialogDescription className="flex items-center gap-2 mt-2">
-                    <Badge variant="secondary">{previewItem.category}</Badge>
-                    {previewType === 'order' && previewItem.engagement && <Badge variant="outline">{previewItem.engagement}</Badge>}
-                    {previewType === 'task' && previewItem.delivery_days && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {previewItem.delivery_days} дней
-                      </Badge>
-                    )}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4">
-                  <div>
-                    <div className="text-sm font-medium mb-2">Описание</div>
-                    <p className="text-sm text-[#3F7F6E] leading-relaxed whitespace-pre-wrap">{previewItem.description}</p>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium mb-2">Теги</div>
-                    <div className="flex flex-wrap gap-2">
-                      {(previewItem.tags || []).map((t: string) => (
-                        <Badge key={t} variant="outline">{t}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                  {previewType === 'task' && previewItem.features && (
-                    <div>
-                      <div className="text-sm font-medium mb-2">Что входит</div>
-                      <ul className="list-disc list-inside text-sm text-[#3F7F6E]">
-                        {previewItem.features.map((f: string, i: number) => (
-                          <li key={i}>{f}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="flex items-center gap-3">
-                      {profile?.avatar ? (
-                        <img src={profile.avatar} alt={profile.name} className="h-10 w-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
-                          {profile?.name?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-medium">{profile?.name || 'Пользователь'}</div>
-                        <div className="text-xs text-[#3F7F6E]">Опубликовано: {new Date(previewItem.created_at).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                    <div className="text-xl font-semibold text-[#6FE7C8]">
-                      {previewType === 'order' ? `${previewItem.currency} ${previewItem.price_min}–${previewItem.price_max}` : `${previewItem.currency} ${previewItem.price}`}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setPreviewOpen(false)}>Закрыть</Button>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-
         {/* Portfolio Preview Dialog */}
         <Dialog open={portfolioPreviewOpen} onOpenChange={setPortfolioPreviewOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             {selectedPortfolioProject && (
               <>
                 <DialogHeader>
                   <DialogTitle className="text-2xl">{selectedPortfolioProject.title}</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-6">
-                  {selectedPortfolioProject.image_url && (
-                    <div className="relative w-full overflow-hidden rounded-lg">
-                      <img
-                        src={selectedPortfolioProject.image_url}
-                        alt={selectedPortfolioProject.title}
-                        className="w-full h-auto object-cover"
-                      />
+                {selectedPortfolioProject.image_url && (
+                  <img
+                    src={selectedPortfolioProject.image_url}
+                    alt={selectedPortfolioProject.title}
+                    className="w-full rounded-lg"
+                  />
+                )}
+                <div className="space-y-4">
+                  <p className="text-gray-700 leading-relaxed">{selectedPortfolioProject.description}</p>
+                  {selectedPortfolioProject.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPortfolioProject.tags.map((tag: string) => (
+                        <Badge key={tag} variant="secondary">{tag}</Badge>
+                      ))}
                     </div>
                   )}
-
-                  <div className="grid gap-4">
-                    <div>
-                      <h3 className="font-semibold text-lg mb-2">Описание проекта</h3>
-                      <p className="text-[#3F7F6E] whitespace-pre-wrap">{selectedPortfolioProject.description}</p>
-                    </div>
-
-                    {selectedPortfolioProject.tags && selectedPortfolioProject.tags.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">Технологии</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedPortfolioProject.tags.map((tag: string) => (
-                            <Badge key={tag} variant="outline">{tag}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedPortfolioProject.project_url && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">Ссылка на проект</h3>
-                        <a
-                          href={selectedPortfolioProject.project_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-[#6FE7C8] hover:underline"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          {selectedPortfolioProject.project_url}
-                        </a>
-                      </div>
-                    )}
-
-                    {selectedPortfolioProject.created_at && (
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">Дата добавления</h3>
-                        <div className="flex items-center gap-2 text-[#3F7F6E]">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(selectedPortfolioProject.created_at).toLocaleDateString('ru-RU', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  {selectedPortfolioProject.link && (
+                    <a
+                      href={selectedPortfolioProject.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-[#6FE7C8] hover:text-[#5DD6B7] font-medium"
+                    >
+                      View Project <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
                 </div>
-                <DialogFooter>
-                  <Button onClick={() => setPortfolioPreviewOpen(false)}>Закрыть</Button>
-                </DialogFooter>
               </>
             )}
           </DialogContent>
