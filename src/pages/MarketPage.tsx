@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, X, Clock, ChevronLeft, ChevronRight, Loader2, AlertCircle, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,6 +44,7 @@ export default function MarketPage() {
   const [userProposals, setUserProposals] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [proposalLimitData, setProposalLimitData] = useState<{ used: number; monthStart: string } | null>(null);
+  const [limitExceededDialogOpen, setLimitExceededDialogOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -275,7 +276,7 @@ export default function MarketPage() {
     }
 
     if (previewType === 'order' && proposalLimitData && proposalLimitData.used >= 90) {
-      alert('Вы достигли месячного лимита откликов на заказы (90). Попробуйте в следующем месяце или откликайтесь на задачи фрилансеров.');
+      setLimitExceededDialogOpen(true);
       return;
     }
 
@@ -588,6 +589,49 @@ export default function MarketPage() {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={limitExceededDialogOpen} onOpenChange={setLimitExceededDialogOpen}>
+          <DialogContent className="max-w-md">
+            <div className="flex flex-col items-center text-center py-4">
+              <div className="p-4 bg-red-100 rounded-full mb-4">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <DialogTitle className="text-xl mb-2">У вас закончились отклики</DialogTitle>
+              <DialogDescription className="text-base mb-6">
+                Вы достигли месячного лимита откликов на заказы (90 из 90). Вы можете приобрести дополнительные отклики или дождаться следующего месяца.
+              </DialogDescription>
+              <div className="flex flex-col gap-3 w-full">
+                <Button
+                  className="w-full bg-red-600 hover:bg-red-700"
+                  onClick={() => {
+                    setLimitExceededDialogOpen(false);
+                    alert('Функция покупки дополнительных откликов будет добавлена позже');
+                  }}
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Приобрести дополнительные отклики
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setLimitExceededDialogOpen(false);
+                    setActiveTab('tasks');
+                  }}
+                >
+                  Смотреть задачи фрилансеров
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setLimitExceededDialogOpen(false)}
+                >
+                  Закрыть
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </motion.div>

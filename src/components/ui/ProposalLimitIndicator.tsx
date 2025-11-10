@@ -7,10 +7,10 @@ interface ProposalLimitIndicatorProps {
 }
 
 export function ProposalLimitIndicator({ used, max, type = 'orders' }: ProposalLimitIndicatorProps) {
-  const percentage = (used / max) * 100;
-  const isNearLimit = percentage >= 80;
-  const isAtLimit = used >= max;
   const remaining = max - used;
+  const remainingPercentage = (remaining / max) * 100;
+  const isNearLimit = remaining <= 18;
+  const isAtLimit = remaining <= 0;
 
   return (
     <div className="bg-gradient-to-r from-[#EFFFF8] to-[#E0F7EE] rounded-lg border border-[#3F7F6E]/20 p-4 shadow-sm">
@@ -44,12 +44,12 @@ export function ProposalLimitIndicator({ used, max, type = 'orders' }: ProposalL
 
       {type === 'orders' && (
         <>
-          <div className="w-full bg-white/50 rounded-full h-2.5 mb-2">
+          <div className="w-full bg-gray-200/60 rounded-full h-2.5 mb-2">
             <div
               className={`h-2.5 rounded-full transition-all ${
                 isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-orange-500' : 'bg-[#3F7F6E]'
               }`}
-              style={{ width: `${Math.min(percentage, 100)}%` }}
+              style={{ width: `${Math.min(Math.max(remainingPercentage, 0), 100)}%` }}
             />
           </div>
 
