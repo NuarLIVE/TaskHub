@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, X, Paperclip, Briefcase, Tag, Upload, Plus, ExternalLink, Trash2, AlertCircle } from 'lucide-react';
+import { Send, X, Paperclip, Briefcase, Tag, Upload, Plus, ExternalLink, Trash2, AlertCircle, ShoppingCart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -314,13 +314,7 @@ export default function ProposalsCreate() {
           </div>
         )}
 
-        {!orderData ? (
-          <Card className="mb-6">
-            <CardContent className="p-6 text-center">
-              <p>Загрузка...</p>
-            </CardContent>
-          </Card>
-        ) : (
+        {orderData && (
           <Card className="mb-6">
             <CardHeader className="pb-3 px-6">
               <div className="flex items-start justify-between">
@@ -354,14 +348,25 @@ export default function ProposalsCreate() {
         </Card>
         )}
 
-        <div className="mb-4 px-5 py-4 rounded-lg bg-[#EFFFF8] border border-[#6FE7C8]/20">
-          <p className="text-sm text-[#3F7F6E]">
-            После отправки отклика {type === 'order' ? 'заказчик' : 'автор объявления'} получит уведомление и сможет просмотреть ваше предложение.
-            Если ваш отклик подойдёт, {type === 'order' ? 'заказчик' : 'автор'} сможет принять его и начать сделку.
-          </p>
-        </div>
+        {!orderData && (
+          <Card className="mb-6">
+            <CardContent className="p-6 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-2" />
+              <p className="text-[#3F7F6E]">Загрузка данных...</p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
+        {orderData && (
+          <>
+            <div className="mb-4 px-5 py-4 rounded-lg bg-[#EFFFF8] border border-[#6FE7C8]/20">
+              <p className="text-sm text-[#3F7F6E]">
+                После отправки отклика {type === 'order' ? 'заказчик' : 'автор объявления'} получит уведомление и сможет просмотреть ваше предложение.
+                Если ваш отклик подойдёт, {type === 'order' ? 'заказчик' : 'автор'} сможет принять его и начать сделку.
+              </p>
+            </div>
+
+            <Card>
           <CardHeader className="px-6">
             <CardTitle>Ваше предложение</CardTitle>
           </CardHeader>
@@ -578,7 +583,11 @@ export default function ProposalsCreate() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={loading || (type === 'order' && proposalLimitData ? proposalLimitData.used >= 90 : false)}
+                >
                   <Send className="h-4 w-4 mr-2" />
                   {loading ? 'Отправка...' : 'Отправить отклик'}
                 </Button>
@@ -589,6 +598,8 @@ export default function ProposalsCreate() {
             </form>
           </CardContent>
         </Card>
+          </>
+        )}
       </section>
     </motion.div>
   );
