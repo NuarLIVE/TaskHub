@@ -503,114 +503,118 @@ export default function WalletPage() {
       </section>
 
       {showDepositModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md m-4">
-            <CardHeader className="p-6">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Пополнение баланса
-                </CardTitle>
-                <button onClick={() => {
-                  setShowDepositModal(false);
-                  setClientSecret(null);
-                  setDepositAmount('');
-                }} className="hover:opacity-70 transition">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 p-6 pt-0">
-              {!clientSecret ? (
-                <>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Сумма пополнения (USD)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.50"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      placeholder="Минимум $0.50"
-                      disabled={processing}
-                    />
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                    <div className="flex items-start gap-2">
-                      <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <div>
-                        Платеж обрабатывается через Stripe. Средства зачисляются моментально после подтверждения.
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="min-h-screen w-full flex items-center justify-center py-8">
+            <Card className="w-full max-w-md my-auto">
+              <CardHeader className="p-6">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Пополнение баланса
+                  </CardTitle>
+                  <button onClick={() => {
+                    setShowDepositModal(false);
+                    setClientSecret(null);
+                    setDepositAmount('');
+                  }} className="hover:opacity-70 transition">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 p-6 pt-0">
+                {!clientSecret ? (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Сумма пополнения (USD)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.50"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        placeholder="Минимум $0.50"
+                        disabled={processing}
+                      />
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                      <div className="flex items-start gap-2">
+                        <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div>
+                          Платеж обрабатывается через Stripe. Средства зачисляются моментально после подтверждения.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button onClick={handleDepositInit} className="flex-1" disabled={processing}>
-                      {processing ? 'Создание...' : 'Продолжить'}
-                    </Button>
-                    <Button
-                      onClick={() => setShowDepositModal(false)}
-                      variant="outline"
-                      className="flex-1"
-                      disabled={processing}
-                    >
-                      Отмена
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <CheckoutForm
-                    onSuccess={handlePaymentSuccess}
-                    onCancel={handlePaymentCancel}
-                  />
-                </Elements>
-              )}
-            </CardContent>
-          </Card>
+                    <div className="flex gap-3">
+                      <Button onClick={handleDepositInit} className="flex-1" disabled={processing}>
+                        {processing ? 'Создание...' : 'Продолжить'}
+                      </Button>
+                      <Button
+                        onClick={() => setShowDepositModal(false)}
+                        variant="outline"
+                        className="flex-1"
+                        disabled={processing}
+                      >
+                        Отмена
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <CheckoutForm
+                      onSuccess={handlePaymentSuccess}
+                      onCancel={handlePaymentCancel}
+                    />
+                  </Elements>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
       {showWithdrawModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md m-4">
-            <CardHeader className="p-6">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <ArrowUpRight className="h-5 w-5" />
-                  Настройка выплат
-                </CardTitle>
-                <button onClick={() => setShowWithdrawModal(false)} className="hover:opacity-70 transition">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 p-6 pt-0">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                <div className="font-medium mb-2">Stripe Connect Onboarding</div>
-                <p className="mb-3">
-                  Для получения выплат необходимо создать и подключить Stripe аккаунт. Это займет несколько минут.
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Безопасная верификация через Stripe</li>
-                  <li>Автоматические выплаты</li>
-                  <li>Поддержка банковских карт</li>
-                </ul>
-              </div>
-              <div className="flex gap-3">
-                <Button onClick={handleWithdraw} className="flex-1" disabled={processing}>
-                  {processing ? 'Загрузка...' : 'Продолжить'}
-                </Button>
-                <Button
-                  onClick={() => setShowWithdrawModal(false)}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={processing}
-                >
-                  Отмена
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="min-h-screen w-full flex items-center justify-center py-8">
+            <Card className="w-full max-w-md my-auto">
+              <CardHeader className="p-6">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <ArrowUpRight className="h-5 w-5" />
+                    Настройка выплат
+                  </CardTitle>
+                  <button onClick={() => setShowWithdrawModal(false)} className="hover:opacity-70 transition">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 p-6 pt-0">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                  <div className="font-medium mb-2">Stripe Connect Onboarding</div>
+                  <p className="mb-3">
+                    Для получения выплат необходимо создать и подключить Stripe аккаунт. Это займет несколько минут.
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Безопасная верификация через Stripe</li>
+                    <li>Автоматические выплаты</li>
+                    <li>Поддержка банковских карт</li>
+                  </ul>
+                </div>
+                <div className="flex gap-3">
+                  <Button onClick={handleWithdraw} className="flex-1" disabled={processing}>
+                    {processing ? 'Загрузка...' : 'Продолжить'}
+                  </Button>
+                  <Button
+                    onClick={() => setShowWithdrawModal(false)}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={processing}
+                  >
+                    Отмена
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </motion.div>
