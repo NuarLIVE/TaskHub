@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, X, Paperclip, Briefcase, Tag, Upload, Plus, ExternalLink, Trash2 } from 'lucide-react';
+import { Send, X, Paperclip, Briefcase, Tag, Upload, Plus, ExternalLink, Trash2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ export default function ProposalsCreate() {
   const [currency, setCurrency] = useState('USD');
   const [options, setOptions] = useState<Array<{title: string; description: string; price: string; days: string}>>([]);
   const [showOptions, setShowOptions] = useState(false);
+  const [proposalLimitData, setProposalLimitData] = useState<{ used: number; monthStart: string } | null>(null);
 
   const params = new URLSearchParams(window.location.hash.split('?')[1]);
   const type = params.get('type') || 'order';
@@ -35,8 +36,39 @@ export default function ProposalsCreate() {
     } else {
       loadPortfolio();
       loadOrderOrTask();
+      loadProposalLimits();
     }
   }, [user]);
+
+  const loadProposalLimits = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await getSupabase()
+        .from('profiles')
+        .select('proposals_used_this_month, proposals_month_start')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        const monthStart = new Date(data.proposals_month_start || new Date());
+        const currentMonthStart = new Date();
+        currentMonthStart.setDate(1);
+        currentMonthStart.setHours(0, 0, 0, 0);
+
+        if (monthStart < currentMonthStart) {
+          setProposalLimitData({ used: 0, monthStart: currentMonthStart.toISOString() });
+        } else {
+          setProposalLimitData({
+            used: data.proposals_used_this_month || 0,
+            monthStart: data.proposals_month_start
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading proposal limits:', error);
+    }
+  };
 
   const loadPortfolio = async () => {
     if (!user) return;
@@ -160,6 +192,12 @@ export default function ProposalsCreate() {
       return;
     }
 
+    if (type === 'order' && proposalLimitData && proposalLimitData.used >= 90) {
+      alert('Вы достигли месячного лимита откликов на заказы (90). Попробуйте в следующем месяце или откликайтесь на задачи фрилансеров.');
+      window.location.hash = '/market';
+      return;
+    }
+
     if (!price || !days || !message) {
       alert('Заполните все обязательные поля');
       return;
@@ -251,6 +289,30 @@ export default function ProposalsCreate() {
         <h1 className="text-2xl font-bold mb-6">
           Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'}
         </h1>
+
+        {type === 'order' && proposalLimitData && proposalLimitData.used >= 90 && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-900 mb-1">Лимит откликов исчерпан</p>
+              <p className="text-sm text-red-700">
+                Вы достигли месячного лимита откликов на заказы (90 из 90). Попробуйте в следующем месяце или откликайтесь на задачи фрилансеров.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {type === 'order' && proposalLimitData && proposalLimitData.used >= 72 && proposalLimitData.used < 90 && (
+          <div className="mb-6 bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-orange-900 mb-1">Осталось мало откликов</p>
+              <p className="text-sm text-orange-700">
+                Использовано {proposalLimitData.used} из 90 откликов в этом месяце. Осталось: {90 - proposalLimitData.used}.
+              </p>
+            </div>
+          </div>
+        )}
 
         {!orderData ? (
           <Card className="mb-6">

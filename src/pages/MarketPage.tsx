@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { BoostBadge } from '@/components/ui/BoostBadge';
+import { ProposalLimitIndicator } from '@/components/ui/ProposalLimitIndicator';
 import PriceDisplay from '@/components/PriceDisplay';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,9 +43,11 @@ export default function MarketPage() {
   const [profiles, setProfiles] = useState<Record<string, any>>({});
   const [userProposals, setUserProposals] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [proposalLimitData, setProposalLimitData] = useState<{ used: number; monthStart: string } | null>(null);
 
   useEffect(() => {
     loadData();
+    loadProposalLimits();
 
     const params = new URLSearchParams(window.location.hash.split('?')[1]);
     const categoryParam = params.get('category');
@@ -55,6 +58,7 @@ export default function MarketPage() {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         loadData();
+        loadProposalLimits();
       }
     };
 
@@ -63,11 +67,44 @@ export default function MarketPage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, q, category, currency, engagement, min, max, sort]);
+
+  const loadProposalLimits = async () => {
+    if (!user) {
+      setProposalLimitData(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await getSupabase()
+        .from('profiles')
+        .select('proposals_used_this_month, proposals_month_start')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        const monthStart = new Date(data.proposals_month_start || new Date());
+        const currentMonthStart = new Date();
+        currentMonthStart.setDate(1);
+        currentMonthStart.setHours(0, 0, 0, 0);
+
+        if (monthStart < currentMonthStart) {
+          setProposalLimitData({ used: 0, monthStart: currentMonthStart.toISOString() });
+        } else {
+          setProposalLimitData({
+            used: data.proposals_used_this_month || 0,
+            monthStart: data.proposals_month_start
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading proposal limits:', error);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -237,6 +274,11 @@ export default function MarketPage() {
       return;
     }
 
+    if (previewType === 'order' && proposalLimitData && proposalLimitData.used >= 90) {
+      alert('Вы достигли месячного лимита откликов на заказы (90). Попробуйте в следующем месяце или откликайтесь на задачи фрилансеров.');
+      return;
+    }
+
     window.location.hash = `/proposals/create?type=${previewType}&id=${previewItem.id}`;
   };
 
@@ -259,6 +301,16 @@ export default function MarketPage() {
               <Button variant={activeTab === 'tasks' ? 'default' : 'ghost'} onClick={() => setActiveTab('tasks')}>Tasks</Button>
             </div>
           </div>
+
+          {user && proposalLimitData && (
+            <div className="mb-6">
+              <ProposalLimitIndicator
+                used={proposalLimitData.used}
+                max={90}
+                type={activeTab as 'orders' | 'tasks'}
+              />
+            </div>
+          )}
 
           <Card className="mb-6">
             <CardContent className="p-4">
