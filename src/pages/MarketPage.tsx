@@ -25,6 +25,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function MarketPage() {
   const { user } = useAuth();
+  const { t } = useRegion();
   const [activeTab, setActiveTab] = useState('orders');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');

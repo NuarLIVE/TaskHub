@@ -3,13 +3,14 @@ import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
 import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
 import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import RegionSelector from './RegionSelector';
 
-const PUBLIC_LINKS = [
-  { href: '#/market', label: 'Биржа' },
+const PUBLIC_LINKS = (t: any) => [
+  { href: '#/market', label: t.nav.market },
   { href: '#/market?category=Разработка', label: 'Разработка' },
   { href: '#/market?category=Дизайн', label: 'Дизайн' },
   { href: '#/market?category=Маркетинг', label: 'Маркетинг' },
@@ -18,20 +19,21 @@ const PUBLIC_LINKS = [
   { href: '#/market?category=QA / Безопасность', label: 'QA' }
 ];
 
-const PRIVATE_LINKS = [
-  { href: '#/market', label: 'Биржа' },
-  { href: '#/my-deals', label: 'Мои сделки' },
+const PRIVATE_LINKS = (t: any) => [
+  { href: '#/market', label: t.nav.market },
+  { href: '#/my-deals', label: t.nav.deals },
   { href: '#/proposals', label: 'Отклики' },
-  { href: '#/messages', label: 'Сообщения' },
-  { href: '#/wallet', label: 'Кошелёк' },
-  { href: '#/me', label: 'Профиль' }
+  { href: '#/messages', label: t.nav.messages },
+  { href: '#/wallet', label: t.nav.wallet },
+  { href: '#/me', label: t.nav.profile }
 ];
 
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false); // флаг для зелёной точки
+  const [hasUnread, setHasUnread] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const { t } = useRegion();
 
   const computeHasUnread = async () => {
     if (!user) {
@@ -118,8 +120,8 @@ export default function NavBar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-6 text-sm">
-          {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => {
-            const isMessages = link.label === 'Сообщения';
+          {(isAuthenticated ? PRIVATE_LINKS(t) : PUBLIC_LINKS(t)).map((link) => {
+            const isMessages = link.label === t.nav.messages;
             return (
               <a
                 key={link.href}
@@ -158,10 +160,10 @@ export default function NavBar() {
           ) : (
             <>
               <Button asChild variant="ghost" className="hidden sm:inline-flex">
-                <a href="#/login">Войти</a>
+                <a href="#/login">{t.nav.login}</a>
               </Button>
               <Button asChild className="hidden sm:inline-flex">
-                <a href="#/register">Зарегистрироваться</a>
+                <a href="#/register">{t.nav.register}</a>
               </Button>
             </>
           )}
@@ -171,7 +173,7 @@ export default function NavBar() {
             size="icon"
             className="lg:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Меню"
+            aria-label={t.common.close}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -181,8 +183,8 @@ export default function NavBar() {
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-[#6FE7C8] bg-background">
           <div className="px-4 py-3 space-y-1">
-            {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => {
-              const isMessages = link.label === 'Сообщения';
+            {(isAuthenticated ? PRIVATE_LINKS(t) : PUBLIC_LINKS(t)).map((link) => {
+              const isMessages = link.label === t.nav.messages;
               return (
                 <a
                   key={link.href}
@@ -217,7 +219,7 @@ export default function NavBar() {
                     className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50"
                   >
                     <LogOut className="h-4 w-4 inline mr-2" />
-                    Выход
+                    {t.nav.logout}
                   </button>
                 </>
               ) : (
@@ -226,13 +228,13 @@ export default function NavBar() {
                     href="#/login"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground"
                   >
-                    Войти
+                    {t.nav.login}
                   </a>
                   <a
                     href="#/register"
                     className="block px-3 py-2 rounded-md text-sm font-medium bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]"
                   >
-                    Зарегистрироваться
+                    {t.nav.register}
                   </a>
                 </>
               )}
