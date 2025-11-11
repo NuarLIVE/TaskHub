@@ -35,7 +35,7 @@ const pageTransition = {
   mass: 0.9
 };
 
-function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId, successAmount, awaitingCredit }: { onSuccess: () => void; onCancel: () => void; onPaymentIntentId: (id: string) => void; successAmount: number | null; awaitingCredit: boolean }) {
+function CheckoutForm({ onSuccess, onCancel, successAmount, awaitingCredit }: { onSuccess: (paymentIntentId: string) => void; onCancel: () => void; successAmount: number | null; awaitingCredit: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -78,8 +78,8 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId, successAmount, a
         setProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('[CONFIRM] Payment succeeded, triggering post-processing');
-        onPaymentIntentId(paymentIntent.id);
-        await onSuccess();
+        // Pass payment intent ID directly to success handler
+        await onSuccess(paymentIntent.id);
         // Keep processing true until parent sets successAmount
       } else if (paymentIntent) {
         console.log('[CONFIRM] Payment in progress, status:', paymentIntent.status);
@@ -189,7 +189,6 @@ export default function WalletPage() {
   const [depositAmount, setDepositAmount] = useState('');
   const [processing, setProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [pendingPaymentIntentId, setPendingPaymentIntentId] = useState<string | null>(null);
   const [successAmount, setSuccessAmount] = useState<number | null>(null);
   const [awaitingCredit, setAwaitingCredit] = useState(false);
 
@@ -486,7 +485,6 @@ export default function WalletPage() {
   const handlePaymentCancel = () => {
     setShowDepositModal(false);
     setClientSecret(null);
-    setPendingPaymentIntentId(null);
     setDepositAmount('');
     setSuccessAmount(null);
     setAwaitingCredit(false);
@@ -810,13 +808,10 @@ export default function WalletPage() {
                 ) : (
                   <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
                     <CheckoutForm
-                      onSuccess={() => {
-                        if (pendingPaymentIntentId) {
-                          handlePaymentSuccess(pendingPaymentIntentId);
-                        }
+                      onSuccess={(paymentIntentId: string) => {
+                        handlePaymentSuccess(paymentIntentId);
                       }}
                       onCancel={handlePaymentCancel}
-                      onPaymentIntentId={setPendingPaymentIntentId}
                       successAmount={successAmount}
                       awaitingCredit={awaitingCredit}
                     />
