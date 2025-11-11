@@ -35,7 +35,7 @@ const pageTransition = {
   mass: 0.9
 };
 
-function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId, successAmount }: { onSuccess: () => void; onCancel: () => void; onPaymentIntentId: (id: string) => void; successAmount: number | null }) {
+function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId, successAmount, awaitingCredit }: { onSuccess: () => void; onCancel: () => void; onPaymentIntentId: (id: string) => void; successAmount: number | null; awaitingCredit: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -95,8 +95,8 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId, successAmount }:
     }
   };
 
-  // Show processing message while waiting for credit confirmation
-  if (processing && !errorMessage) {
+  // Show awaiting credit message while waiting for backend confirmation
+  if (awaitingCredit) {
     return (
       <div className="space-y-4">
         <div className="text-center py-6">
@@ -191,6 +191,7 @@ export default function WalletPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [pendingPaymentIntentId, setPendingPaymentIntentId] = useState<string | null>(null);
   const [successAmount, setSuccessAmount] = useState<number | null>(null);
+  const [awaitingCredit, setAwaitingCredit] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -427,6 +428,9 @@ export default function WalletPage() {
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     console.log('[POSTPROCESS request] id=' + paymentIntentId);
 
+    // Show awaiting credit message
+    setAwaitingCredit(true);
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const internalToken = import.meta.env.VITE_INTERNAL_TOKEN;
@@ -469,10 +473,12 @@ export default function WalletPage() {
       // Set success amount ONLY after credited confirmation
       const amountDollars = result.amount_cents / 100;
       setSuccessAmount(amountDollars);
+      setAwaitingCredit(false);
 
       console.log('[POSTPROCESS] Balance updated successfully, amount=' + amountDollars);
     } catch (error: any) {
       console.error('[POSTPROCESS] Error:', error);
+      setAwaitingCredit(false);
       alert('Платеж подтверждён, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
     }
   };
@@ -483,6 +489,7 @@ export default function WalletPage() {
     setPendingPaymentIntentId(null);
     setDepositAmount('');
     setSuccessAmount(null);
+    setAwaitingCredit(false);
   };
 
   const handleWithdraw = async () => {
@@ -811,6 +818,7 @@ export default function WalletPage() {
                       onCancel={handlePaymentCancel}
                       onPaymentIntentId={setPendingPaymentIntentId}
                       successAmount={successAmount}
+                      awaitingCredit={awaitingCredit}
                     />
                   </Elements>
                 )}
