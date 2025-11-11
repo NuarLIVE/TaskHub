@@ -1,27 +1,32 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL || (window as any).SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY || (window as any).SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL!;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
-if (!url || !key) {
-  throw new Error('Supabase env missing');
+console.log('[ENV] VITE_SUPABASE_URL:', url);
+
+// Защита от HMR – один клиент на всё приложение
+const g = globalThis as any;
+if (!g.__sb_kxpzz) {
+  g.__sb_kxpzz = createClient(url, anon, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'sb-kxpzz-auth',
+    },
+    db: { schema: 'public' },
+  });
+  console.log('[SUPABASE] Client initialized');
 }
 
-// Create a single client instance
-const supabaseClient = createClient(url, key, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: false,
-    storageKey: 'freelance-hub-auth'
-  },
-  realtime: { params: { eventsPerSecond: 2 } }
-});
+export const supabase = g.__sb_kxpzz;
 
-export function getSupabase(): SupabaseClient {
-  return supabaseClient;
+// Legacy compatibility
+export function getSupabase() {
+  return supabase;
 }
 
-export async function resetSupabase(): Promise<SupabaseClient> {
-  return supabaseClient;
+export async function resetSupabase() {
+  return supabase;
 }

@@ -45,7 +45,7 @@ interface WalletLedgerEntry {
 }
 
 export default function WalletPage() {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [entries, setEntries] = useState<WalletLedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,34 +55,38 @@ export default function WalletPage() {
   const [depositAmount, setDepositAmount] = useState('');
 
   useEffect(() => {
-    if (user) {
-      loadBalance();
-      loadEntries();
-
-      // Subscribe to realtime updates for wallet_ledger
-      const ledgerSubscription = getSupabase()
-        .channel('wallet-ledger-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'wallet_ledger',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log('[REALTIME] Wallet ledger update:', payload);
-            loadBalance();
-            loadEntries();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        ledgerSubscription.unsubscribe();
-      };
+    if (!ready || !user) {
+      setLoading(false);
+      return;
     }
-  }, [user]);
+
+    console.log('[WALLET] Loading data for user:', user.id);
+    loadBalance();
+    loadEntries();
+
+    // Subscribe to realtime updates for wallet_ledger
+    const ledgerSubscription = getSupabase()
+      .channel('wallet-ledger-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wallet_ledger',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[REALTIME] Wallet ledger update:', payload);
+          loadBalance();
+          loadEntries();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      ledgerSubscription.unsubscribe();
+    };
+  }, [ready, user]);
 
   const loadBalance = async () => {
     if (!user) return;
