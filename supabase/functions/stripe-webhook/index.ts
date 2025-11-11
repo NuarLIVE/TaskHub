@@ -37,17 +37,20 @@ Deno.serve(async (req: Request) => {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
+      console.error(`[WEBHOOK] Signature verification failed: ${err.message}`);
       return new Response(
         JSON.stringify({ error: "Invalid signature" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log(`[WEBHOOK] Received event: ${event.type} id=${event.id}`);
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if event already processed (idempotency)
     const { data: existingEvent } = await supabase
       .from("stripe_events")
       .select("id")
@@ -55,42 +58,44 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (existingEvent) {
-      console.log(`Event ${event.id} already processed`);
+      console.log(`[WEBHOOK] Event ${event.id} already processed`);
       return new Response(
         JSON.stringify({ received: true, already_processed: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Store event for idempotency
     await supabase.from("stripe_events").insert({
       id: event.id,
       type: event.type,
       data: event.data,
     });
 
+    // Handle different event types
     switch (event.type) {
+      case "payment_intent.processing":
+        await handlePaymentIntentProcessing(supabase, event.data.object as Stripe.PaymentIntent);
+        break;
+
       case "payment_intent.succeeded":
         await handlePaymentIntentSucceeded(supabase, event.data.object as Stripe.PaymentIntent);
         break;
-      
+
       case "payment_intent.payment_failed":
         await handlePaymentIntentFailed(supabase, event.data.object as Stripe.PaymentIntent);
         break;
-      
-      case "transfer.created":
-        console.log("Transfer created:", event.data.object.id);
+
+      case "payment_intent.canceled":
+        await handlePaymentIntentCanceled(supabase, event.data.object as Stripe.PaymentIntent);
         break;
-      
-      case "transfer.reversed":
-        console.log("Transfer reversed:", event.data.object.id);
-        break;
-      
+
       case "account.updated":
         await handleAccountUpdated(supabase, event.data.object as Stripe.Account);
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
     }
 
     return new Response(
@@ -98,7 +103,7 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("[WEBHOOK] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -106,101 +111,117 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+async function handlePaymentIntentProcessing(supabase: any, paymentIntent: Stripe.PaymentIntent) {
+  const piId = paymentIntent.id;
+  console.log(`[WEBHOOK] payment_intent.processing pi=${piId}`);
+
+  // Update status to processing
+  const { error } = await supabase
+    .from("wallet_ledger")
+    .update({ status: "processing" })
+    .eq("stripe_pi_id", piId)
+    .eq("kind", "deposit");
+
+  if (error) {
+    console.error(`[WEBHOOK] Failed to update status to processing: ${error.message}`);
+  } else {
+    console.log(`[WEBHOOK] Updated deposit status to processing for pi=${piId}`);
+  }
+}
+
 async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe.PaymentIntent) {
   const piId = paymentIntent.id;
-  console.log(`[PROCESS-PI] id=${piId} status=${paymentIntent.status}`);
+  console.log(`[WEBHOOK] payment_intent.succeeded pi=${piId} amount=${paymentIntent.amount}`);
 
-  const userId = paymentIntent.metadata.user_id;
-
-  if (!userId) {
-    console.error(`[PROCESS-PI] Missing user_id in metadata for pi=${piId}`);
-    return;
-  }
-
-  console.log(`[PROCESS-PI] user=${userId} amount=${paymentIntent.amount}`);
-
-  const { data: existingEntry } = await supabase
-    .from("ledger_entries")
-    .select("id")
+  // Find the deposit record by stripe_pi_id
+  const { data: deposit, error: findError } = await supabase
+    .from("wallet_ledger")
+    .select("*")
     .eq("stripe_pi_id", piId)
-    .eq("ref_type", "DEPOSIT")
+    .eq("kind", "deposit")
     .maybeSingle();
 
-  if (existingEntry) {
-    console.log(`[IDEMPOTENT SKIP] pi=${piId}`);
+  if (findError) {
+    console.error(`[WEBHOOK] Error finding deposit: ${findError.message}`);
     return;
   }
 
-  const amountCents = paymentIntent.amount;
-  const journalId = crypto.randomUUID();
-
-  let { data: account } = await supabase
-    .from("ledger_accounts")
-    .select("id, balance_cents")
-    .eq("user_id", userId)
-    .eq("kind", "available")
-    .eq("currency", "USD")
-    .maybeSingle();
-
-  if (!account) {
-    const { data: newAccount, error: createError } = await supabase
-      .from("ledger_accounts")
-      .insert({ user_id: userId, kind: "available", currency: "USD", balance_cents: 0 })
-      .select("id, balance_cents")
-      .single();
-
-    if (createError) {
-      console.error("[LEDGER UPSERT] Error creating account:", createError);
-      throw createError;
-    }
-
-    account = newAccount;
-    console.log(`[LEDGER UPSERT] Created new account for user=${userId}`);
+  if (!deposit) {
+    console.error(`[WEBHOOK] No deposit found for pi=${piId}`);
+    return;
   }
 
-  const { error: entryError } = await supabase.from("ledger_entries").insert({
-    journal_id: journalId,
-    account_id: account.id,
-    amount_cents: amountCents,
-    ref_type: "DEPOSIT",
-    ref_id: piId,
-    stripe_pi_id: piId,
-    metadata: {
-      payment_intent_id: piId,
-      user_id: userId,
-      deposit_id: paymentIntent.metadata.deposit_id,
-      origin: paymentIntent.metadata.origin,
-      source: "webhook"
-    },
-  });
-
-  if (entryError) {
-    if (entryError.code === '23505') {
-      console.log(`[IDEMPOTENT SKIP] pi=${piId} (constraint)`);
-      return;
-    }
-    console.error("[LEDGER UPSERT] Error creating ledger entry:", entryError);
-    throw entryError;
+  if (deposit.status === "succeeded") {
+    console.log(`[WEBHOOK] Deposit ${deposit.id} already succeeded (idempotent)`);
+    return;
   }
 
-  console.log(`[LEDGER UPSERT] user=${userId} amount=${amountCents}`);
-
-  const newBalance = account.balance_cents + amountCents;
+  // Update status to succeeded
   const { error: updateError } = await supabase
-    .from("ledger_accounts")
-    .update({ balance_cents: newBalance })
-    .eq("id", account.id);
+    .from("wallet_ledger")
+    .update({
+      status: "succeeded",
+      metadata: {
+        ...deposit.metadata,
+        stripe_status: paymentIntent.status,
+        succeeded_at: new Date().toISOString(),
+      },
+    })
+    .eq("id", deposit.id);
 
   if (updateError) {
-    console.error("[LEDGER UPSERT] Error updating balance:", updateError);
+    console.error(`[WEBHOOK] Failed to update deposit: ${updateError.message}`);
     throw updateError;
   }
 
-  console.log(`[DEPOSIT] user=${userId} pi=${piId} amount=${amountCents} credited`);
+  console.log(`[WEBHOOK] Deposit ${deposit.id} marked as succeeded for user=${deposit.user_id} amount=${deposit.amount_minor}`);
 }
 
 async function handlePaymentIntentFailed(supabase: any, paymentIntent: Stripe.PaymentIntent) {
-  console.log(`Payment failed for intent ${paymentIntent.id}`);
+  const piId = paymentIntent.id;
+  console.log(`[WEBHOOK] payment_intent.payment_failed pi=${piId}`);
+
+  const { error } = await supabase
+    .from("wallet_ledger")
+    .update({
+      status: "failed",
+      metadata: {
+        stripe_status: paymentIntent.status,
+        failure_message: paymentIntent.last_payment_error?.message,
+        failed_at: new Date().toISOString(),
+      },
+    })
+    .eq("stripe_pi_id", piId)
+    .eq("kind", "deposit");
+
+  if (error) {
+    console.error(`[WEBHOOK] Failed to update status to failed: ${error.message}`);
+  } else {
+    console.log(`[WEBHOOK] Updated deposit status to failed for pi=${piId}`);
+  }
+}
+
+async function handlePaymentIntentCanceled(supabase: any, paymentIntent: Stripe.PaymentIntent) {
+  const piId = paymentIntent.id;
+  console.log(`[WEBHOOK] payment_intent.canceled pi=${piId}`);
+
+  const { error } = await supabase
+    .from("wallet_ledger")
+    .update({
+      status: "canceled",
+      metadata: {
+        stripe_status: paymentIntent.status,
+        canceled_at: new Date().toISOString(),
+      },
+    })
+    .eq("stripe_pi_id", piId)
+    .eq("kind", "deposit");
+
+  if (error) {
+    console.error(`[WEBHOOK] Failed to update status to canceled: ${error.message}`);
+  } else {
+    console.log(`[WEBHOOK] Updated deposit status to canceled for pi=${piId}`);
+  }
 }
 
 async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
@@ -209,11 +230,11 @@ async function handleAccountUpdated(supabase: any, account: Stripe.Account) {
     .update({
       stripe_charges_enabled: account.charges_enabled,
       stripe_payouts_enabled: account.payouts_enabled,
-      stripe_onboarded_at: account.charges_enabled && account.payouts_enabled 
-        ? new Date().toISOString() 
+      stripe_onboarded_at: account.charges_enabled && account.payouts_enabled
+        ? new Date().toISOString()
         : null,
     })
     .eq("stripe_account_id", account.id);
 
-  console.log(`Updated account ${account.id} status`);
+  console.log(`[WEBHOOK] Updated account ${account.id} status`);
 }

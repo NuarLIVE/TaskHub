@@ -1,16 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
   Search,
   X,
-  CreditCard,
-  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,16 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabaseClient';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+import WalletDepositForm from '@/components/WalletDepositForm';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
   in: { opacity: 1, y: 0 },
   out: { opacity: 0, y: -16 }
 };
+
 const pageTransition = {
   type: 'spring' as const,
   stiffness: 140,
@@ -35,313 +29,77 @@ const pageTransition = {
   mass: 0.9
 };
 
-function CheckoutForm({ onSuccess, onCancel, successAmount, awaitingCredit }: { onSuccess: (paymentIntentId: string) => void; onCancel: () => void; successAmount: number | null; awaitingCredit: boolean }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const isSubmittingRef = useRef(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    // Guard against double submission
-    if (isSubmittingRef.current) {
-      console.log('[CONFIRM] Already submitting, ignoring duplicate submit');
-      return;
-    }
-
-    isSubmittingRef.current = true;
-    setProcessing(true);
-    setErrorMessage(null);
-
-    try {
-      console.log('[CONFIRM start]');
-
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: window.location.origin + '/wallet',
-        },
-        redirect: 'if_required',
-      });
-
-      console.log('[CONFIRM result status=' + (paymentIntent?.status || 'error') + ']');
-
-      if (error) {
-        setErrorMessage(error.message || 'Произошла ошибка обработки.');
-        isSubmittingRef.current = false;
-        setProcessing(false);
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('[CONFIRM] Payment succeeded, triggering post-processing');
-        // Pass payment intent ID directly to success handler
-        await onSuccess(paymentIntent.id);
-        // Keep processing true until parent sets successAmount
-      } else if (paymentIntent) {
-        console.log('[CONFIRM] Payment in progress, status:', paymentIntent.status);
-        setErrorMessage(`Статус платежа: ${paymentIntent.status}`);
-        isSubmittingRef.current = false;
-        setProcessing(false);
-      }
-    } catch (error: any) {
-      console.error('[CONFIRM] Error:', error);
-      setErrorMessage(error.message || 'Произошла ошибка обработки.');
-      isSubmittingRef.current = false;
-      setProcessing(false);
-    }
-  };
-
-  // Show awaiting credit message while waiting for backend confirmation
-  if (awaitingCredit) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-6">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Запрос отправлен</h3>
-          <p className="text-gray-600">Ожидайте пополнения счёта</p>
-          <p className="text-sm text-gray-500 mt-2">Это может занять несколько секунд...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show success screen ONLY after credited confirmation
-  if (successAmount !== null) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-6">
-          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Платеж успешно подтверждён!</h3>
-          <p className="text-gray-600 mb-1">Зачислено: ${successAmount.toFixed(2)}</p>
-          <p className="text-sm text-gray-500">Баланс кошелька обновлён</p>
-        </div>
-        <Button onClick={onCancel} className="w-full">
-          Закрыть
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
-      {errorMessage && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
-          {errorMessage}
-        </div>
-      )}
-      <div className="flex gap-3">
-        <Button type="submit" className="flex-1" disabled={processing || !stripe}>
-          {processing ? 'Обработка...' : 'Оплатить'}
-        </Button>
-        <Button
-          type="button"
-          onClick={onCancel}
-          variant="outline"
-          className="flex-1"
-          disabled={processing}
-        >
-          Отмена
-        </Button>
-      </div>
-    </form>
-  );
+interface WalletBalance {
+  balance_minor: number;
+  currency: string;
 }
 
-interface LedgerAccount {
+interface WalletLedgerEntry {
   id: string;
-  balance_cents: number;
-  kind: 'available' | 'escrow' | 'platform_revenue';
-}
-
-interface LedgerEntry {
-  id: string;
-  amount_cents: number;
-  ref_type: string;
-  ref_id: string;
-  metadata: Record<string, any>;
+  kind: 'deposit' | 'withdraw';
+  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled';
+  amount_minor: number;
+  currency: string;
   created_at: string;
+  metadata: Record<string, any>;
 }
 
 export default function WalletPage() {
   const { user } = useAuth();
-  const [availableAccount, setAvailableAccount] = useState<LedgerAccount | null>(null);
-  const [escrowAccount, setEscrowAccount] = useState<LedgerAccount | null>(null);
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
+  const [balance, setBalance] = useState<WalletBalance | null>(null);
+  const [entries, setEntries] = useState<WalletLedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [successAmount, setSuccessAmount] = useState<number | null>(null);
-  const [awaitingCredit, setAwaitingCredit] = useState(false);
 
   useEffect(() => {
     if (user) {
-      loadWalletData();
+      loadBalance();
       loadEntries();
 
-      // Handle 3DS redirect return
-      handleReturnFromStripe();
-
-      // Subscribe to real-time updates for ledger accounts
-      const accountSubscription = getSupabase()
-        .channel('wallet-balance-updates')
+      // Subscribe to realtime updates for wallet_ledger
+      const ledgerSubscription = getSupabase()
+        .channel('wallet-ledger-updates')
         .on(
           'postgres_changes',
           {
-            event: 'UPDATE',
+            event: '*',
             schema: 'public',
-            table: 'ledger_accounts',
+            table: 'wallet_ledger',
             filter: `user_id=eq.${user.id}`,
           },
-          () => {
-            console.log('Balance updated, reloading...');
-            loadWalletData();
-          }
-        )
-        .subscribe();
-
-      // Subscribe to real-time updates for ledger entries (all inserts)
-      const entrySubscription = getSupabase()
-        .channel('wallet-entry-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'ledger_entries',
-          },
           (payload) => {
-            console.log('[REALTIME] New ledger entry:', payload.new);
-            // Reload entries and wallet data to ensure balance is current
+            console.log('[REALTIME] Wallet ledger update:', payload);
+            loadBalance();
             loadEntries();
-            loadWalletData();
           }
         )
         .subscribe();
 
       return () => {
-        accountSubscription.unsubscribe();
-        entrySubscription.unsubscribe();
+        ledgerSubscription.unsubscribe();
       };
     }
   }, [user]);
 
-  const handleReturnFromStripe = async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const clientSecretParam = urlParams.get('payment_intent_client_secret');
-
-    if (!clientSecretParam) {
-      return;
-    }
-
-    console.log('[3DS RETURN] Detected return from Stripe with client_secret');
-
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        console.error('[3DS RETURN] Stripe not loaded');
-        return;
-      }
-
-      const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecretParam);
-
-      if (!paymentIntent) {
-        console.error('[3DS RETURN] No payment intent retrieved');
-        return;
-      }
-
-      console.log('[3DS RETURN] Retrieved PI status:', paymentIntent.status, 'id:', paymentIntent.id);
-
-      if (paymentIntent.status === 'succeeded') {
-        console.log('[3DS RETURN] Payment succeeded, processing...');
-
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const internalToken = import.meta.env.VITE_INTERNAL_TOKEN;
-
-        if (!internalToken) {
-          console.error('[3DS RETURN] Missing internal token');
-          alert('Configuration error');
-          return;
-        }
-
-        console.log('[POSTPROCESS request] id=' + paymentIntent.id);
-
-        const response = await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Internal-Token': internalToken,
-          },
-          body: JSON.stringify({
-            paymentIntentId: paymentIntent.id,
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('[POSTPROCESS ok]', result);
-
-          if (result.credited) {
-            await loadWalletData();
-            await loadEntries();
-
-            const amountDollars = (result.amount_cents / 100).toFixed(2);
-            alert(`Зачислено $${amountDollars}`);
-          }
-        } else {
-          const error = await response.json();
-          console.error('[POSTPROCESS] Error:', error);
-          alert('Ошибка обработки платежа. Пожалуйста, обновите страницу.');
-        }
-      } else {
-        console.log('[3DS RETURN] Payment not succeeded, status:', paymentIntent.status);
-        alert(`Статус платежа: ${paymentIntent.status}`);
-      }
-
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (error) {
-      console.error('[3DS RETURN] Error:', error);
-    }
-  };
-
-  const loadWalletData = async () => {
+  const loadBalance = async () => {
     if (!user) return;
 
     try {
-      const { data: accounts, error } = await getSupabase()
-        .from('ledger_accounts')
+      const { data, error } = await getSupabase()
+        .from('wallet_balance')
         .select('*')
         .eq('user_id', user.id)
-        .in('kind', ['available', 'escrow']);
+        .maybeSingle();
 
       if (error) throw error;
 
-      const available = accounts?.find((a) => a.kind === 'available') || null;
-      const escrow = accounts?.find((a) => a.kind === 'escrow') || null;
-
-      setAvailableAccount(available);
-      setEscrowAccount(escrow);
+      setBalance(data || { balance_minor: 0, currency: 'usd' });
     } catch (error) {
-      console.error('Error loading wallet:', error);
+      console.error('[WALLET] Error loading balance:', error);
+      setBalance({ balance_minor: 0, currency: 'usd' });
     } finally {
       setLoading(false);
     }
@@ -351,391 +109,229 @@ export default function WalletPage() {
     if (!user) return;
 
     try {
-      const { data: accounts } = await getSupabase()
-        .from('ledger_accounts')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (!accounts || accounts.length === 0) return;
-
-      const accountIds = accounts.map((a) => a.id);
-
       const { data, error } = await getSupabase()
-        .from('ledger_entries')
+        .from('wallet_ledger')
         .select('*')
-        .in('account_id', accountIds)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setEntries(data || []);
     } catch (error) {
-      console.error('Error loading entries:', error);
+      console.error('[WALLET] Error loading entries:', error);
     }
   };
 
-  const handleDepositInit = async () => {
-    if (!depositAmount || processing) return;
+  const handleDepositClick = () => {
+    setShowDepositModal(true);
+  };
 
+  const handleDepositModalClose = () => {
+    setShowDepositModal(false);
+    setDepositAmount('');
+    loadBalance();
+    loadEntries();
+  };
+
+  const handleDepositSubmit = () => {
     const amount = parseFloat(depositAmount);
-    if (amount < 0.5) {
+    if (isNaN(amount) || amount < 0.5) {
       alert('Минимальная сумма пополнения: $0.50');
       return;
     }
+    // Amount is valid, WalletDepositForm will handle the rest
+  };
 
-    setProcessing(true);
-
-    try {
-      // Сбросить старое состояние перед созданием нового платежа
-      setClientSecret(null);
-      setPendingPaymentIntentId(null);
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session } } = await getSupabase().auth.getSession();
-
-      if (!session) {
-        alert('Необходимо авторизоваться');
-        return;
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/wallet-deposit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          amountCents: Math.round(amount * 100),
-          currency: 'usd',
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Ошибка создания платежа');
-      }
-
-      const { clientSecret: secret } = await response.json();
-      setClientSecret(secret);
-    } catch (error: any) {
-      console.error('Deposit error:', error);
-      alert(error.message || 'Ошибка при создании платежа');
-    } finally {
-      setProcessing(false);
+  const filteredEntries = entries.filter((entry) => {
+    if (filterType !== 'all' && entry.kind !== filterType) return false;
+    if (searchQuery) {
+      const search = searchQuery.toLowerCase();
+      return (
+        entry.id.toLowerCase().includes(search) ||
+        entry.kind.toLowerCase().includes(search) ||
+        entry.status.toLowerCase().includes(search)
+      );
     }
-  };
-
-  const handlePaymentSuccess = async (paymentIntentId: string) => {
-    console.log('[POSTPROCESS request] id=' + paymentIntentId);
-
-    // Show awaiting credit message
-    setAwaitingCredit(true);
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const internalToken = import.meta.env.VITE_INTERNAL_TOKEN;
-
-      if (!internalToken) {
-        console.error('[POSTPROCESS] Missing internal token');
-        throw new Error('Configuration error');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-Token': internalToken,
-        },
-        body: JSON.stringify({
-          paymentIntentId,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('[POSTPROCESS] Error from function:', error);
-        throw new Error(error.error || 'Post-processing failed');
-      }
-
-      const result = await response.json();
-      console.log('[POSTPROCESS ok]', result);
-
-      if (!result.credited) {
-        console.error('[POSTPROCESS] Payment not credited');
-        throw new Error('Payment not credited');
-      }
-
-      // Reload wallet data to show updated balance
-      console.log('[POSTPROCESS] Reloading wallet data');
-      await loadWalletData();
-      await loadEntries();
-
-      // Set success amount ONLY after credited confirmation
-      const amountDollars = result.amount_cents / 100;
-      setSuccessAmount(amountDollars);
-      setAwaitingCredit(false);
-
-      console.log('[POSTPROCESS] Balance updated successfully, amount=' + amountDollars);
-    } catch (error: any) {
-      console.error('[POSTPROCESS] Error:', error);
-      setAwaitingCredit(false);
-      alert('Платеж подтверждён, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
-    }
-  };
-
-  const handlePaymentCancel = () => {
-    setShowDepositModal(false);
-    setClientSecret(null);
-    setDepositAmount('');
-    setSuccessAmount(null);
-    setAwaitingCredit(false);
-  };
-
-  const handleWithdraw = async () => {
-    if (processing) return;
-
-    setProcessing(true);
-
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session } } = await getSupabase().auth.getSession();
-
-      if (!session) {
-        alert('Необходимо авторизоваться');
-        return;
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/connect-onboarding`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Ошибка создания аккаунта');
-      }
-
-      const { onboardingUrl } = await response.json();
-      window.location.href = onboardingUrl;
-    } catch (error: any) {
-      console.error('Onboarding error:', error);
-      alert(error.message || 'Ошибка при настройке вывода средств');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const filteredEntries = entries.filter((e) => {
-    const matchesSearch = e.ref_type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || e.ref_type === filterType;
-    return matchesSearch && matchesType;
+    return true;
   });
 
-  const getEntryIcon = (refType: string) => {
-    if (refType === 'DEPOSIT' || refType === 'RELEASE') {
-      return <ArrowDownLeft className="h-5 w-5 text-green-500" />;
+  const balanceDollars = balance ? balance.balance_minor / 100 : 0;
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'succeeded':
+        return <Badge className="bg-green-100 text-green-800">Успешно</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800">Ожидание</Badge>;
+      case 'processing':
+        return <Badge className="bg-blue-100 text-blue-800">Обработка</Badge>;
+      case 'failed':
+        return <Badge className="bg-red-100 text-red-800">Ошибка</Badge>;
+      case 'canceled':
+        return <Badge className="bg-gray-100 text-gray-800">Отменено</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
     }
-    return <ArrowUpRight className="h-5 w-5 text-red-500" />;
-  };
-
-  const getEntryColor = (amountCents: number) => {
-    return amountCents > 0 ? 'text-green-600' : 'text-red-600';
-  };
-
-  const getRefTypeLabel = (refType: string) => {
-    const labels: Record<string, string> = {
-      DEPOSIT: 'Пополнение',
-      RESERVE: 'Резервирование',
-      RELEASE: 'Выплата',
-      REFUND: 'Возврат',
-      SPEND: 'Покупка',
-      TRANSFER: 'Перевод',
-      FEE: 'Комиссия',
-    };
-    return labels[refType] || refType;
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
-          <p className="mt-4 text-[#3F7F6E]">Загрузка кошелька...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Загрузка кошелька...</p>
         </div>
       </div>
     );
   }
 
-  const balanceCents = availableAccount?.balance_cents || 0;
-  const escrowCents = escrowAccount?.balance_cents || 0;
-  const totalCents = balanceCents + escrowCents;
-
   return (
     <motion.div
-      key="wallet"
       initial="initial"
       animate="in"
       exit="out"
       variants={pageVariants}
       transition={pageTransition}
-      className="min-h-screen bg-background"
+      className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8"
     >
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-3xl font-bold mb-8">Кошелёк</h1>
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
+              <Wallet className="w-10 h-10 text-blue-600" />
+              Кошелёк
+            </h1>
+            <p className="mt-2 text-gray-600">
+              Управление балансом и история транзакций
+            </p>
+          </div>
+        </div>
 
-        <div className="grid gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-[#6FE7C8] to-[#3F7F6E] text-white overflow-hidden relative">
-            <CardContent className="p-8">
-              <div className="absolute top-0 right-0 opacity-10">
-                <Wallet className="h-48 w-48" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 text-sm opacity-90 mb-2">
-                  <DollarSign className="h-4 w-4" />
-                  Доступный баланс
-                </div>
-                <div className="text-5xl font-bold mb-8">
-                  ${(balanceCents / 100).toFixed(2)}
-                </div>
-                {escrowCents > 0 && (
-                  <div className="text-sm opacity-80 mb-6">
-                    В резерве: ${(escrowCents / 100).toFixed(2)}
-                  </div>
-                )}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowWithdrawModal(true)}
-                    variant="secondary"
-                    className="bg-white text-[#3F7F6E] hover:bg-white/90"
-                    disabled={processing}
-                  >
-                    <ArrowUpRight className="h-4 w-4 mr-2" />
-                    Настроить вывод
-                  </Button>
-                  <Button
-                    onClick={() => setShowDepositModal(true)}
-                    variant="outline"
-                    className="text-white border-white hover:bg-white/10"
-                    disabled={processing}
-                  >
-                    <ArrowDownLeft className="h-4 w-4 mr-2" />
-                    Пополнить
-                  </Button>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+            <CardHeader>
+              <CardTitle className="text-white/90 text-lg">Доступный баланс</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold">${balanceDollars.toFixed(2)}</div>
+              <p className="text-white/70 mt-2">USD</p>
+              <div className="mt-6 flex gap-3">
+                <Button onClick={handleDepositClick} className="bg-white text-blue-600 hover:bg-blue-50 flex-1">
+                  <ArrowDownLeft className="w-4 h-4 mr-2" />
+                  Пополнить
+                </Button>
+                <Button className="bg-white/10 text-white hover:bg-white/20 flex-1">
+                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                  Вывести
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#3F7F6E] mb-1">Доступно для использования</div>
-                    <div className="text-2xl font-bold text-green-600">
-                      ${(balanceCents / 100).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#3F7F6E] mb-1">Всего в системе</div>
-                    <div className="text-2xl font-bold text-[#3F7F6E]">
-                      ${(totalCents / 100).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                    <TrendingDown className="h-6 w-6 text-[#3F7F6E]" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Статистика</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Всего пополнений:</span>
+                <span className="font-semibold">
+                  {entries.filter((e) => e.kind === 'deposit' && e.status === 'succeeded').length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Сумма пополнений:</span>
+                <span className="font-semibold">
+                  $
+                  {(
+                    entries
+                      .filter((e) => e.kind === 'deposit' && e.status === 'succeeded')
+                      .reduce((sum, e) => sum + e.amount_minor, 0) / 100
+                  ).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Всего выводов:</span>
+                <span className="font-semibold">
+                  {entries.filter((e) => e.kind === 'withdraw' && e.status === 'succeeded').length}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <CardTitle>История операций</CardTitle>
-              <div className="flex flex-wrap gap-2">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
+            <div className="flex items-center justify-between">
+              <CardTitle>История транзакций</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
+                    placeholder="Поиск..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Поиск операций..."
-                    className="pl-9"
+                    className="pl-10 w-64"
                   />
                 </div>
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="px-3 py-2 border rounded-md text-sm bg-background"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm"
                 >
-                  <option value="all">Все типы</option>
-                  <option value="DEPOSIT">Пополнения</option>
-                  <option value="RESERVE">Резервирования</option>
-                  <option value="RELEASE">Выплаты</option>
-                  <option value="REFUND">Возвраты</option>
-                  <option value="SPEND">Покупки</option>
-                  <option value="FEE">Комиссии</option>
+                  <option value="all">Все</option>
+                  <option value="deposit">Пополнения</option>
+                  <option value="withdraw">Выводы</option>
                 </select>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {filteredEntries.length === 0 ? (
-              <div className="text-center py-12 text-[#3F7F6E]">
-                <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium mb-2">Нет операций</p>
-                <p className="text-sm">История операций пуста</p>
+              <div className="text-center py-12">
+                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Нет транзакций</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredEntries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-[#EFFFF8] transition"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                        {getEntryIcon(entry.ref_type)}
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          entry.kind === 'deposit'
+                            ? 'bg-green-100 text-green-600'
+                            : 'bg-red-100 text-red-600'
+                        }`}
+                      >
+                        {entry.kind === 'deposit' ? (
+                          <ArrowDownLeft className="w-5 h-5" />
+                        ) : (
+                          <ArrowUpRight className="w-5 h-5" />
+                        )}
                       </div>
                       <div>
-                        <div className="font-medium mb-1">{getRefTypeLabel(entry.ref_type)}</div>
-                        <div className="text-sm text-[#3F7F6E]">
-                          {formatDate(entry.created_at)}
-                        </div>
+                        <p className="font-semibold">
+                          {entry.kind === 'deposit' ? 'Пополнение' : 'Вывод'}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(entry.created_at).toLocaleString('ru-RU')}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className={`text-lg font-semibold ${getEntryColor(entry.amount_cents)}`}>
-                        {entry.amount_cents > 0 ? '+' : ''}
-                        ${(entry.amount_cents / 100).toFixed(2)}
-                      </div>
-                      <div className="text-xs text-[#3F7F6E]">
-                        {entry.ref_id ? `#${entry.ref_id.substring(0, 8)}` : ''}
-                      </div>
+                    <div className="text-right flex items-center gap-4">
+                      {getStatusBadge(entry.status)}
+                      <span
+                        className={`text-lg font-bold ${
+                          entry.kind === 'deposit' ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {entry.kind === 'deposit' ? '+' : '-'}$
+                        {(entry.amount_minor / 100).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -743,54 +339,49 @@ export default function WalletPage() {
             )}
           </CardContent>
         </Card>
-      </section>
 
-      {showDepositModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="min-h-screen w-full flex items-center justify-center py-8">
-            <Card className="w-full max-w-md my-auto">
-              <CardHeader className="p-6">
+        {showDepositModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Пополнение баланса
-                  </CardTitle>
-                  <button onClick={() => {
-                    setShowDepositModal(false);
-                    setClientSecret(null);
-                    setDepositAmount('');
-                    setPendingPaymentIntentId(null);
-                  }} className="hover:opacity-70 transition">
-                    <X className="h-5 w-5" />
+                  <CardTitle>Пополнение кошелька</CardTitle>
+                  <button
+                    onClick={() => {
+                      setShowDepositModal(false);
+                      setDepositAmount('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 p-6 pt-0">
-                {!clientSecret ? (
+              <CardContent>
+                {!depositAmount || parseFloat(depositAmount) < 0.5 ? (
                   <>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Сумма пополнения (USD)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0.50"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                        placeholder="Минимум $0.50"
-                        disabled={processing}
-                      />
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                      <div className="flex items-start gap-2">
-                        <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          Платеж обрабатывается через Stripe. Средства зачисляются моментально после подтверждения.
-                        </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Сумма (USD)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.50"
+                          placeholder="0.00"
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                          className="text-lg"
+                        />
+                        <p className="mt-1 text-sm text-gray-500">
+                          Минимальная сумма: $0.50
+                        </p>
                       </div>
                     </div>
-                    <div className="flex gap-3">
-                      <Button onClick={handleDepositInit} className="flex-1" disabled={processing}>
-                        {processing ? 'Создание...' : 'Продолжить'}
+                    <div className="mt-6 flex gap-3">
+                      <Button onClick={handleDepositSubmit} className="flex-1">
+                        Продолжить
                       </Button>
                       <Button
                         onClick={() => {
@@ -799,75 +390,22 @@ export default function WalletPage() {
                         }}
                         variant="outline"
                         className="flex-1"
-                        disabled={processing}
                       >
                         Отмена
                       </Button>
                     </div>
                   </>
                 ) : (
-                  <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
-                    <CheckoutForm
-                      onSuccess={(paymentIntentId: string) => {
-                        handlePaymentSuccess(paymentIntentId);
-                      }}
-                      onCancel={handlePaymentCancel}
-                      successAmount={successAmount}
-                      awaitingCredit={awaitingCredit}
-                    />
-                  </Elements>
+                  <WalletDepositForm
+                    amount={parseFloat(depositAmount)}
+                    onClose={handleDepositModalClose}
+                  />
                 )}
               </CardContent>
             </Card>
           </div>
-        </div>
-      )}
-
-      {showWithdrawModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="min-h-screen w-full flex items-center justify-center py-8">
-            <Card className="w-full max-w-md my-auto">
-              <CardHeader className="p-6">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <ArrowUpRight className="h-5 w-5" />
-                    Настройка выплат
-                  </CardTitle>
-                  <button onClick={() => setShowWithdrawModal(false)} className="hover:opacity-70 transition">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6 pt-0">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                  <div className="font-medium mb-2">Stripe Connect Onboarding</div>
-                  <p className="mb-3">
-                    Для получения выплат необходимо создать и подключить Stripe аккаунт. Это займет несколько минут.
-                  </p>
-                  <ul className="list-disc list-inside space-y-1 text-xs">
-                    <li>Безопасная верификация через Stripe</li>
-                    <li>Автоматические выплаты</li>
-                    <li>Поддержка банковских карт</li>
-                  </ul>
-                </div>
-                <div className="flex gap-3">
-                  <Button onClick={handleWithdraw} className="flex-1" disabled={processing}>
-                    {processing ? 'Загрузка...' : 'Продолжить'}
-                  </Button>
-                  <Button
-                    onClick={() => setShowWithdrawModal(false)}
-                    variant="outline"
-                    className="flex-1"
-                    disabled={processing}
-                  >
-                    Отмена
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
   );
 }
