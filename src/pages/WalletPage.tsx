@@ -35,11 +35,10 @@ const pageTransition = {
   mass: 0.9
 };
 
-function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: () => void; onCancel: () => void; onPaymentIntentId: (id: string) => void }) {
+function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId, successAmount }: { onSuccess: () => void; onCancel: () => void; onPaymentIntentId: (id: string) => void; successAmount: number | null }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
-  const [successAmount, setSuccessAmount] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
 
@@ -61,7 +60,7 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
     setErrorMessage(null);
 
     try {
-      console.log('[CONFIRM] Starting payment confirmation');
+      console.log('[CONFIRM start]');
 
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -71,11 +70,7 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
         redirect: 'if_required',
       });
 
-      console.log('[CONFIRM] Result:', {
-        error: error?.message,
-        status: paymentIntent?.status,
-        pi: paymentIntent?.id
-      });
+      console.log('[CONFIRM result status=' + (paymentIntent?.status || 'error') + ']');
 
       if (error) {
         setErrorMessage(error.message || 'Произошла ошибка обработки.');
@@ -83,10 +78,9 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
         setProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('[CONFIRM] Payment succeeded, triggering post-processing');
-        setSuccessAmount(paymentIntent.amount / 100);
         onPaymentIntentId(paymentIntent.id);
         await onSuccess();
-        // Keep isSubmittingRef true and processing true to prevent any further submissions
+        // Keep processing true until parent sets successAmount
       } else if (paymentIntent) {
         console.log('[CONFIRM] Payment in progress, status:', paymentIntent.status);
         setErrorMessage(`Статус платежа: ${paymentIntent.status}`);
@@ -176,6 +170,7 @@ export default function WalletPage() {
   const [processing, setProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [pendingPaymentIntentId, setPendingPaymentIntentId] = useState<string | null>(null);
+  const [successAmount, setSuccessAmount] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -449,8 +444,11 @@ export default function WalletPage() {
       await loadWalletData();
       await loadEntries();
 
-      // Don't close modal - CheckoutForm will show success message
-      console.log('[POSTPROCESS] Balance updated successfully');
+      // Set success amount ONLY after credited confirmation
+      const amountDollars = result.amount_cents / 100;
+      setSuccessAmount(amountDollars);
+
+      console.log('[POSTPROCESS] Balance updated successfully, amount=' + amountDollars);
     } catch (error: any) {
       console.error('[POSTPROCESS] Error:', error);
       alert('Платеж подтверждён, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
@@ -462,6 +460,7 @@ export default function WalletPage() {
     setClientSecret(null);
     setPendingPaymentIntentId(null);
     setDepositAmount('');
+    setSuccessAmount(null);
   };
 
   const handleWithdraw = async () => {
@@ -789,6 +788,7 @@ export default function WalletPage() {
                       }}
                       onCancel={handlePaymentCancel}
                       onPaymentIntentId={setPendingPaymentIntentId}
+                      successAmount={successAmount}
                     />
                   </Elements>
                 )}
