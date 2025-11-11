@@ -39,6 +39,7 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
+  const [successAmount, setSuccessAmount] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
 
@@ -79,24 +80,46 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
       if (error) {
         setErrorMessage(error.message || 'Произошла ошибка обработки.');
         isSubmittingRef.current = false;
+        setProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('[CONFIRM] Payment succeeded, triggering post-processing');
+        setSuccessAmount(paymentIntent.amount / 100);
         onPaymentIntentId(paymentIntent.id);
-        onSuccess();
-        // Keep isSubmittingRef true to prevent any further submissions
+        await onSuccess();
+        // Keep isSubmittingRef true and processing true to prevent any further submissions
       } else if (paymentIntent) {
         console.log('[CONFIRM] Payment in progress, status:', paymentIntent.status);
         setErrorMessage(`Статус платежа: ${paymentIntent.status}`);
         isSubmittingRef.current = false;
+        setProcessing(false);
       }
     } catch (error: any) {
       console.error('[CONFIRM] Error:', error);
       setErrorMessage(error.message || 'Произошла ошибка обработки.');
       isSubmittingRef.current = false;
-    } finally {
       setProcessing(false);
     }
   };
+
+  if (successAmount !== null) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-6">
+          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Платеж успешно подтверждён!</h3>
+          <p className="text-gray-600 mb-1">Зачислено: ${successAmount.toFixed(2)}</p>
+          <p className="text-sm text-gray-500">Баланс кошелька обновлён</p>
+        </div>
+        <Button onClick={onCancel} className="w-full">
+          Закрыть
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -421,33 +444,24 @@ export default function WalletPage() {
         throw new Error('Payment not credited');
       }
 
-      // Wait for credited confirmation before proceeding
-      const amountDollars = (result.amount_cents / 100).toFixed(2);
-
-      // Reload wallet data
+      // Reload wallet data to show updated balance
+      console.log('[POSTPROCESS] Reloading wallet data');
       await loadWalletData();
       await loadEntries();
 
-      // Reset form state
-      setShowDepositModal(false);
-      setDepositAmount('');
-      setClientSecret(null);
-      setPendingPaymentIntentId(null);
-
-      alert(`Зачислено $${amountDollars}`);
+      // Don't close modal - CheckoutForm will show success message
+      console.log('[POSTPROCESS] Balance updated successfully');
     } catch (error: any) {
       console.error('[POSTPROCESS] Error:', error);
-      setShowDepositModal(false);
-      setDepositAmount('');
-      setClientSecret(null);
-      setPendingPaymentIntentId(null);
-      alert('Платеж выполнен, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
+      alert('Платеж подтверждён, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
     }
   };
 
   const handlePaymentCancel = () => {
+    setShowDepositModal(false);
     setClientSecret(null);
     setPendingPaymentIntentId(null);
+    setDepositAmount('');
   };
 
   const handleWithdraw = async () => {
