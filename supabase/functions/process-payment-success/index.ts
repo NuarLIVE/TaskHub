@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Processing payment success for user ${user.id}, PI: ${paymentIntentId}`);
+    console.log(`[POST-PROCESS] Starting for user=${user.id} pi=${paymentIntentId}`);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2024-12-18.acacia",
@@ -58,14 +58,19 @@ Deno.serve(async (req: Request) => {
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-    if (paymentIntent.status !== "succeeded") {
+    console.log(`[POST-PROCESS] Retrieved PI status=${paymentIntent.status}`);
+
+    const allowedStatuses = ["succeeded", "processing", "requires_capture"];
+    if (!allowedStatuses.includes(paymentIntent.status)) {
+      console.log(`[POST-PROCESS] Invalid status: ${paymentIntent.status}`);
       return new Response(
-        JSON.stringify({ error: "Payment not successful", status: paymentIntent.status }),
+        JSON.stringify({ error: "Payment not in valid state", status: paymentIntent.status }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (paymentIntent.metadata.user_id !== user.id) {
+      console.log(`[POST-PROCESS] User mismatch: expected=${user.id} got=${paymentIntent.metadata.user_id}`);
       return new Response(
         JSON.stringify({ error: "Payment does not belong to user" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -78,12 +83,12 @@ Deno.serve(async (req: Request) => {
     const { data: existingEntry } = await supabaseService
       .from("ledger_entries")
       .select("id")
-      .eq("ref_id", paymentIntentId)
+      .eq("stripe_pi_id", paymentIntentId)
       .eq("ref_type", "DEPOSIT")
       .maybeSingle();
 
     if (existingEntry) {
-      console.log(`Payment ${paymentIntentId} already processed`);
+      console.log(`[POST-PROCESS] Already processed pi=${paymentIntentId}`);
       return new Response(
         JSON.stringify({ success: true, message: "Already processed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -122,7 +127,8 @@ Deno.serve(async (req: Request) => {
       amount_cents: amountCents,
       ref_type: "DEPOSIT",
       ref_id: paymentIntentId,
-      metadata: { payment_intent_id: paymentIntentId, user_id: user.id, source: "frontend" },
+      stripe_pi_id: paymentIntentId,
+      metadata: { payment_intent_id: paymentIntentId, user_id: user.id, source: "frontend", deposit_id: paymentIntent.metadata.deposit_id },
     });
 
     if (entryError) {
@@ -141,7 +147,7 @@ Deno.serve(async (req: Request) => {
       throw updateError;
     }
 
-    console.log(`Successfully deposited ${amountCents} cents to user ${user.id}`);
+    console.log(`[DEPOSIT] Credited user=${user.id} pi=${paymentIntentId} amount=${amountCents} new_balance=${newBalance}`);
 
     return new Response(
       JSON.stringify({

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wallet,
@@ -40,6 +40,7 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +49,19 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
       return;
     }
 
+    // Guard against double submission
+    if (isSubmittingRef.current) {
+      console.log('[CONFIRM] Already submitting, ignoring duplicate submit');
+      return;
+    }
+
+    isSubmittingRef.current = true;
     setProcessing(true);
     setErrorMessage(null);
 
     try {
+      console.log('[CONFIRM] Starting payment confirmation');
+
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -60,14 +70,29 @@ function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: (
         redirect: 'if_required',
       });
 
+      console.log('[CONFIRM] Result:', {
+        error: error?.message,
+        status: paymentIntent?.status,
+        pi: paymentIntent?.id
+      });
+
       if (error) {
         setErrorMessage(error.message || 'Произошла ошибка обработки.');
+        isSubmittingRef.current = false;
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('[CONFIRM] Payment succeeded, triggering post-processing');
         onPaymentIntentId(paymentIntent.id);
         onSuccess();
+        // Keep isSubmittingRef true to prevent any further submissions
+      } else if (paymentIntent) {
+        console.log('[CONFIRM] Payment in progress, status:', paymentIntent.status);
+        setErrorMessage(`Статус платежа: ${paymentIntent.status}`);
+        isSubmittingRef.current = false;
       }
     } catch (error: any) {
+      console.error('[CONFIRM] Error:', error);
       setErrorMessage(error.message || 'Произошла ошибка обработки.');
+      isSubmittingRef.current = false;
     } finally {
       setProcessing(false);
     }
@@ -134,6 +159,9 @@ export default function WalletPage() {
       loadWalletData();
       loadEntries();
 
+      // Handle 3DS redirect return
+      handleReturnFromStripe();
+
       // Subscribe to real-time updates for ledger accounts
       const accountSubscription = getSupabase()
         .channel('wallet-balance-updates')
@@ -175,6 +203,67 @@ export default function WalletPage() {
       };
     }
   }, [user]);
+
+  const handleReturnFromStripe = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const clientSecretParam = urlParams.get('payment_intent_client_secret');
+
+    if (!clientSecretParam) {
+      return;
+    }
+
+    console.log('[3DS RETURN] Detected return from Stripe with client_secret');
+
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) {
+        console.error('[3DS RETURN] Stripe not loaded');
+        return;
+      }
+
+      const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecretParam);
+
+      if (!paymentIntent) {
+        console.error('[3DS RETURN] No payment intent retrieved');
+        return;
+      }
+
+      console.log('[3DS RETURN] Retrieved PI status:', paymentIntent.status, 'id:', paymentIntent.id);
+
+      if (paymentIntent.status === 'succeeded') {
+        console.log('[3DS RETURN] Payment succeeded, processing...');
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const { data: { session } } = await getSupabase().auth.getSession();
+
+        if (session) {
+          await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              paymentIntentId: paymentIntent.id,
+            }),
+          });
+
+          await loadWalletData();
+          await loadEntries();
+
+          alert('Платеж успешно обработан! Баланс обновлён.');
+        }
+      } else {
+        console.log('[3DS RETURN] Payment not succeeded, status:', paymentIntent.status);
+        alert(`Статус платежа: ${paymentIntent.status}`);
+      }
+
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+      console.error('[3DS RETURN] Error:', error);
+    }
+  };
 
   const loadWalletData = async () => {
     if (!user) return;
@@ -278,16 +367,20 @@ export default function WalletPage() {
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
+    console.log('[PAYMENT SUCCESS] Starting post-processing for pi:', paymentIntentId);
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await getSupabase().auth.getSession();
 
       if (!session) {
+        console.error('[PAYMENT SUCCESS] No session found');
         alert('Необходимо авторизоваться');
         return;
       }
 
-      // Вызвать функцию для обработки успешного платежа
+      console.log('[PAYMENT SUCCESS] Calling process-payment-success function');
+
       const response = await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
         method: 'POST',
         headers: {
@@ -301,23 +394,25 @@ export default function WalletPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Error processing payment:', error);
+        console.error('[PAYMENT SUCCESS] Error from function:', error);
+      } else {
+        const result = await response.json();
+        console.log('[PAYMENT SUCCESS] Function result:', result);
       }
 
-      // Немедленно обновить данные
+      console.log('[PAYMENT SUCCESS] Reloading wallet data');
       await loadWalletData();
       await loadEntries();
 
-      // Сбросить состояние
       setShowDepositModal(false);
       setDepositAmount('');
       setClientSecret(null);
       setPendingPaymentIntentId(null);
 
+      console.log('[PAYMENT SUCCESS] Completed successfully');
       alert('Платеж успешно обработан! Баланс обновлён.');
     } catch (error) {
-      console.error('Error in handlePaymentSuccess:', error);
-      // Всё равно сбросить состояние
+      console.error('[PAYMENT SUCCESS] Error:', error);
       setShowDepositModal(false);
       setDepositAmount('');
       setClientSecret(null);

@@ -54,17 +54,25 @@ Deno.serve(async (req: Request) => {
       apiVersion: "2024-12-18.acacia",
     });
 
+    const depositId = crypto.randomUUID();
+
+    console.log(`[DEPOSIT CREATE] user=${user.id} amount=${amountCents} deposit_id=${depositId}`);
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: currency.toLowerCase(),
+      confirm: false,
       automatic_payment_methods: {
         enabled: true,
       },
       metadata: {
         user_id: user.id,
-        type: "deposit",
+        deposit_id: depositId,
+        origin: "wallet_topup",
       },
     });
+
+    console.log(`[DEPOSIT CREATED] pi=${paymentIntent.id} status=${paymentIntent.status}`);
 
     return new Response(
       JSON.stringify({
