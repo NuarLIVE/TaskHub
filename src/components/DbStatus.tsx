@@ -13,7 +13,7 @@ export function DbStatus() {
     try {
       const supabase = getSupabase();
       const { error } = await Promise.race([
-        supabase.from('profiles').select('id').limit(1),
+        supabase.from('wallet_ledger').select('id').limit(1),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Connection timeout')), 5000)
         )
