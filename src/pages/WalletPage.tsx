@@ -35,7 +35,7 @@ const pageTransition = {
   mass: 0.9
 };
 
-function CheckoutForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+function CheckoutForm({ onSuccess, onCancel, onPaymentIntentId }: { onSuccess: () => void; onCancel: () => void; onPaymentIntentId: (id: string) => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -52,7 +52,7 @@ function CheckoutForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel
     setErrorMessage(null);
 
     try {
-      const { error } = await stripe.confirmPayment({
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: window.location.origin + '/wallet',
@@ -62,7 +62,8 @@ function CheckoutForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel
 
       if (error) {
         setErrorMessage(error.message || 'Произошла ошибка обработки.');
-      } else {
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        onPaymentIntentId(paymentIntent.id);
         onSuccess();
       }
     } catch (error: any) {
@@ -126,6 +127,7 @@ export default function WalletPage() {
   const [depositAmount, setDepositAmount] = useState('');
   const [processing, setProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [pendingPaymentIntentId, setPendingPaymentIntentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -271,16 +273,46 @@ export default function WalletPage() {
     }
   };
 
-  const handlePaymentSuccess = () => {
-    setShowDepositModal(false);
-    setDepositAmount('');
-    setClientSecret(null);
-    alert('Платеж успешно обработан! Баланс будет обновлен в течение минуты.');
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session } } = await getSupabase().auth.getSession();
 
-    setTimeout(() => {
-      loadWalletData();
-      loadEntries();
-    }, 2000);
+      if (!session) {
+        alert('Необходимо авторизоваться');
+        return;
+      }
+
+      // Вызвать функцию для обработки успешного платежа
+      const response = await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          paymentIntentId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Error processing payment:', error);
+      }
+
+      setShowDepositModal(false);
+      setDepositAmount('');
+      setClientSecret(null);
+
+      // Немедленно обновить данные
+      await loadWalletData();
+      await loadEntries();
+
+      alert('Платеж успешно обработан! Баланс обновлён.');
+    } catch (error) {
+      console.error('Error in handlePaymentSuccess:', error);
+      alert('Платеж выполнен, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
+    }
   };
 
   const handlePaymentCancel = () => {
@@ -601,8 +633,13 @@ export default function WalletPage() {
                 ) : (
                   <Elements stripe={stripePromise} options={{ clientSecret }}>
                     <CheckoutForm
-                      onSuccess={handlePaymentSuccess}
+                      onSuccess={() => {
+                        if (pendingPaymentIntentId) {
+                          handlePaymentSuccess(pendingPaymentIntentId);
+                        }
+                      }}
                       onCancel={handlePaymentCancel}
+                      onPaymentIntentId={setPendingPaymentIntentId}
                     />
                   </Elements>
                 )}
