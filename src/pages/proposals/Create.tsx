@@ -167,8 +167,7 @@ export default function ProposalsCreate() {
     description: orderOrTaskData.description,
     budget: type === 'order' ? `${orderOrTaskData.price_min}-${orderOrTaskData.price_max} ${orderOrTaskData.currency}` : `${orderOrTaskData.price} ${orderOrTaskData.currency}`,
     tags: orderOrTaskData.tags || [],
-    author: { name: orderOrTaskData.profiles?.name || 'User', avatar: orderOrTaskData.profiles?.avatar_url },
-    author_id: orderOrTaskData.user_id
+    author: { name: orderOrTaskData.profiles?.name || 'User', avatar: orderOrTaskData.profiles?.avatar_url }
   } : null;
 
   const addOption = () => {
@@ -339,7 +338,7 @@ export default function ProposalsCreate() {
           <CardContent className="px-6 pt-4 pb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <a href={`#/users/${orderData.author_id}`} className="flex items-center gap-2 hover:opacity-80 transition">
+                <a href={`#/u/${orderData.author.name.toLowerCase()}`} className="flex items-center gap-2 hover:opacity-80 transition">
                   <img src={orderData.author.avatar} alt={orderData.author.name} className="h-8 w-8 rounded-full" />
                   <span className="text-sm font-medium">{orderData.author.name}</span>
                 </a>

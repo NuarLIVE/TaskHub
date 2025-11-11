@@ -4,9 +4,14 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
+  TrendingUp,
+  TrendingDown,
   DollarSign,
+  Filter,
+  Download,
+  Calendar,
   Search,
-  X,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,14 +19,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabaseClient';
-import WalletDepositForm from '@/components/WalletDepositForm';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
   in: { opacity: 1, y: 0 },
   out: { opacity: 0, y: -16 }
 };
-
 const pageTransition = {
   type: 'spring' as const,
   stiffness: 140,
@@ -29,161 +32,251 @@ const pageTransition = {
   mass: 0.9
 };
 
-interface WalletBalance {
-  balance_minor: number;
+interface WalletData {
+  id: string;
+  balance: number;
+  pending_balance: number;
+  total_earned: number;
+  total_withdrawn: number;
   currency: string;
 }
 
-interface WalletLedgerEntry {
+interface Transaction {
   id: string;
-  kind: 'deposit' | 'withdraw';
-  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled';
-  amount_minor: number;
-  currency: string;
+  type: 'income' | 'outcome' | 'withdrawal' | 'deposit' | 'fee';
+  amount: number;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  description: string;
+  reference_type?: string;
+  reference_id?: string;
   created_at: string;
-  metadata: Record<string, any>;
+  completed_at?: string;
 }
 
 export default function WalletPage() {
-  const { user, ready } = useAuth();
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
-  const [entries, setEntries] = useState<WalletLedgerEntry[]>([]);
+  const { user } = useAuth();
+  const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
 
   useEffect(() => {
-    if (!ready || !user) {
-      setLoading(false);
-      return;
-    }
+    if (user) {
+      loadWalletData();
+      loadTransactions();
 
-    console.log('[WALLET] Loading data for user:', user.id);
-    loadBalance();
-    loadEntries();
-
-    // Subscribe to realtime updates for wallet_ledger
-    const ledgerSubscription = getSupabase()
-      .channel('wallet-ledger-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'wallet_ledger',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('[REALTIME] Wallet ledger update:', payload);
-          loadBalance();
-          loadEntries();
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadWalletData();
+          loadTransactions();
         }
-      )
-      .subscribe();
+      };
 
-    return () => {
-      ledgerSubscription.unsubscribe();
-    };
-  }, [ready, user]);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
 
-  const loadBalance = async () => {
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [user]);
+
+  const loadWalletData = async () => {
     if (!user) return;
 
     try {
       const { data, error } = await getSupabase()
-        .from('wallet_balance')
+        .from('wallets')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
-
-      setBalance(data || { balance_minor: 0, currency: 'usd' });
+      setWallet(data);
     } catch (error) {
-      console.error('[WALLET] Error loading balance:', error);
-      setBalance({ balance_minor: 0, currency: 'usd' });
+      console.error('Error loading wallet:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadEntries = async () => {
+  const loadTransactions = async () => {
     if (!user) return;
 
     try {
-      const { data, error } = await getSupabase()
-        .from('wallet_ledger')
-        .select('*')
+      const { data: walletData } = await getSupabase()
+        .from('wallets')
+        .select('id')
         .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!walletData) return;
+
+      const { data, error } = await getSupabase()
+        .from('transactions')
+        .select('*')
+        .eq('wallet_id', walletData.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setEntries(data || []);
+      setTransactions(data || []);
     } catch (error) {
-      console.error('[WALLET] Error loading entries:', error);
+      console.error('Error loading transactions:', error);
     }
   };
 
-  const handleDepositClick = () => {
-    setShowDepositModal(true);
-  };
+  const handleWithdraw = async () => {
+    if (!user || !wallet || !withdrawAmount) return;
 
-  const handleDepositModalClose = () => {
-    setShowDepositModal(false);
-    setDepositAmount('');
-    loadBalance();
-    loadEntries();
-  };
-
-  const handleDepositSubmit = () => {
-    const amount = parseFloat(depositAmount);
-    if (isNaN(amount) || amount < 0.5) {
-      alert('Минимальная сумма пополнения: $0.50');
+    const amount = parseFloat(withdrawAmount);
+    if (amount <= 0 || amount > wallet.balance) {
+      alert('Некорректная сумма для вывода');
       return;
     }
-    // Amount is valid, WalletDepositForm will handle the rest
+
+    try {
+      const { error } = await getSupabase()
+        .from('transactions')
+        .insert({
+          wallet_id: wallet.id,
+          type: 'withdrawal',
+          amount: amount,
+          status: 'pending',
+          description: `Вывод средств $${amount.toFixed(2)}`,
+          reference_type: 'withdrawal'
+        });
+
+      if (error) throw error;
+
+      await getSupabase()
+        .from('wallets')
+        .update({
+          balance: wallet.balance - amount,
+          pending_balance: wallet.pending_balance + amount,
+          total_withdrawn: wallet.total_withdrawn + amount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', wallet.id);
+
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      await loadWalletData();
+      await loadTransactions();
+    } catch (error) {
+      console.error('Error creating withdrawal:', error);
+      alert('Ошибка при создании запроса на вывод');
+    }
   };
 
-  const filteredEntries = entries.filter((entry) => {
-    if (filterType !== 'all' && entry.kind !== filterType) return false;
-    if (searchQuery) {
-      const search = searchQuery.toLowerCase();
-      return (
-        entry.id.toLowerCase().includes(search) ||
-        entry.kind.toLowerCase().includes(search) ||
-        entry.status.toLowerCase().includes(search)
-      );
+  const handleDeposit = async () => {
+    if (!user || !wallet || !depositAmount) return;
+
+    const amount = parseFloat(depositAmount);
+    if (amount <= 0) {
+      alert('Некорректная сумма для пополнения');
+      return;
     }
-    return true;
+
+    try {
+      const { error } = await getSupabase()
+        .from('transactions')
+        .insert({
+          wallet_id: wallet.id,
+          type: 'deposit',
+          amount: amount,
+          status: 'completed',
+          description: `Пополнение баланса $${amount.toFixed(2)}`,
+          reference_type: 'deposit',
+          completed_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      await getSupabase()
+        .from('wallets')
+        .update({
+          balance: wallet.balance + amount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', wallet.id);
+
+      setShowDepositModal(false);
+      setDepositAmount('');
+      await loadWalletData();
+      await loadTransactions();
+    } catch (error) {
+      console.error('Error creating deposit:', error);
+      alert('Ошибка при пополнении баланса');
+    }
+  };
+
+  const filteredTransactions = transactions.filter((t) => {
+    const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'all' || t.type === filterType;
+    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+    return matchesSearch && matchesType && matchesStatus;
   });
 
-  const balanceDollars = balance ? balance.balance_minor / 100 : 0;
+  const getTransactionIcon = (type: string) => {
+    if (type === 'income' || type === 'deposit') {
+      return <ArrowDownLeft className="h-5 w-5 text-green-500" />;
+    }
+    return <ArrowUpRight className="h-5 w-5 text-red-500" />;
+  };
+
+  const getTransactionColor = (type: string) => {
+    if (type === 'income' || type === 'deposit') return 'text-green-600';
+    return 'text-red-600';
+  };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'succeeded':
-        return <Badge className="bg-green-100 text-green-800">Успешно</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">Ожидание</Badge>;
-      case 'processing':
-        return <Badge className="bg-blue-100 text-blue-800">Обработка</Badge>;
-      case 'failed':
-        return <Badge className="bg-red-100 text-red-800">Ошибка</Badge>;
-      case 'canceled':
-        return <Badge className="bg-gray-100 text-gray-800">Отменено</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
+    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+      completed: 'default',
+      pending: 'secondary',
+      failed: 'destructive',
+      cancelled: 'destructive'
+    };
+    const labels: Record<string, string> = {
+      completed: 'Завершено',
+      pending: 'В обработке',
+      failed: 'Ошибка',
+      cancelled: 'Отменено'
+    };
+    return <Badge variant={variants[status] || 'secondary'}>{labels[status] || status}</Badge>;
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('ru-RU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Загрузка кошелька...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
+          <p className="mt-4 text-[#3F7F6E]">Загрузка кошелька...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!wallet) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-[#3F7F6E]">
+          <Wallet className="h-12 w-12 mx-auto mb-4" />
+          <p>Кошелек не найден</p>
         </div>
       </div>
     );
@@ -191,151 +284,171 @@ export default function WalletPage() {
 
   return (
     <motion.div
+      key="wallet"
       initial="initial"
       animate="in"
       exit="out"
       variants={pageVariants}
       transition={pageTransition}
-      className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8"
+      className="min-h-screen bg-background"
     >
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
-              <Wallet className="w-10 h-10 text-blue-600" />
-              Кошелёк
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Управление балансом и история транзакций
-            </p>
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        <h1 className="text-3xl font-bold mb-8">Кошелёк</h1>
+
+        <div className="grid gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-[#6FE7C8] to-[#3F7F6E] text-white overflow-hidden relative">
+            <CardContent className="p-8">
+              <div className="absolute top-0 right-0 opacity-10">
+                <Wallet className="h-48 w-48" />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 text-sm opacity-90 mb-2">
+                  <DollarSign className="h-4 w-4" />
+                  Доступный баланс
+                </div>
+                <div className="text-5xl font-bold mb-8">
+                  ${wallet.balance.toFixed(2)}
+                </div>
+                {wallet.pending_balance > 0 && (
+                  <div className="text-sm opacity-80 mb-6">
+                    В обработке: ${wallet.pending_balance.toFixed(2)}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setShowWithdrawModal(true)}
+                    variant="secondary"
+                    className="bg-white text-[#3F7F6E] hover:bg-white/90"
+                  >
+                    <ArrowUpRight className="h-4 w-4 mr-2" />
+                    Вывести
+                  </Button>
+                  <Button
+                    onClick={() => setShowDepositModal(true)}
+                    variant="outline"
+                    className="text-white border-white hover:bg-white/10"
+                  >
+                    <ArrowDownLeft className="h-4 w-4 mr-2" />
+                    Пополнить
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-[#3F7F6E] mb-1">Всего заработано</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      ${wallet.total_earned.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-[#3F7F6E] mb-1">Всего выведено</div>
+                    <div className="text-2xl font-bold text-[#3F7F6E]">
+                      ${wallet.total_withdrawn.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                    <TrendingDown className="h-6 w-6 text-[#3F7F6E]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-            <CardHeader>
-              <CardTitle className="text-white/90 text-lg">Доступный баланс</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold">${balanceDollars.toFixed(2)}</div>
-              <p className="text-white/70 mt-2">USD</p>
-              <div className="mt-6 flex gap-3">
-                <Button onClick={handleDepositClick} className="bg-white text-blue-600 hover:bg-blue-50 flex-1">
-                  <ArrowDownLeft className="w-4 h-4 mr-2" />
-                  Пополнить
-                </Button>
-                <Button className="bg-white/10 text-white hover:bg-white/20 flex-1">
-                  <ArrowUpRight className="w-4 h-4 mr-2" />
-                  Вывести
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Статистика</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Всего пополнений:</span>
-                <span className="font-semibold">
-                  {entries.filter((e) => e.kind === 'deposit' && e.status === 'succeeded').length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Сумма пополнений:</span>
-                <span className="font-semibold">
-                  $
-                  {(
-                    entries
-                      .filter((e) => e.kind === 'deposit' && e.status === 'succeeded')
-                      .reduce((sum, e) => sum + e.amount_minor, 0) / 100
-                  ).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Всего выводов:</span>
-                <span className="font-semibold">
-                  {entries.filter((e) => e.kind === 'withdraw' && e.status === 'succeeded').length}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle>История транзакций</CardTitle>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <div className="flex flex-wrap gap-2">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
                   <Input
-                    placeholder="Поиск..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
+                    placeholder="Поиск транзакций..."
+                    className="pl-9"
                   />
                 </div>
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="px-3 py-2 border rounded-md text-sm bg-background"
                 >
-                  <option value="all">Все</option>
+                  <option value="all">Все типы</option>
+                  <option value="income">Поступления</option>
+                  <option value="outcome">Расходы</option>
+                  <option value="withdrawal">Выводы</option>
                   <option value="deposit">Пополнения</option>
-                  <option value="withdraw">Выводы</option>
+                  <option value="fee">Комиссии</option>
+                </select>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border rounded-md text-sm bg-background"
+                >
+                  <option value="all">Все статусы</option>
+                  <option value="completed">Завершено</option>
+                  <option value="pending">В обработке</option>
+                  <option value="failed">Ошибка</option>
+                  <option value="cancelled">Отменено</option>
                 </select>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {filteredEntries.length === 0 ? (
-              <div className="text-center py-12">
-                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Нет транзакций</p>
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-12 text-[#3F7F6E]">
+                <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">Нет транзакций</p>
+                <p className="text-sm">История транзакций пуста</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredEntries.map((entry) => (
+                {filteredTransactions.map((transaction) => (
                   <div
-                    key={entry.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    key={transaction.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-[#EFFFF8] transition"
                   >
                     <div className="flex items-center gap-4">
-                      <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          entry.kind === 'deposit'
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-red-100 text-red-600'
-                        }`}
-                      >
-                        {entry.kind === 'deposit' ? (
-                          <ArrowDownLeft className="w-5 h-5" />
-                        ) : (
-                          <ArrowUpRight className="w-5 h-5" />
-                        )}
+                      <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                        {getTransactionIcon(transaction.type)}
                       </div>
                       <div>
-                        <p className="font-semibold">
-                          {entry.kind === 'deposit' ? 'Пополнение' : 'Вывод'}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(entry.created_at).toLocaleString('ru-RU')}
-                        </p>
+                        <div className="font-medium mb-1">{transaction.description}</div>
+                        <div className="text-sm text-[#3F7F6E] flex items-center gap-2">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(transaction.created_at)}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right flex items-center gap-4">
-                      {getStatusBadge(entry.status)}
-                      <span
-                        className={`text-lg font-bold ${
-                          entry.kind === 'deposit' ? 'text-green-600' : 'text-red-600'
-                        }`}
+                    <div className="text-right">
+                      <div
+                        className={`text-lg font-semibold mb-1 ${getTransactionColor(
+                          transaction.type
+                        )}`}
                       >
-                        {entry.kind === 'deposit' ? '+' : '-'}$
-                        {(entry.amount_minor / 100).toFixed(2)}
-                      </span>
+                        {transaction.type === 'income' || transaction.type === 'deposit'
+                          ? '+'
+                          : '-'}
+                        ${transaction.amount.toFixed(2)}
+                      </div>
+                      {getStatusBadge(transaction.status)}
                     </div>
                   </div>
                 ))}
@@ -343,73 +456,96 @@ export default function WalletPage() {
             )}
           </CardContent>
         </Card>
+      </section>
 
-        {showDepositModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-md">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Пополнение кошелька</CardTitle>
-                  <button
-                    onClick={() => {
-                      setShowDepositModal(false);
-                      setDepositAmount('');
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {!depositAmount || parseFloat(depositAmount) < 0.5 ? (
-                  <>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Сумма (USD)
-                        </label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.50"
-                          placeholder="0.00"
-                          value={depositAmount}
-                          onChange={(e) => setDepositAmount(e.target.value)}
-                          className="text-lg"
-                        />
-                        <p className="mt-1 text-sm text-gray-500">
-                          Минимальная сумма: $0.50
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-6 flex gap-3">
-                      <Button onClick={handleDepositSubmit} className="flex-1">
-                        Продолжить
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setShowDepositModal(false);
-                          setDepositAmount('');
-                        }}
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        Отмена
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <WalletDepositForm
-                    amount={parseFloat(depositAmount)}
-                    onClose={handleDepositModalClose}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
+      {showWithdrawModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md m-4">
+            <CardHeader className="p-6">
+              <div className="flex items-center justify-between">
+                <CardTitle>Вывод средств</CardTitle>
+                <button onClick={() => setShowWithdrawModal(false)} className="hover:opacity-70 transition">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6 pt-0">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Доступно: ${wallet.balance.toFixed(2)}
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={wallet.balance}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="Введите сумму"
+                />
+              </div>
+              <div className="text-sm text-[#3F7F6E]">
+                Средства будут переведены на ваш счет в течение 1-3 рабочих дней
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={handleWithdraw} className="flex-1">
+                  Вывести
+                </Button>
+                <Button
+                  onClick={() => setShowWithdrawModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Отмена
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showDepositModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md m-4">
+            <CardHeader className="p-6">
+              <div className="flex items-center justify-between">
+                <CardTitle>Пополнение баланса</CardTitle>
+                <button onClick={() => setShowDepositModal(false)} className="hover:opacity-70 transition">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6 pt-0">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Сумма пополнения</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  placeholder="Введите сумму"
+                />
+              </div>
+              <div className="text-sm text-[#3F7F6E]">
+                Средства будут зачислены мгновенно после подтверждения оплаты
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={handleDeposit} className="flex-1">
+                  Пополнить
+                </Button>
+                <Button
+                  onClick={() => setShowDepositModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Отмена
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </motion.div>
   );
 }

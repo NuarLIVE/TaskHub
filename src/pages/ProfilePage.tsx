@@ -33,112 +33,47 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const supabase = getSupabase();
+  const [profile, setProfile] = useState(() => {
+    const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
+    return raw ? JSON.parse(raw) : {
+      name: 'Mickey',
+      headline: 'Web/Unity',
+      role: 'Full‑stack / Game Dev',
+      about: 'Full‑stack разработчик и Unity‑инженер. Люблю аккуратные интерфейсы и предсказуемый неткод.',
+      bio: 'Занимаюсь разработкой уже более 5 лет. Специализируюсь на создании веб-приложений и игр. Работал над множеством проектов от стартапов до крупных корпораций. Всегда открыт к новым вызовам и интересным задачам. Предпочитаю чистый код и современные технологии.',
+      skills: ['React', 'Tailwind', 'Node', 'PostgreSQL', 'Unity', 'Photon'],
+      rateMin: 20,
+      rateMax: 35,
+      currency: 'USD',
+      location: 'Есик / Алматы',
+      contactEmail: 'you@example.com',
+      contactTelegram: '@mickey',
+      avatar: 'https://i.pravatar.cc/120?img=49'
+    };
+  });
 
   useEffect(() => {
     if (user) {
-      loadUserProfile();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && profile) {
       if (tab === 'market') {
         loadUserMarketItems();
       } else if (tab === 'portfolio') {
         loadPortfolioProjects();
       }
     }
-  }, [user, tab, profile]);
-
-  const loadUserProfile = async () => {
-    if (!user) {
-      setProfileLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setProfile({
-          name: data.name || 'Пользователь',
-          email: data.email,
-          headline: data.headline || 'Фрилансер',
-          role: data.role || 'FREELANCER',
-          about: data.about || '',
-          bio: data.bio || '',
-          skills: data.skills || [],
-          rateMin: data.rate_min || 0,
-          rateMax: data.rate_max || 0,
-          currency: data.currency || 'USD',
-          location: data.location || '',
-          contactEmail: data.email,
-          contactTelegram: data.contact_telegram || '',
-          avatar: data.avatar_url || `https://i.pravatar.cc/150?u=${user.id}`
-        });
-      } else {
-        // Create default profile if doesn't exist
-        setProfile({
-          name: user.email?.split('@')[0] || 'Пользователь',
-          email: user.email,
-          headline: 'Фрилансер',
-          role: 'FREELANCER',
-          about: '',
-          bio: '',
-          skills: [],
-          rateMin: 0,
-          rateMax: 0,
-          currency: 'USD',
-          location: '',
-          contactEmail: user.email,
-          contactTelegram: '',
-          avatar: `https://i.pravatar.cc/150?u=${user.id}`
-        });
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      setProfile({
-        name: user.email?.split('@')[0] || 'Пользователь',
-        email: user.email,
-        headline: 'Фрилансер',
-        role: 'FREELANCER',
-        about: '',
-        bio: '',
-        skills: [],
-        rateMin: 0,
-        rateMax: 0,
-        currency: 'USD',
-        location: '',
-        contactEmail: user.email,
-        contactTelegram: '',
-        avatar: `https://i.pravatar.cc/150?u=${user.id}`
-      });
-    } finally {
-      setProfileLoading(false);
-    }
-  };
+  }, [user, tab]);
 
   const loadUserMarketItems = async () => {
     if (!user) return;
 
     setLoadingMarket(true);
     try {
-      const { data: ordersData } = await getSupabase()
+      const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      const { data: tasksData } = await getSupabase()
+      const { data: tasksData } = await supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
@@ -154,7 +89,7 @@ export default function ProfilePage() {
   const loadPortfolioProjects = async () => {
     if (!user) return;
 
-    const { data } = await getSupabase()
+    const { data } = await supabase
       .from('portfolio_projects')
       .select('*')
       .eq('user_id', user.id)
@@ -177,14 +112,14 @@ export default function ProfilePage() {
     const newVotes = new Set(helpfulVotes);
     if (newVotes.has(reviewId)) {
       newVotes.delete(reviewId);
-      await getSupabase()
+      await supabase
         .from('review_helpful_votes')
         .delete()
         .eq('review_id', reviewId)
         .eq('user_id', user.id);
     } else {
       newVotes.add(reviewId);
-      await getSupabase()
+      await supabase
         .from('review_helpful_votes')
         .insert({
           review_id: reviewId,
@@ -200,35 +135,9 @@ export default function ProfilePage() {
     setPreviewOpen(true);
   };
 
-  const saveProfile = async (p: any) => {
-    if (!user) return;
-
-    try {
-      const { error } = await getSupabase()
-        .from('profiles')
-        .update({
-          name: p.name,
-          headline: p.headline,
-          about: p.about,
-          bio: p.bio,
-          skills: p.skills,
-          rate_min: p.rateMin,
-          rate_max: p.rateMax,
-          currency: p.currency,
-          location: p.location,
-          contact_telegram: p.contactTelegram,
-          avatar_url: p.avatar
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      setProfile(p);
-      return true;
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      return false;
-    }
+  const saveProfile = (p: typeof profile) => {
+    setProfile(p);
+    if (typeof window !== 'undefined') localStorage.setItem('fh_profile', JSON.stringify(p));
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,53 +223,10 @@ export default function ProfilePage() {
       contactTelegram: String(fd.get('contactTelegram') || ''),
       avatar: uploadedAvatarUrl
     };
-    const saved = await saveProfile(next);
-    if (saved !== false) {
-      alert('Профиль обновлён');
-      setTab('about');
-    } else {
-      alert('Ошибка при сохранении профиля');
-    }
+    saveProfile(next);
+    alert('Профиль обновлён');
+    setTab('about');
   };
-
-  if (profileLoading) {
-    return (
-      <motion.div
-        key="profile-loading"
-        initial="initial"
-        animate="in"
-        exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
-        className="min-h-screen bg-background flex items-center justify-center"
-      >
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-[#6FE7C8] mx-auto mb-4" />
-          <p className="text-[#3F7F6E]">Загрузка профиля...</p>
-        </div>
-      </motion.div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <motion.div
-        key="profile-error"
-        initial="initial"
-        animate="in"
-        exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
-        className="min-h-screen bg-background flex items-center justify-center"
-      >
-        <div className="text-center">
-          <p className="text-xl font-semibold mb-2">Ошибка загрузки профиля</p>
-          <p className="text-[#3F7F6E] mb-4">Попробуйте обновить страницу</p>
-          <Button onClick={() => window.location.reload()}>Обновить</Button>
-        </div>
-      </motion.div>
-    );
-  }
 
   return (
     <AnimatePresence mode="wait">
