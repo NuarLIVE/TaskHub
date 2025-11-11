@@ -238,6 +238,10 @@ export default function WalletPage() {
     setProcessing(true);
 
     try {
+      // Сбросить старое состояние перед созданием нового платежа
+      setClientSecret(null);
+      setPendingPaymentIntentId(null);
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await getSupabase().auth.getSession();
 
@@ -300,23 +304,31 @@ export default function WalletPage() {
         console.error('Error processing payment:', error);
       }
 
-      setShowDepositModal(false);
-      setDepositAmount('');
-      setClientSecret(null);
-
       // Немедленно обновить данные
       await loadWalletData();
       await loadEntries();
 
+      // Сбросить состояние
+      setShowDepositModal(false);
+      setDepositAmount('');
+      setClientSecret(null);
+      setPendingPaymentIntentId(null);
+
       alert('Платеж успешно обработан! Баланс обновлён.');
     } catch (error) {
       console.error('Error in handlePaymentSuccess:', error);
+      // Всё равно сбросить состояние
+      setShowDepositModal(false);
+      setDepositAmount('');
+      setClientSecret(null);
+      setPendingPaymentIntentId(null);
       alert('Платеж выполнен, но произошла ошибка при обновлении баланса. Пожалуйста, обновите страницу.');
     }
   };
 
   const handlePaymentCancel = () => {
     setClientSecret(null);
+    setPendingPaymentIntentId(null);
   };
 
   const handleWithdraw = async () => {
@@ -588,6 +600,7 @@ export default function WalletPage() {
                     setShowDepositModal(false);
                     setClientSecret(null);
                     setDepositAmount('');
+                    setPendingPaymentIntentId(null);
                   }} className="hover:opacity-70 transition">
                     <X className="h-5 w-5" />
                   </button>
@@ -621,7 +634,10 @@ export default function WalletPage() {
                         {processing ? 'Создание...' : 'Продолжить'}
                       </Button>
                       <Button
-                        onClick={() => setShowDepositModal(false)}
+                        onClick={() => {
+                          setShowDepositModal(false);
+                          setDepositAmount('');
+                        }}
                         variant="outline"
                         className="flex-1"
                         disabled={processing}
@@ -631,7 +647,7 @@ export default function WalletPage() {
                     </div>
                   </>
                 ) : (
-                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
                     <CheckoutForm
                       onSuccess={() => {
                         if (pendingPaymentIntentId) {
