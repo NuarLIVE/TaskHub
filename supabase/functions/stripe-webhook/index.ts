@@ -107,24 +107,34 @@ Deno.serve(async (req: Request) => {
 });
 
 async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe.PaymentIntent) {
-  console.log("=== Processing payment_intent.succeeded ===");
-  console.log("Payment Intent ID:", paymentIntent.id);
-  console.log("Amount:", paymentIntent.amount);
-  console.log("Metadata:", paymentIntent.metadata);
+  const piId = paymentIntent.id;
+  console.log(`[PROCESS-PI] id=${piId} status=${paymentIntent.status}`);
 
   const userId = paymentIntent.metadata.user_id;
 
   if (!userId) {
-    console.error("❌ No user_id in payment intent metadata");
+    console.error(`[PROCESS-PI] Missing user_id in metadata for pi=${piId}`);
+    return;
+  }
+
+  console.log(`[PROCESS-PI] user=${userId} amount=${paymentIntent.amount}`);
+
+  const { data: existingEntry } = await supabase
+    .from("ledger_entries")
+    .select("id")
+    .eq("stripe_pi_id", piId)
+    .eq("ref_type", "DEPOSIT")
+    .maybeSingle();
+
+  if (existingEntry) {
+    console.log(`[IDEMPOTENT SKIP] pi=${piId}`);
     return;
   }
 
   const amountCents = paymentIntent.amount;
   const journalId = crypto.randomUUID();
 
-  console.log(`Processing deposit for user ${userId}: ${amountCents} cents`);
-
-  const { data: account, error: accountError } = await supabase
+  let { data: account } = await supabase
     .from("ledger_accounts")
     .select("id, balance_cents")
     .eq("user_id", userId)
@@ -132,16 +142,7 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
     .eq("currency", "USD")
     .maybeSingle();
 
-  if (accountError) {
-    console.error("❌ Error fetching account:", accountError);
-    throw accountError;
-  }
-
-  let accountId: string;
-  let currentBalance: number;
-
   if (!account) {
-    console.log("Creating new account for user");
     const { data: newAccount, error: createError } = await supabase
       .from("ledger_accounts")
       .insert({ user_id: userId, kind: "available", currency: "USD", balance_cents: 0 })
@@ -149,48 +150,53 @@ async function handlePaymentIntentSucceeded(supabase: any, paymentIntent: Stripe
       .single();
 
     if (createError) {
-      console.error("❌ Error creating account:", createError);
+      console.error("[LEDGER UPSERT] Error creating account:", createError);
       throw createError;
     }
 
-    accountId = newAccount.id;
-    currentBalance = newAccount.balance_cents;
-    console.log("✅ Created new account:", accountId);
-  } else {
-    accountId = account.id;
-    currentBalance = account.balance_cents;
-    console.log("✅ Found existing account:", accountId, "with balance:", currentBalance);
+    account = newAccount;
+    console.log(`[LEDGER UPSERT] Created new account for user=${userId}`);
   }
 
   const { error: entryError } = await supabase.from("ledger_entries").insert({
     journal_id: journalId,
-    account_id: accountId,
+    account_id: account.id,
     amount_cents: amountCents,
     ref_type: "DEPOSIT",
-    ref_id: paymentIntent.id,
-    metadata: { payment_intent_id: paymentIntent.id, user_id: userId },
+    ref_id: piId,
+    stripe_pi_id: piId,
+    metadata: {
+      payment_intent_id: piId,
+      user_id: userId,
+      deposit_id: paymentIntent.metadata.deposit_id,
+      origin: paymentIntent.metadata.origin,
+      source: "webhook"
+    },
   });
 
   if (entryError) {
-    console.error("❌ Error creating ledger entry:", entryError);
+    if (entryError.code === '23505') {
+      console.log(`[IDEMPOTENT SKIP] pi=${piId} (constraint)`);
+      return;
+    }
+    console.error("[LEDGER UPSERT] Error creating ledger entry:", entryError);
     throw entryError;
   }
 
-  console.log("✅ Created ledger entry");
+  console.log(`[LEDGER UPSERT] user=${userId} amount=${amountCents}`);
 
-  const newBalance = currentBalance + amountCents;
+  const newBalance = account.balance_cents + amountCents;
   const { error: updateError } = await supabase
     .from("ledger_accounts")
     .update({ balance_cents: newBalance })
-    .eq("id", accountId);
+    .eq("id", account.id);
 
   if (updateError) {
-    console.error("❌ Error updating balance:", updateError);
+    console.error("[LEDGER UPSERT] Error updating balance:", updateError);
     throw updateError;
   }
 
-  console.log(`✅ Updated balance from ${currentBalance} to ${newBalance}`);
-  console.log(`✅ Successfully deposited ${amountCents} cents to user ${userId}`);
+  console.log(`[DEPOSIT] user=${userId} pi=${piId} amount=${amountCents} credited`);
 }
 
 async function handlePaymentIntentFailed(supabase: any, paymentIntent: Stripe.PaymentIntent) {

@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, X-Internal-Token",
 };
 
 Deno.serve(async (req: Request) => {
@@ -17,24 +17,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const internalToken = req.headers.get("X-Internal-Token");
+    const expectedToken = Deno.env.get("INTERNAL_TOKEN");
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    if (!internalToken || !expectedToken || internalToken !== expectedToken) {
+      console.error("[PROCESS-PI] Missing or invalid internal token");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -50,7 +37,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`[POST-PROCESS] Starting for user=${user.id} pi=${paymentIntentId}`);
+    console.log(`[PROCESS-PI] id=${paymentIntentId}`);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2024-12-18.acacia",
@@ -58,29 +45,34 @@ Deno.serve(async (req: Request) => {
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-    console.log(`[POST-PROCESS] Retrieved PI status=${paymentIntent.status}`);
+    console.log(`[PROCESS-PI] status=${paymentIntent.status}`);
 
     const allowedStatuses = ["succeeded", "processing", "requires_capture"];
     if (!allowedStatuses.includes(paymentIntent.status)) {
-      console.log(`[POST-PROCESS] Invalid status: ${paymentIntent.status}`);
+      console.log(`[PROCESS-PI] Invalid status: ${paymentIntent.status}`);
       return new Response(
         JSON.stringify({ error: "Payment not in valid state", status: paymentIntent.status }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (paymentIntent.metadata.user_id !== user.id) {
-      console.log(`[POST-PROCESS] User mismatch: expected=${user.id} got=${paymentIntent.metadata.user_id}`);
+    const userId = paymentIntent.metadata.user_id;
+
+    if (!userId) {
+      console.error(`[PROCESS-PI] Missing user_id in metadata for pi=${paymentIntentId}`);
       return new Response(
-        JSON.stringify({ error: "Payment does not belong to user" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Missing user_id in payment metadata" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`[PROCESS-PI] user=${userId} amount=${paymentIntent.amount}`);
 
-    const { data: existingEntry } = await supabaseService
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: existingEntry } = await supabase
       .from("ledger_entries")
       .select("id")
       .eq("stripe_pi_id", paymentIntentId)
@@ -88,9 +80,9 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (existingEntry) {
-      console.log(`[POST-PROCESS] Already processed pi=${paymentIntentId}`);
+      console.log(`[IDEMPOTENT SKIP] pi=${paymentIntentId}`);
       return new Response(
-        JSON.stringify({ success: true, message: "Already processed" }),
+        JSON.stringify({ credited: true, message: "Already processed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -98,67 +90,75 @@ Deno.serve(async (req: Request) => {
     const amountCents = paymentIntent.amount;
     const journalId = crypto.randomUUID();
 
-    let { data: account } = await supabaseService
+    let { data: account } = await supabase
       .from("ledger_accounts")
       .select("id, balance_cents")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("kind", "available")
       .eq("currency", "USD")
       .maybeSingle();
 
     if (!account) {
-      const { data: newAccount, error: createError } = await supabaseService
+      const { data: newAccount, error: createError } = await supabase
         .from("ledger_accounts")
-        .insert({ user_id: user.id, kind: "available", currency: "USD", balance_cents: 0 })
+        .insert({ user_id: userId, kind: "available", currency: "USD", balance_cents: 0 })
         .select("id, balance_cents")
         .single();
 
       if (createError) {
-        console.error("Error creating account:", createError);
+        console.error("[LEDGER UPSERT] Error creating account:", createError);
         throw createError;
       }
 
       account = newAccount;
+      console.log(`[LEDGER UPSERT] Created new account for user=${userId}`);
     }
 
-    const { error: entryError } = await supabaseService.from("ledger_entries").insert({
+    const { error: entryError } = await supabase.from("ledger_entries").insert({
       journal_id: journalId,
       account_id: account.id,
       amount_cents: amountCents,
       ref_type: "DEPOSIT",
       ref_id: paymentIntentId,
       stripe_pi_id: paymentIntentId,
-      metadata: { payment_intent_id: paymentIntentId, user_id: user.id, source: "frontend", deposit_id: paymentIntent.metadata.deposit_id },
+      metadata: {
+        payment_intent_id: paymentIntentId,
+        user_id: userId,
+        deposit_id: paymentIntent.metadata.deposit_id,
+        origin: paymentIntent.metadata.origin
+      },
     });
 
     if (entryError) {
-      console.error("Error creating ledger entry:", entryError);
+      console.error("[LEDGER UPSERT] Error creating ledger entry:", entryError);
       throw entryError;
     }
 
+    console.log(`[LEDGER UPSERT] user=${userId} amount=${amountCents}`);
+
     const newBalance = account.balance_cents + amountCents;
-    const { error: updateError } = await supabaseService
+    const { error: updateError } = await supabase
       .from("ledger_accounts")
       .update({ balance_cents: newBalance })
       .eq("id", account.id);
 
     if (updateError) {
-      console.error("Error updating balance:", updateError);
+      console.error("[LEDGER UPSERT] Error updating balance:", updateError);
       throw updateError;
     }
 
-    console.log(`[DEPOSIT] Credited user=${user.id} pi=${paymentIntentId} amount=${amountCents} new_balance=${newBalance}`);
+    console.log(`[DEPOSIT] user=${userId} pi=${paymentIntentId} amount=${amountCents} credited`);
 
     return new Response(
       JSON.stringify({
-        success: true,
+        credited: true,
         amount_cents: amountCents,
         new_balance_cents: newBalance
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Process payment error:", error);
+    console.error("[PROCESS-PI] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

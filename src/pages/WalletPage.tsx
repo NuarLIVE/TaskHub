@@ -234,24 +234,42 @@ export default function WalletPage() {
         console.log('[3DS RETURN] Payment succeeded, processing...');
 
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const { data: { session } } = await getSupabase().auth.getSession();
+        const internalToken = import.meta.env.VITE_INTERNAL_TOKEN;
 
-        if (session) {
-          await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              paymentIntentId: paymentIntent.id,
-            }),
-          });
+        if (!internalToken) {
+          console.error('[3DS RETURN] Missing internal token');
+          alert('Configuration error');
+          return;
+        }
 
-          await loadWalletData();
-          await loadEntries();
+        console.log('[POSTPROCESS request] id=' + paymentIntent.id);
 
-          alert('Платеж успешно обработан! Баланс обновлён.');
+        const response = await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Token': internalToken,
+          },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[POSTPROCESS ok]', result);
+
+          if (result.credited) {
+            await loadWalletData();
+            await loadEntries();
+
+            const amountDollars = (result.amount_cents / 100).toFixed(2);
+            alert(`Зачислено $${amountDollars}`);
+          }
+        } else {
+          const error = await response.json();
+          console.error('[POSTPROCESS] Error:', error);
+          alert('Ошибка обработки платежа. Пожалуйста, обновите страницу.');
         }
       } else {
         console.log('[3DS RETURN] Payment not succeeded, status:', paymentIntent.status);
@@ -367,25 +385,22 @@ export default function WalletPage() {
   };
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
-    console.log('[PAYMENT SUCCESS] Starting post-processing for pi:', paymentIntentId);
+    console.log('[POSTPROCESS request] id=' + paymentIntentId);
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session } } = await getSupabase().auth.getSession();
+      const internalToken = import.meta.env.VITE_INTERNAL_TOKEN;
 
-      if (!session) {
-        console.error('[PAYMENT SUCCESS] No session found');
-        alert('Необходимо авторизоваться');
-        return;
+      if (!internalToken) {
+        console.error('[POSTPROCESS] Missing internal token');
+        throw new Error('Configuration error');
       }
-
-      console.log('[PAYMENT SUCCESS] Calling process-payment-success function');
 
       const response = await fetch(`${supabaseUrl}/functions/v1/process-payment-success`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'X-Internal-Token': internalToken,
         },
         body: JSON.stringify({
           paymentIntentId,
@@ -394,25 +409,34 @@ export default function WalletPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('[PAYMENT SUCCESS] Error from function:', error);
-      } else {
-        const result = await response.json();
-        console.log('[PAYMENT SUCCESS] Function result:', result);
+        console.error('[POSTPROCESS] Error from function:', error);
+        throw new Error(error.error || 'Post-processing failed');
       }
 
-      console.log('[PAYMENT SUCCESS] Reloading wallet data');
+      const result = await response.json();
+      console.log('[POSTPROCESS ok]', result);
+
+      if (!result.credited) {
+        console.error('[POSTPROCESS] Payment not credited');
+        throw new Error('Payment not credited');
+      }
+
+      // Wait for credited confirmation before proceeding
+      const amountDollars = (result.amount_cents / 100).toFixed(2);
+
+      // Reload wallet data
       await loadWalletData();
       await loadEntries();
 
+      // Reset form state
       setShowDepositModal(false);
       setDepositAmount('');
       setClientSecret(null);
       setPendingPaymentIntentId(null);
 
-      console.log('[PAYMENT SUCCESS] Completed successfully');
-      alert('Платеж успешно обработан! Баланс обновлён.');
-    } catch (error) {
-      console.error('[PAYMENT SUCCESS] Error:', error);
+      alert(`Зачислено $${amountDollars}`);
+    } catch (error: any) {
+      console.error('[POSTPROCESS] Error:', error);
       setShowDepositModal(false);
       setDepositAmount('');
       setClientSecret(null);
