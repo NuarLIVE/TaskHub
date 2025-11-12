@@ -1680,6 +1680,7 @@ export default function MessagesPage() {
                   userId={user.id}
                   isFreelancer={isFreelancer}
                   chatId={selectedChatId || undefined}
+                  freelancerId={currentDeal.freelancer_id}
                 />
               )}
             </AnimatePresence>

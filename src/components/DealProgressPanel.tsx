@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Send, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSupabase } from '../lib/supabaseClient';
+import { ReviewInChat } from './ReviewInChat';
 
 interface DealProgressPanelProps {
   dealId: string;
   userId: string;
   isFreelancer: boolean;
   chatId?: string;
+  freelancerId?: string;
 }
 
 interface ProgressReport {
@@ -40,7 +42,7 @@ interface Deal {
   chat_id: string | null;
 }
 
-export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId }: DealProgressPanelProps) {
+export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId, freelancerId }: DealProgressPanelProps) {
   const [deal, setDeal] = useState<Deal | null>(null);
   const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
   const [taskItems, setTaskItems] = useState<TaskItem[]>([]);
@@ -53,6 +55,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
   const [showExtensionForm, setShowExtensionForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -63,7 +66,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
 
     const { data: dealData } = await supabase
       .from('deals')
-      .select('current_progress, last_progress_update')
+      .select('current_progress, last_progress_update, status, submitted_at, chat_id')
       .eq('id', dealId)
       .maybeSingle();
 
@@ -224,7 +227,6 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
 
     await loadData();
     setLoading(false);
-    alert('Работа отправлена на проверку');
   };
 
   const handleAcceptWork = async () => {
@@ -266,7 +268,8 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
       console.error('Ошибка при создании системного сообщения:', messageError);
     }
 
-    await loadData();
+    setShowAcceptDialog(false);
+    setShowReviewForm(true);
     setLoading(false);
   };
 
@@ -521,7 +524,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
       </div>
 
       {/* Action Buttons */}
-      {isFreelancer && deal?.status !== 'submitted' && deal?.status !== 'completed' && (
+      {isFreelancer && deal?.status === 'in_progress' && (
         <div className="p-4 border-t border-gray-200 space-y-2 bg-white">
           <button
             onClick={handleSubmitForReview}
@@ -594,9 +597,17 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
       {/* Status Message for Freelancer when submitted */}
       {isFreelancer && deal?.status === 'submitted' && (
         <div className="p-4 border-t border-gray-200 bg-amber-50">
-          <p className="text-sm text-amber-800 text-center font-medium">
-            Заказ сдан на проверку. Ожидайте подтверждения от заказчика.
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-12 h-12 bg-amber-200 rounded-full flex items-center justify-center">
+              <Clock className="w-6 h-6 text-amber-800" />
+            </div>
+            <p className="text-sm text-amber-800 text-center font-medium">
+              Заказ в режиме проверки
+            </p>
+            <p className="text-xs text-amber-700 text-center">
+              Ожидайте решения заказчика
+            </p>
+          </div>
         </div>
       )}
 
@@ -610,8 +621,13 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
       )}
 
       {/* Client Actions when work is submitted */}
-      {!isFreelancer && deal?.status === 'submitted' && (
+      {!isFreelancer && deal?.status === 'submitted' && !showReviewForm && (
         <div className="p-4 border-t border-gray-200 space-y-2 bg-white">
+          <div className="bg-amber-50 p-3 rounded-lg mb-3">
+            <p className="text-sm text-amber-800 text-center font-medium">
+              Работа сдана на проверку. Проверьте результат и примите решение.
+            </p>
+          </div>
           <button
             onClick={() => setShowAcceptDialog(true)}
             disabled={loading}
@@ -624,7 +640,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
             disabled={loading}
             className="w-full bg-white border-2 border-[#3F7F6E] text-[#3F7F6E] py-3 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
           >
-            Запросить доработку
+            Внести правки
           </button>
 
           {/* Confirmation Dialog for Accepting Work */}
@@ -637,7 +653,7 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
               >
                 <h3 className="text-lg font-semibold mb-3">Подтверждение приемки</h3>
                 <p className="text-gray-700 mb-6">
-                  Подтвердите что вы проверили работу полностью.
+                  Подтвердите что вы проверили работу полностью. После этого откроется форма для отзыва.
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -659,6 +675,22 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
                   </button>
                 </div>
               </motion.div>
+            </div>
+          )}
+
+          {/* Review Form after accepting work */}
+          {showReviewForm && freelancerId && (
+            <div className="p-4">
+              <ReviewInChat
+                dealId={dealId}
+                revieweeId={freelancerId}
+                reviewerId={userId}
+                onSubmitted={() => {
+                  setShowReviewForm(false);
+                  alert('Спасибо за отзыв!');
+                  loadData();
+                }}
+              />
             </div>
           )}
         </div>
