@@ -65,6 +65,34 @@ export default function ProfilePage() {
     }
   }, [user, tab]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const supabase = getSupabase();
+
+    const reviewsChannel = supabase
+      .channel('user-reviews')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reviews',
+          filter: `reviewee_id=eq.${user.id}`
+        },
+        () => {
+          if (tab === 'reviews') {
+            loadReviews();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      reviewsChannel.unsubscribe();
+    };
+  }, [user, tab]);
+
   const supabase = getSupabase();
 
   const loadUserMarketItems = async () => {

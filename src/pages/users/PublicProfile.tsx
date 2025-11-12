@@ -49,6 +49,31 @@ export default function PublicProfile() {
     }
   }, [tab, userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    const reviewsChannel = supabase
+      .channel(`reviews-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reviews',
+          filter: `reviewee_id=eq.${userId}`
+        },
+        () => {
+          loadReviews();
+          loadProfile();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      reviewsChannel.unsubscribe();
+    };
+  }, [userId]);
+
   const loadProfile = async () => {
     if (!userId) {
       setLoading(false);
