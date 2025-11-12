@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import PriceDisplay from '@/components/PriceDisplay';
+import ProfileBadges from '@/components/ui/ProfileBadges';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -166,7 +167,7 @@ export default function MyDealsPage() {
         if (allUserIds.length > 0) {
           const { data: profilesData } = await getSupabase()
             .from('profiles')
-            .select('id, name, avatar_url')
+            .select('id, name, avatar_url, avg_rating, reviews_count, five_star_count, created_at')
             .in('id', allUserIds);
           profilesMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
         }
@@ -234,7 +235,7 @@ export default function MyDealsPage() {
             const userIds = Array.from(new Set(allProposalsData.map(p => p.user_id)));
             const { data: profilesData } = await getSupabase()
               .from('profiles')
-              .select('id, name, avatar_url')
+              .select('id, name, avatar_url, avg_rating, reviews_count, five_star_count, created_at')
               .in('id', userIds);
 
             const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -297,7 +298,7 @@ export default function MyDealsPage() {
         const userIds = proposalsData.map(p => p.user_id);
         const { data: profilesData } = await getSupabase()
           .from('profiles')
-          .select('id, name, avatar_url')
+          .select('id, name, avatar_url, avg_rating, reviews_count, five_star_count, created_at')
           .in('id', userIds);
 
         const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -581,12 +582,22 @@ export default function MyDealsPage() {
                               <Card key={proposal.id}>
                                 <CardContent className="p-4">
                                   <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
-                                      <Badge variant="outline">
-                                        <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
-                                      </Badge>
-                                      <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
+                                        <Badge variant="outline">
+                                          <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
+                                        </Badge>
+                                        <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                                      </div>
+                                      <ProfileBadges
+                                        avgRating={proposal.profile?.avg_rating}
+                                        reviewsCount={proposal.profile?.reviews_count}
+                                        fiveStarCount={proposal.profile?.five_star_count}
+                                        createdAt={proposal.profile?.created_at}
+                                        showStars={true}
+                                        compact={true}
+                                      />
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Button
@@ -789,12 +800,22 @@ export default function MyDealsPage() {
                               <Card key={proposal.id}>
                                 <CardContent className="p-4">
                                   <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
-                                      <Badge variant="outline">
-                                        <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
-                                      </Badge>
-                                      <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
+                                        <Badge variant="outline">
+                                          <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
+                                        </Badge>
+                                        <Badge variant="outline">{proposal.delivery_days} дней</Badge>
+                                      </div>
+                                      <ProfileBadges
+                                        avgRating={proposal.profile?.avg_rating}
+                                        reviewsCount={proposal.profile?.reviews_count}
+                                        fiveStarCount={proposal.profile?.five_star_count}
+                                        createdAt={proposal.profile?.created_at}
+                                        showStars={true}
+                                        compact={true}
+                                      />
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Button

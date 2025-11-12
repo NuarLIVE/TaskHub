@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ProfileBadges from '@/components/ui/ProfileBadges';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -66,7 +67,7 @@ export default function ProposalsPage() {
             if (!profiles[newProposal.user_id]) {
               const { data: profileData } = await getSupabase()
                 .from('profiles')
-                .select('id, name, avatar_url')
+                .select('id, name, avatar_url, avg_rating, reviews_count, five_star_count, created_at')
                 .eq('id', newProposal.user_id)
                 .single();
               if (profileData) {
@@ -169,7 +170,7 @@ export default function ProposalsPage() {
       if (allUserIds.size > 0) {
         const { data: profilesData } = await getSupabase()
           .from('profiles')
-          .select('id, name, avatar_url')
+          .select('id, name, avatar_url, avg_rating, reviews_count, five_star_count, created_at')
           .in('id', Array.from(allUserIds));
 
         const profilesMap: Record<string, any> = {};
@@ -579,6 +580,16 @@ export default function ProposalsPage() {
                           <div className="text-sm text-[#3F7F6E]">
                             {activeTab === 'sent' && getItemOwnerId(proposal) && `Заказчик: ${profiles[getItemOwnerId(proposal)]?.name || 'Пользователь'}`}
                           </div>
+                          {activeTab === 'received' && (
+                            <ProfileBadges
+                              avgRating={profiles[proposal.user_id]?.avg_rating}
+                              reviewsCount={profiles[proposal.user_id]?.reviews_count}
+                              fiveStarCount={profiles[proposal.user_id]?.five_star_count}
+                              createdAt={profiles[proposal.user_id]?.created_at}
+                              showStars={true}
+                              compact={true}
+                            />
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-[#3F7F6E]">
