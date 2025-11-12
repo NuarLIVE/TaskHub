@@ -280,7 +280,7 @@ export default function TaskCreatePage() {
                 </div>
                 <div className="flex justify-end items-center pt-2">
                   <div className="flex gap-3">
-                    <Button type="button" variant="ghost" asChild><a href="#/">Отменить</a></Button>
+                    <Button type="button" variant="ghost" asChild><a href="#/market">Отменить</a></Button>
                     <Button type="submit" disabled={loading}>{loading ? 'Публикация...' : 'Опубликовать'}</Button>
                   </div>
                 </div>

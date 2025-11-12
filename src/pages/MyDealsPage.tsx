@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -564,13 +564,20 @@ export default function MyDealsPage() {
                         </>
                       )}
                     </Button>
-                    {expandedItem === order.id && proposals[order.id] && (
-                      <div className="mt-4 space-y-3 border-t pt-4">
-                        {proposals[order.id].length === 0 ? (
-                          <p className="text-sm text-[#3F7F6E] text-center">Откликов пока нет</p>
-                        ) : (
-                          <>
-                            {getPaginatedProposals(order.id).map((proposal) => (
+                    <AnimatePresence>
+                      {expandedItem === order.id && proposals[order.id] && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="mt-4 space-y-3 border-t pt-4 overflow-hidden"
+                        >
+                          {proposals[order.id].length === 0 ? (
+                            <p className="text-sm text-[#3F7F6E] text-center">Откликов пока нет</p>
+                          ) : (
+                            <>
+                              {getPaginatedProposals(order.id).map((proposal) => (
                               <Card key={proposal.id}>
                                 <CardContent className="p-4">
                                   <div className="flex justify-between items-start mb-2">
@@ -618,9 +625,9 @@ export default function MyDealsPage() {
                                   )}
                                 </CardContent>
                               </Card>
-                            ))}
-                            {getTotalPages(order.id) > 1 && (
-                              <div className="flex items-center justify-center gap-2 pt-2">
+                              ))}
+                              {getTotalPages(order.id) > 1 && (
+                                <div className="flex items-center justify-center gap-2 pt-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -641,11 +648,12 @@ export default function MyDealsPage() {
                                   <ChevronRight className="h-4 w-4" />
                                 </Button>
                               </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                              )}
+                            </>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </CardContent>
                 </Card>
               ))
@@ -764,13 +772,20 @@ export default function MyDealsPage() {
                         </>
                       )}
                     </Button>
-                    {expandedItem === task.id && proposals[task.id] && (
-                      <div className="mt-4 space-y-3 border-t pt-4">
-                        {proposals[task.id].length === 0 ? (
-                          <p className="text-sm text-[#3F7F6E] text-center">Заказов пока нет</p>
-                        ) : (
-                          <>
-                            {getPaginatedProposals(task.id).map((proposal) => (
+                    <AnimatePresence>
+                      {expandedItem === task.id && proposals[task.id] && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          className="mt-4 space-y-3 border-t pt-4 overflow-hidden"
+                        >
+                          {proposals[task.id].length === 0 ? (
+                            <p className="text-sm text-[#3F7F6E] text-center">Заказов пока нет</p>
+                          ) : (
+                            <>
+                              {getPaginatedProposals(task.id).map((proposal) => (
                               <Card key={proposal.id}>
                                 <CardContent className="p-4">
                                   <div className="flex justify-between items-start mb-2">
@@ -841,11 +856,12 @@ export default function MyDealsPage() {
                                   <ChevronRight className="h-4 w-4" />
                                 </Button>
                               </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                              )}
+                            </>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </CardContent>
                 </Card>
               ))
