@@ -53,6 +53,7 @@ function App() {
       const hash = window.location.hash.slice(1) || '/';
       const routeWithoutQuery = hash.split('?')[0];
       setRoute(routeWithoutQuery);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     window.addEventListener('hashchange', handleHashChange);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, DollarSign, Upload, X } from 'lucide-react';
+import { Clock, DollarSign, Upload, X, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,6 +36,34 @@ export default function TaskCreatePage() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [price, setPrice] = useState('');
   const [priceError, setPriceError] = useState('');
+  const [useBoost, setUseBoost] = useState(false);
+  const [boostedTasksCount, setBoostedTasksCount] = useState(0);
+  const [showBoostInfo, setShowBoostInfo] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      loadBoostedTasksCount();
+    }
+  }, [user]);
+
+  const loadBoostedTasksCount = async () => {
+    if (!user) return;
+
+    try {
+      const { count, error } = await getSupabase()
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .eq('is_boosted', true);
+
+      if (!error) {
+        setBoostedTasksCount(count || 0);
+      }
+    } catch (error) {
+      console.error('Error loading boosted tasks count:', error);
+    }
+  };
 
   const validatePrice = () => {
     const priceNum = Number(price);
@@ -138,7 +166,9 @@ export default function TaskCreatePage() {
         delivery_days: Number(fd.get('delivery_days')),
         tags,
         features,
-        status: 'active'
+        status: 'active',
+        is_boosted: useBoost,
+        boost_commission_rate: useBoost ? 25.00 : 0.00
       })
       .select()
       .single();
@@ -244,6 +274,56 @@ export default function TaskCreatePage() {
                 {priceError && (
                   <p className="text-sm text-red-500 -mt-2">{priceError}</p>
                 )}
+
+                <div className={`relative p-4 rounded-lg border-2 transition ${
+                  boostedTasksCount >= 3 ? 'bg-gray-100 border-gray-300 opacity-50 cursor-not-allowed' : 'bg-gradient-to-r from-[#6FE7C8]/10 to-[#3F7F6E]/10 border-[#6FE7C8]'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="use-boost"
+                      checked={useBoost}
+                      onChange={(e) => setUseBoost(e.target.checked)}
+                      disabled={boostedTasksCount >= 3}
+                      className="mt-1 h-4 w-4 rounded border-[#3F7F6E] text-[#6FE7C8] focus:ring-[#6FE7C8] disabled:opacity-50"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="use-boost"
+                        className={`font-medium text-sm flex items-center gap-2 ${
+                          boostedTasksCount >= 3 ? 'text-gray-500' : 'text-[#3F7F6E] cursor-pointer'
+                        }`}
+                      >
+                        Использовать продвижение
+                        <div
+                          className="relative"
+                          onMouseEnter={() => setShowBoostInfo(true)}
+                          onMouseLeave={() => setShowBoostInfo(false)}
+                        >
+                          <div className="h-5 w-5 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs cursor-help">
+                            <Info className="h-3 w-3" />
+                          </div>
+                          {showBoostInfo && (
+                            <div className="absolute left-0 top-6 z-50 w-72 p-3 bg-white border border-[#6FE7C8] rounded-lg shadow-lg text-xs text-gray-700 leading-relaxed">
+                              Ваше объявление получит ленточку &quot;Продвижение&quot; и будет поднято вверх списка объявлений в категории при публикации, но процентная ставка по заказу будет повышена до 25%. В целях сокращения продвинутых объявлений вы можете поставить данную опцию только на 3 ваших объявления
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                      {boostedTasksCount >= 3 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          У вас уже 3 активных объявления с продвижением. Отключите продвижение на одном из них, чтобы активировать здесь.
+                        </p>
+                      )}
+                      {useBoost && boostedTasksCount < 3 && (
+                        <p className="text-xs text-[#3F7F6E] mt-1">
+                          Комиссия платформы будет составлять 25% вместо стандартной ставки
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-sm font-medium mb-2 block">Вложение (необязательно)</label>
                   <div className="relative">
