@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Clock, ChevronLeft, ChevronRight, Loader2, AlertCircle, ShoppingCart } from 'lucide-react';
+import { Search, X, Clock, ChevronLeft, ChevronRight, Loader2, AlertCircle, ShoppingCart, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -355,11 +355,34 @@ export default function MarketPage() {
         className="min-h-screen bg-background"
       >
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Биржа</h1>
-            <div className="flex gap-2">
-              <Button variant={activeTab === 'orders' ? 'default' : 'ghost'} onClick={() => setActiveTab('orders')}>Заказы</Button>
-              <Button variant={activeTab === 'tasks' ? 'default' : 'ghost'} onClick={() => setActiveTab('tasks')}>Tasks</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex gap-2">
+                <Button variant={activeTab === 'orders' ? 'default' : 'ghost'} onClick={() => setActiveTab('orders')}>Заказы</Button>
+                <Button variant={activeTab === 'tasks' ? 'default' : 'ghost'} onClick={() => setActiveTab('tasks')}>Tasks</Button>
+              </div>
+              {user && (
+                <div className="flex gap-2">
+                  {activeTab === 'orders' ? (
+                    <Button
+                      onClick={() => window.location.hash = '/orders/new'}
+                      className="bg-[#3F7F6E] hover:bg-[#2F6F5E] text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Создать заказ
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => window.location.hash = '/tasks/new'}
+                      className="bg-[#3F7F6E] hover:bg-[#2F6F5E] text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Создать объявление
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
