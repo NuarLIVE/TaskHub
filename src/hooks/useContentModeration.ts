@@ -29,10 +29,13 @@ export function useContentModeration({
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const checkContent = useCallback(async (content: string): Promise<ModerationResult | null> => {
-    if (!content.trim()) {
+    const trimmedContent = content?.trim() || '';
+
+    if (!trimmedContent) {
       setIsBlocked(false);
       setBlockMessage('');
       setModerationError(null);
+      setIsChecking(false);
       return null;
     }
 
@@ -95,6 +98,15 @@ export function useContentModeration({
   const checkContentDebounced = useCallback((content: string) => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
+    }
+
+    const trimmedContent = content?.trim() || '';
+    if (!trimmedContent) {
+      setIsBlocked(false);
+      setBlockMessage('');
+      setModerationError(null);
+      setIsChecking(false);
+      return;
     }
 
     debounceTimer.current = setTimeout(() => {
