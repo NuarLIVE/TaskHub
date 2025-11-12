@@ -117,30 +117,24 @@ function moderateContent(content: string): ModerationResult {
     }
   }
 
-  const externalPlatformPatterns = [
-    /\b(telegram|телеграм|телега|tg|whatsapp|ватсап|вотсап|viber|вайбер|skype|скайп|discord|дискорд)\b/gi,
-    /\b(переходи|перейди|пиши|напиши|звони|позвони)\s+(в|на|мне)\s+(telegram|телеграм|whatsapp|viber|skype|discord)/gi,
-    /@\w+/g,
-  ];
+  if (/\b(telegram|телеграм|телега|tg|whatsapp|ватсап|вотсап|viber|вайбер|skype|скайп|discord|дискорд)\b/gi.test(content)) {
+    reasons.push('external_platform');
+    maxConfidence = Math.max(maxConfidence, 0.90);
+  }
 
-  for (const pattern of externalPlatformPatterns) {
-    const matches = contentLower.match(pattern);
-    if (matches) {
-      if (matches.some(m => m.startsWith('@') && m.length > 1)) {
-        reasons.push('external_platform');
-        maxConfidence = Math.max(maxConfidence, 0.85);
-        break;
-      } else if (matches.length >= 2) {
-        reasons.push('external_platform');
-        maxConfidence = Math.max(maxConfidence, 0.80);
-        break;
-      }
-    }
+  if (/@[a-zA-Z0-9_]{3,}/g.test(content)) {
+    reasons.push('external_platform');
+    maxConfidence = Math.max(maxConfidence, 0.85);
+  }
+
+  if (/\b(переходи|перейди|пиши|напиши|звони|позвони)\s+(в|на|мне)\s+(telegram|телеграм|whatsapp|viber|skype|discord)/gi.test(content)) {
+    reasons.push('external_platform');
+    maxConfidence = Math.max(maxConfidence, 0.95);
   }
 
   const phonePatterns = [
-    /\+?[78]\s?[-(]?\d{3}[)-]?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}/g,
-    /\+?\d{1,3}[-\s]?\(?\d{2,4}\)?[-\s]?\d{2,4}[-\s]?\d{2,4}[-\s]?\d{2,4}/g,
+    /\+?[78][-\s]?\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{2}[-\s]?\d{2}/g,
+    /\+?\d{10,15}/g,
     /\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/g,
     /\b\d{5}[-\s]?\d{5}\b/g,
   ];
@@ -154,7 +148,7 @@ function moderateContent(content: string): ModerationResult {
       });
       if (hasEnoughDigits) {
         reasons.push('phone_number');
-        maxConfidence = Math.max(maxConfidence, 0.90);
+        maxConfidence = Math.max(maxConfidence, 0.95);
         break;
       }
     }
@@ -189,18 +183,38 @@ function moderateContent(content: string): ModerationResult {
     }
   }
 
+  const drugsPatterns = [
+    /\b(кокаин|cocaine|героин|heroin|мефедрон|mephedrone|амфетамин|amphetamine|спайс|spice|марихуана|marijuana|гашиш|hashish|lsd|экстази|ecstasy|mdma)\w*/gi,
+    /\b(наркотик|drug|дурь|трава|план|stuff|weed|joint)\w*/gi,
+    /\b(курительн|смеси|миксы|закладк|закладки)\w*/gi,
+    /\b(соль|альфа|мет|бошки|шишки|твердый|мягкий)\b/gi,
+  ];
+
+  for (const pattern of drugsPatterns) {
+    if (pattern.test(contentLower)) {
+      reasons.push('drugs');
+      maxConfidence = Math.max(maxConfidence, 0.95);
+      break;
+    }
+  }
+
   const flagged = reasons.length > 0;
   let action: 'none' | 'warning' | 'blocked' = 'none';
   let message = '';
 
   if (flagged) {
+    if (reasons.includes('drugs')) {
+      action = 'blocked';
+      message = 'Объявление содержит запрещённый контент связанный с наркотиками. Пожалуйста, измените его содержание или напишите в поддержку.';
+    }
+
     if (reasons.includes('sexual_content')) {
       action = 'blocked';
       message = 'Объявление содержит запрещённый контент сексуального характера. Пожалуйста, измените его содержание или напишите в поддержку.';
     }
 
     if (reasons.includes('profanity')) {
-      action = reasons.includes('sexual_content') ? 'blocked' : 'blocked';
+      action = 'blocked';
       message = 'Объявление содержит ненормативную лексику. Пожалуйста, измените его содержание или напишите в поддержку.';
     }
 
