@@ -21,6 +21,7 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 export default function PublicProfile() {
   const { user: currentUser } = useAuth();
   const userId = window.location.hash.split('/').pop() || '';
+  const supabase = getSupabase();
 
   const [tab, setTab] = useState('portfolio');
   const [profile, setProfile] = useState<any>(null);
@@ -142,7 +143,17 @@ export default function PublicProfile() {
     try {
       const { data, error } = await supabase
         .from('reviews')
-        .select('*')
+        .select(`
+          *,
+          reviewer:reviewer_id (
+            id,
+            email
+          ),
+          reviewer_profile:profiles!reviews_reviewer_id_fkey (
+            name,
+            avatar_url
+          )
+        `)
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false });
 
@@ -652,16 +663,25 @@ export default function PublicProfile() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {reviews.map((review) => {
                       const isLiked = reviewLikes[review.id];
-                      const timeAgo = new Date(review.created_at).toLocaleDateString('ru-RU');
+                      const timeAgo = new Date(review.created_at).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      });
+                      const reviewerName = review.reviewer_profile?.name || review.reviewer?.email || 'Заказчик';
+                      const reviewerAvatar = review.reviewer_profile?.avatar_url || `https://i.pravatar.cc/64?u=${review.reviewer_id}`;
+
                       return (
                         <Card key={review.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-6 grid gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                                <span className="text-sm font-medium">👤</span>
-                              </div>
+                              <img
+                                src={reviewerAvatar}
+                                className="h-10 w-10 rounded-full object-cover"
+                                alt={reviewerName}
+                              />
                               <div>
-                                <div className="font-medium">Заказчик</div>
+                                <div className="font-medium">{reviewerName}</div>
                                 <div className="text-xs text-[#3F7F6E]">{timeAgo}</div>
                               </div>
                               <div className="ml-auto flex items-center gap-1 text-emerald-600">
