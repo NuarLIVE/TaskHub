@@ -111,30 +111,27 @@ function moderateContent(content: string): ModerationResult {
   const reasons: string[] = [];
   let maxConfidence = 0;
 
-  const profanityPatterns = [
-    /\b(хуй|пизд|еба|ебл|бля|сука|мудак|гандон|пидор|дерьмо)\w*/gi,
-    /\b(fuck|shit|bitch|asshole|damn|crap|bastard|dick|pussy)\w*/gi,
-  ];
-
-  for (const pattern of profanityPatterns) {
-    if (pattern.test(contentLower)) {
-      reasons.push('profanity');
-      maxConfidence = Math.max(maxConfidence, 0.95);
-      break;
-    }
+  if (/хуй|пизд|еба|ебл|бля|сука|мудак|гандон|пидор|дерьмо/i.test(contentLower)) {
+    reasons.push('profanity');
+    maxConfidence = Math.max(maxConfidence, 0.95);
   }
 
-  if (/\b(telegram|телеграм|телега|tg|whatsapp|ватсап|вотсап|viber|вайбер|skype|скайп|discord|дискорд)\b/gi.test(content)) {
+  if (/fuck|shit|bitch|asshole|damn|crap|bastard|dick|pussy/i.test(contentLower)) {
+    reasons.push('profanity');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/telegram|телеграм|телега|whatsapp|ватсап|вотсап|viber|вайбер|skype|скайп|discord|дискорд/i.test(contentLower)) {
     reasons.push('external_platform');
     maxConfidence = Math.max(maxConfidence, 0.90);
   }
 
-  if (/@[a-zA-Z0-9_]{3,}/g.test(content)) {
+  if (/@[a-zA-Z0-9_]{3,}/.test(content)) {
     reasons.push('external_platform');
     maxConfidence = Math.max(maxConfidence, 0.85);
   }
 
-  if (/\b(переходи|перейди|пиши|напиши|звони|позвони)\s+(в|на|мне)\s+(telegram|телеграм|whatsapp|viber|skype|discord)/gi.test(content)) {
+  if (/(переходи|перейди|пиши|напиши|звони|позвони)\s+(в|на|мне)\s+(telegram|телеграм|whatsapp|viber|skype|discord)/i.test(contentLower)) {
     reasons.push('external_platform');
     maxConfidence = Math.max(maxConfidence, 0.95);
   }
@@ -161,48 +158,59 @@ function moderateContent(content: string): ModerationResult {
     }
   }
 
-  const externalPaymentPatterns = [
-    /\b(оплат|плат|деньг|перевод|перевести|переведи)\w*\s+(мимо|вне|напрямую|через|на)\s+(платформ|сайт|карту|счет|киви|qiwi|paypal|пейпал)/gi,
-    /\b(cash|кэш|наличн|карт|счет|перевод)\w*\s+(напрямую|мимо|вне)\s+(платформ|сайт)/gi,
-    /\b(paypal|пейпал|qiwi|киви|webmoney|вебмани|яндекс\.деньги|yandex\.money)\b/gi,
-  ];
-
-  for (const pattern of externalPaymentPatterns) {
-    if (pattern.test(contentLower)) {
-      reasons.push('external_payment');
-      maxConfidence = Math.max(maxConfidence, 0.85);
-      break;
-    }
+  if (/(оплат|плат|деньг|перевод|перевести|переведи)\w*\s+(мимо|вне|напрямую|через|на)\s+(платформ|сайт|карту|счет|киви|qiwi|paypal|пейпал)/i.test(contentLower)) {
+    reasons.push('external_payment');
+    maxConfidence = Math.max(maxConfidence, 0.85);
   }
 
-  const sexualContentPatterns = [
-    /\b(секс|sex|интим|intimate|голая|голый|nude|naked|порно|porn|xxx|эротик|erotic)\w*/gi,
-    /\b(минет|blowjob|оральн|oral|анал|anal|вагин|vagina|член|penis|грудь|breast|сиськ|tits|жопа|ass|попа|butt)\w*/gi,
-    /\b(проститут|prostitut|эскорт|escort|секс[-\s]?услуг|sex[-\s]?service|интим[-\s]?услуг)\w*/gi,
-    /\b(познаком|встреч|свидан|date|relationship)\w*\s+(для|за|с)\s+(секс|интим|ночь|постел)/gi,
-  ];
-
-  for (const pattern of sexualContentPatterns) {
-    if (pattern.test(contentLower)) {
-      reasons.push('sexual_content');
-      maxConfidence = Math.max(maxConfidence, 0.95);
-      break;
-    }
+  if (/(cash|кэш|наличн|карт|счет|перевод)\w*\s+(напрямую|мимо|вне)\s+(платформ|сайт)/i.test(contentLower)) {
+    reasons.push('external_payment');
+    maxConfidence = Math.max(maxConfidence, 0.85);
   }
 
-  const drugsPatterns = [
-    /\b(кокаин|cocaine|героин|heroin|мефедрон|mephedrone|амфетамин|amphetamine|спайс|spice|марихуана|marijuana|гашиш|hashish|lsd|экстази|ecstasy|mdma)\w*/gi,
-    /\b(наркотик|drug|дурь|трава|план|stuff|weed|joint)\w*/gi,
-    /\b(курительн|смеси|миксы|закладк|закладки)\w*/gi,
-    /\b(соль|альфа|мет|бошки|шишки|твердый|мягкий)\b/gi,
-  ];
+  if (/paypal|пейпал|qiwi|киви|webmoney|вебмани|яндекс\.деньги|yandex\.money/i.test(contentLower)) {
+    reasons.push('external_payment');
+    maxConfidence = Math.max(maxConfidence, 0.85);
+  }
 
-  for (const pattern of drugsPatterns) {
-    if (pattern.test(contentLower)) {
-      reasons.push('drugs');
-      maxConfidence = Math.max(maxConfidence, 0.95);
-      break;
-    }
+  if (/секс|sex|интим|intimate|голая|голый|nude|naked|порно|porn|xxx|эротик|erotic/i.test(contentLower)) {
+    reasons.push('sexual_content');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/минет|blowjob|оральн|oral|анал|anal|вагин|vagina|член|penis|грудь|breast|сиськ|tits|жопа|ass|попа|butt/i.test(contentLower)) {
+    reasons.push('sexual_content');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/проститут|prostitut|эскорт|escort|секс[-\s]?услуг|sex[-\s]?service|интим[-\s]?услуг/i.test(contentLower)) {
+    reasons.push('sexual_content');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/(познаком|встреч|свидан|date|relationship)\w*\s+(для|за|с)\s+(секс|интим|ночь|постел)/i.test(contentLower)) {
+    reasons.push('sexual_content');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/кокаин|cocaine|героин|heroin|мефедрон|mephedrone|амфетамин|amphetamine|спайс|spice|марихуана|marijuana|гашиш|hashish|lsd|экстази|ecstasy|mdma/i.test(contentLower)) {
+    reasons.push('drugs');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/наркотик|drug|дурь|трава|план|stuff|weed|joint/i.test(contentLower)) {
+    reasons.push('drugs');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/курительн|смеси|миксы|закладк|закладки/i.test(contentLower)) {
+    reasons.push('drugs');
+    maxConfidence = Math.max(maxConfidence, 0.95);
+  }
+
+  if (/\b(соль|альфа|мет|бошки|шишки|твердый|мягкий)\b/i.test(contentLower)) {
+    reasons.push('drugs');
+    maxConfidence = Math.max(maxConfidence, 0.95);
   }
 
   const flagged = reasons.length > 0;
