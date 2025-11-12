@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { BoostBadge } from '@/components/ui/BoostBadge';
 import { ProposalLimitIndicator } from '@/components/ui/ProposalLimitIndicator';
 import PriceDisplay from '@/components/PriceDisplay';
+import ProfileBadges from '@/components/ui/ProfileBadges';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -501,6 +502,14 @@ export default function MarketPage() {
                           </div>
                         )}
                         <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
+                        <ProfileBadges
+                          avgRating={profiles[item.user_id]?.avg_rating}
+                          reviewsCount={profiles[item.user_id]?.reviews_count}
+                          fiveStarCount={profiles[item.user_id]?.five_star_count}
+                          createdAt={profiles[item.user_id]?.created_at}
+                          showStars={true}
+                          compact={true}
+                        />
                       </div>
                       {activeTab === 'orders' ? (
                         <PriceDisplay

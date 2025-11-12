@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThumbsUp } from 'lucide-react';
+import ProfileBadges from '@/components/ui/ProfileBadges';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -77,7 +78,11 @@ export default function PublicProfile() {
           location: data.location || '',
           contactEmail: data.email,
           contactTelegram: data.contact_telegram || '',
-          avatar: data.avatar_url || 'https://i.pravatar.cc/150?img=49'
+          avatar: data.avatar_url || 'https://i.pravatar.cc/150?img=49',
+          avgRating: data.avg_rating || 0,
+          reviewsCount: data.reviews_count || 0,
+          fiveStarCount: data.five_star_count || 0,
+          createdAt: data.created_at
         });
       } else {
         setProfile(null);
@@ -309,6 +314,14 @@ export default function PublicProfile() {
                     <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
                   </div>
                 </div>
+                <ProfileBadges
+                  avgRating={profile.avgRating}
+                  reviewsCount={profile.reviewsCount}
+                  fiveStarCount={profile.fiveStarCount}
+                  createdAt={profile.createdAt}
+                  showStars={true}
+                  compact={false}
+                />
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl border p-2">
                     <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
