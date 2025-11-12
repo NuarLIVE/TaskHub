@@ -168,7 +168,7 @@ export default function MarketPage() {
       if (allUserIds.size > 0) {
         const { data: profilesData } = await getSupabase()
           .from('profiles')
-          .select('id, name, avatar_url')
+          .select('id, name, avatar_url, avg_rating, reviews_count, five_star_count, created_at')
           .in('id', Array.from(allUserIds));
 
         const profilesMap: Record<string, any> = {};

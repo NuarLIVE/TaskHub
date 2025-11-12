@@ -8,7 +8,8 @@ interface StarRatingProps {
 }
 
 export default function StarRating({ rating, reviewsCount = 0, size = 'sm', showCount = true }: StarRatingProps) {
-  if (reviewsCount === 0 || rating === 0) return null;
+  // Don't show stars if there's no rating
+  if (rating === 0) return null;
 
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 >= 0.5;
