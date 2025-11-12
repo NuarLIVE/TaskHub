@@ -394,13 +394,16 @@ export function TermsPage() {
   }, []);
 
   return (
-    <motion.div key="terms" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
-      <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-          style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
-        />
+    <motion.div key="terms" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-gradient-to-b from-[#EFFFF8]/30 to-background">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
+        <Card className="shadow-lg border-[#6FE7C8]/20">
+          <CardContent className="p-8 md:p-12">
+            <div
+              className="legal-content prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          </CardContent>
+        </Card>
       </section>
     </motion.div>
   );
@@ -422,13 +425,16 @@ export function PrivacyPage() {
   }, []);
 
   return (
-    <motion.div key="privacy" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
-      <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-          style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
-        />
+    <motion.div key="privacy" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-gradient-to-b from-[#EFFFF8]/30 to-background">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
+        <Card className="shadow-lg border-[#6FE7C8]/20">
+          <CardContent className="p-8 md:p-12">
+            <div
+              className="legal-content prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          </CardContent>
+        </Card>
       </section>
     </motion.div>
   );
@@ -450,13 +456,16 @@ export function PaymentsPage() {
   }, []);
 
   return (
-    <motion.div key="payments" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
-      <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-          style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
-        />
+    <motion.div key="payments" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-gradient-to-b from-[#EFFFF8]/30 to-background">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12">
+        <Card className="shadow-lg border-[#6FE7C8]/20">
+          <CardContent className="p-8 md:p-12">
+            <div
+              className="legal-content prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          </CardContent>
+        </Card>
       </section>
     </motion.div>
   );
