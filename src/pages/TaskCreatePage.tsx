@@ -65,6 +65,44 @@ export default function TaskCreatePage() {
     setLoading(true);
     const fd = new FormData(e.currentTarget);
 
+    const title = String(fd.get('title'));
+    const description = String(fd.get('description') || '');
+
+    try {
+      const moderationResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            content: `${title} ${description}`,
+            contentType: 'task',
+          }),
+        }
+      );
+
+      const moderationResult = await moderationResponse.json();
+
+      if (moderationResult.flagged && moderationResult.action === 'blocked') {
+        alert(moderationResult.message || 'Ваше объявление содержит запрещенный контент');
+        setLoading(false);
+        return;
+      }
+
+      if (moderationResult.flagged && moderationResult.action === 'warning') {
+        const proceed = confirm(`${moderationResult.message || 'Обнаружено потенциально нежелательное содержимое'}\\n\\nПродолжить?`);
+        if (!proceed) {
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Moderation error:', err);
+    }
+
     const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
     const features = [];
     for (let i = 0; i < 6; i++) {
@@ -92,8 +130,8 @@ export default function TaskCreatePage() {
       .from('tasks')
       .insert({
         user_id: authUser.id,
-        title: String(fd.get('title')),
-        description: String(fd.get('description') || ''),
+        title,
+        description,
         category: String(fd.get('category')),
         price: Number(price),
         currency: String(fd.get('currency')),

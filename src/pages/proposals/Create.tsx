@@ -225,6 +225,37 @@ export default function ProposalsCreate() {
     setLoading(true);
 
     try {
+      const moderationResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            content: message,
+            contentType: 'proposal',
+          }),
+        }
+      );
+
+      const moderationResult = await moderationResponse.json();
+
+      if (moderationResult.flagged && moderationResult.action === 'blocked') {
+        alert(moderationResult.message || 'Ваш отклик содержит запрещенный контент');
+        setLoading(false);
+        return;
+      }
+
+      if (moderationResult.flagged && moderationResult.action === 'warning') {
+        const proceed = confirm(`${moderationResult.message || 'Обнаружено потенциально нежелательное содержимое'}\\n\\nПродолжить?`);
+        if (!proceed) {
+          setLoading(false);
+          return;
+        }
+      }
+
       const proposalData: any = {
         user_id: user.id,
         message,

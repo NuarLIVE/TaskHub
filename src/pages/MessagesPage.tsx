@@ -620,6 +620,42 @@ export default function MessagesPage() {
     }
 
     const messageText = message;
+
+    if (messageText.trim()) {
+      try {
+        const moderationResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              content: messageText,
+              contentType: 'message',
+            }),
+          }
+        );
+
+        const moderationResult = await moderationResponse.json();
+
+        if (moderationResult.flagged && moderationResult.action === 'blocked') {
+          alert(moderationResult.message || 'Ваше сообщение содержит запрещенный контент');
+          return;
+        }
+
+        if (moderationResult.flagged && moderationResult.action === 'warning') {
+          const proceed = confirm(`${moderationResult.message || 'Обнаружено потенциально нежелательное содержимое'}\\n\\nПродолжить?`);
+          if (!proceed) {
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Moderation error:', err);
+      }
+    }
+
     const tempId = `temp-${Date.now()}`;
 
     const optimisticMessage: Message = {
