@@ -40,6 +40,7 @@ import {
   AdminPage,
   TermsPage,
   PrivacyPage,
+  PaymentsPage,
   FAQPage,
   ContactPage,
   NotFoundPage
@@ -145,6 +146,8 @@ function App() {
     Page = TermsPage;
   } else if (route === '/privacy') {
     Page = PrivacyPage;
+  } else if (route === '/payments') {
+    Page = PaymentsPage;
   } else if (route === '/faq') {
     Page = FAQPage;
   } else if (route === '/contact') {

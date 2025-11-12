@@ -32,6 +32,7 @@ const FOOTER_LINKS = {
     { href: '#/contact', label: 'Контакты' },
     { href: '#/terms', label: 'Условия использования' },
     { href: '#/privacy', label: 'Конфиденциальность' },
+    { href: '#/payments', label: 'Политика платежей' },
     { href: '#/disputes', label: 'Споры' },
     { href: '#/404', label: 'Страница 404' }
   ],

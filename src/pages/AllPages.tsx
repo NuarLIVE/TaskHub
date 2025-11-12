@@ -379,34 +379,84 @@ export function AdminPage() {
 }
 
 export function TermsPage() {
+  const [htmlContent, setHtmlContent] = React.useState('');
+
+  React.useEffect(() => {
+    fetch('/src/assets/legal/terms.html')
+      .then(res => res.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const body = doc.body.innerHTML;
+        setHtmlContent(body);
+      })
+      .catch(err => console.error('Error loading terms:', err));
+  }, []);
+
   return (
     <motion.div key="terms" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
       <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-3xl font-bold mb-6">Условия использования</h1>
-        <div className="prose prose-sm max-w-none text-[#3F7F6E]">
-          <p>Последнее обновление: 30 октября 2025</p>
-          <h2>1. Принятие условий</h2>
-          <p>Используя FreelanceHub, вы соглашаетесь с настоящими условиями использования...</p>
-          <h2>2. Описание услуг</h2>
-          <p>FreelanceHub предоставляет платформу для связи заказчиков и исполнителей...</p>
-        </div>
+        <div
+          className="prose prose-lg max-w-none"
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+          style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
+        />
       </section>
     </motion.div>
   );
 }
 
 export function PrivacyPage() {
+  const [htmlContent, setHtmlContent] = React.useState('');
+
+  React.useEffect(() => {
+    fetch('/src/assets/legal/privacy.html')
+      .then(res => res.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const body = doc.body.innerHTML;
+        setHtmlContent(body);
+      })
+      .catch(err => console.error('Error loading privacy:', err));
+  }, []);
+
   return (
     <motion.div key="privacy" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
       <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-3xl font-bold mb-6">Политика конфиденциальности</h1>
-        <div className="prose prose-sm max-w-none text-[#3F7F6E]">
-          <p>Последнее обновление: 30 октября 2025</p>
-          <h2>1. Сбор информации</h2>
-          <p>Мы собираем информацию, которую вы предоставляете при регистрации и использовании платформы...</p>
-          <h2>2. Использование информации</h2>
-          <p>Ваша информация используется для предоставления и улучшения наших услуг...</p>
-        </div>
+        <div
+          className="prose prose-lg max-w-none"
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+          style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
+        />
+      </section>
+    </motion.div>
+  );
+}
+
+export function PaymentsPage() {
+  const [htmlContent, setHtmlContent] = React.useState('');
+
+  React.useEffect(() => {
+    fetch('/src/assets/legal/payments.html')
+      .then(res => res.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const body = doc.body.innerHTML;
+        setHtmlContent(body);
+      })
+      .catch(err => console.error('Error loading payments:', err));
+  }, []);
+
+  return (
+    <motion.div key="payments" initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
+      <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10">
+        <div
+          className="prose prose-lg max-w-none"
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+          style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
+        />
       </section>
     </motion.div>
   );
