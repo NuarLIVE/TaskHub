@@ -366,7 +366,7 @@ export default function MarketPage() {
                 <div className="flex gap-2">
                   {activeTab === 'orders' ? (
                     <Button
-                      onClick={() => window.location.hash = '/orders/new'}
+                      onClick={() => window.location.hash = '/order/new'}
                       className="bg-[#3F7F6E] hover:bg-[#2F6F5E] text-white"
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -374,7 +374,7 @@ export default function MarketPage() {
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => window.location.hash = '/tasks/new'}
+                      onClick={() => window.location.hash = '/task/new'}
                       className="bg-[#3F7F6E] hover:bg-[#2F6F5E] text-white"
                     >
                       <Plus className="h-4 w-4 mr-2" />
