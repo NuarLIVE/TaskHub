@@ -32,6 +32,12 @@ export default function ProposalsPage() {
   const [tasks, setTasks] = useState<Record<string, any>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [acceptingProposal, setAcceptingProposal] = useState<string | null>(null);
+  const [insufficientBalanceDialog, setInsufficientBalanceDialog] = useState<{
+    open: boolean;
+    required: number;
+    available: number;
+    currency: string;
+  }>({ open: false, required: 0, available: 0, currency: 'USD' });
 
   useEffect(() => {
     loadProposals();
@@ -348,16 +354,12 @@ export default function ProposalsPage() {
       const requiredAmount = proposal.price;
 
       if (clientBalance < requiredAmount) {
-        const confirmed = confirm(
-          `Недостаточно средств на балансе.\n\n` +
-          `Требуется: ${requiredAmount} ${proposal.currency}\n` +
-          `Доступно: ${clientBalance.toFixed(2)} ${proposal.currency}\n\n` +
-          `Перейти на страницу пополнения баланса?`
-        );
-
-        if (confirmed) {
-          window.location.href = '/wallet';
-        }
+        setInsufficientBalanceDialog({
+          open: true,
+          required: requiredAmount,
+          available: clientBalance,
+          currency: proposal.currency
+        });
 
         setAcceptingProposal(null);
         return;
@@ -819,6 +821,65 @@ export default function ProposalsPage() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Insufficient Balance Dialog */}
+      <Dialog open={insufficientBalanceDialog.open} onOpenChange={(open) => setInsufficientBalanceDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-800">
+              Недостаточно средств
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Для принятия предложения необходимо пополнить баланс
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">Требуется:</span>
+                <span className="text-lg font-semibold text-red-600">
+                  {insufficientBalanceDialog.required.toFixed(2)} {insufficientBalanceDialog.currency}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Доступно:</span>
+                <span className="text-lg font-semibold text-gray-800">
+                  {insufficientBalanceDialog.available.toFixed(2)} {insufficientBalanceDialog.currency}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Необходимо пополнить:</span>
+                <span className="text-lg font-bold text-blue-600">
+                  {(insufficientBalanceDialog.required - insufficientBalanceDialog.available).toFixed(2)} {insufficientBalanceDialog.currency}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setInsufficientBalanceDialog(prev => ({ ...prev, open: false }))}
+              className="flex-1"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={() => {
+                setInsufficientBalanceDialog(prev => ({ ...prev, open: false }));
+                window.location.href = '/wallet';
+              }}
+              className="flex-1 bg-[#3F7F6E] hover:bg-[#2d5f52]"
+            >
+              Пополнить баланс
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>
