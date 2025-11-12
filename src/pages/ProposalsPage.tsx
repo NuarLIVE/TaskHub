@@ -335,6 +335,34 @@ export default function ProposalsPage() {
         throw dealChatError;
       }
 
+      // Проверяем баланс клиента
+      const { data: clientProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('balance, name')
+        .eq('id', clientId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      const clientBalance = clientProfile?.balance || 0;
+      const requiredAmount = proposal.price;
+
+      if (clientBalance < requiredAmount) {
+        const confirmed = confirm(
+          `Недостаточно средств на балансе.\n\n` +
+          `Требуется: ${requiredAmount} ${proposal.currency}\n` +
+          `Доступно: ${clientBalance.toFixed(2)} ${proposal.currency}\n\n` +
+          `Перейти на страницу пополнения баланса?`
+        );
+
+        if (confirmed) {
+          window.location.href = '/wallet';
+        }
+
+        setAcceptingProposal(null);
+        return;
+      }
+
       const dealData = {
         proposal_id: proposal.id,
         order_id: proposal.order_id || null,
@@ -350,20 +378,37 @@ export default function ProposalsPage() {
         status: 'in_progress'
       };
 
-      const { error: dealError } = await supabase
+      const { data: createdDeal, error: dealError } = await supabase
         .from('deals')
-        .insert(dealData);
+        .insert(dealData)
+        .select()
+        .single();
 
       if (dealError) {
         console.error('Deal creation error:', dealError);
         throw dealError;
       }
 
-      const { data: clientProfile } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', clientId)
-        .maybeSingle();
+      // Блокируем средства в эскроу
+      const priceInMinorUnits = Math.round(proposal.price * 100);
+      const { data: escrowResult, error: escrowError } = await supabase
+        .rpc('lock_funds_in_escrow', {
+          p_deal_id: createdDeal.id,
+          p_client_id: clientId,
+          p_amount_minor: priceInMinorUnits,
+          p_currency: proposal.currency
+        });
+
+      if (escrowError) {
+        console.error('Escrow lock error:', escrowError);
+        alert('Ошибка при блокировке средств. Обратитесь в поддержку.');
+        throw escrowError;
+      }
+
+      if (!escrowResult?.success) {
+        alert(`Не удалось заблокировать средства: ${escrowResult?.error || 'Неизвестная ошибка'}`);
+        throw new Error(escrowResult?.error || 'Escrow lock failed');
+      }
 
       const { data: freelancerProfile } = await supabase
         .from('profiles')

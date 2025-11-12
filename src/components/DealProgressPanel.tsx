@@ -254,6 +254,20 @@ export default function DealProgressPanel({ dealId, userId, isFreelancer, chatId
       return;
     }
 
+    // Освобождаем эскроу и переводим средства исполнителю
+    const { data: escrowResult, error: escrowError } = await supabase
+      .rpc('release_escrow_to_freelancer', {
+        p_deal_id: dealId
+      });
+
+    if (escrowError) {
+      console.error('Escrow release error:', escrowError);
+      alert('Работа принята, но возникла ошибка при переводе средств. Обратитесь в поддержку.');
+    } else if (escrowResult && !escrowResult.success) {
+      console.error('Escrow release failed:', escrowResult.error);
+      alert(`Работа принята, но перевод средств не выполнен: ${escrowResult.error}`);
+    }
+
     const { error: messageError } = await supabase
       .from('messages')
       .insert({
