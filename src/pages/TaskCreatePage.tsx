@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useContentModeration } from '@/hooks/useContentModeration';
+import { ModerationAlert } from '@/components/ui/ModerationAlert';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -39,6 +41,12 @@ export default function TaskCreatePage() {
   const [useBoost, setUseBoost] = useState(false);
   const [boostedTasksCount, setBoostedTasksCount] = useState(0);
   const [showBoostInfo, setShowBoostInfo] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+
+  const { isBlocked, blockMessage, checkContent } = useContentModeration({
+    contentType: 'task',
+  });
 
   useEffect(() => {
     if (user) {
@@ -90,11 +98,13 @@ export default function TaskCreatePage() {
       return;
     }
 
+    if (isBlocked) {
+      alert(blockMessage);
+      return;
+    }
+
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-
-    const title = String(fd.get('title'));
-    const description = String(fd.get('description') || '');
 
     try {
       const moderationResponse = await fetch(
@@ -194,8 +204,19 @@ export default function TaskCreatePage() {
             <Card>
               <CardContent className="p-6 grid gap-4">
                 <Field label="Название">
-                  <Input name="title" placeholder="Сделаю адаптивный лендинг на React / Next" required className="h-11" />
+                  <Input
+                    name="title"
+                    placeholder="Сделаю адаптивный лендинг на React / Next"
+                    required
+                    className="h-11"
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      checkContent(`${e.target.value} ${description}`);
+                    }}
+                  />
                 </Field>
+                <ModerationAlert message={blockMessage} isVisible={isBlocked} />
                 <TwoCol
                   left={
                     <Field label="Категория">
@@ -266,7 +287,17 @@ export default function TaskCreatePage() {
                   </div>
                 </Field>
                 <Field label="Описание">
-                  <textarea name="description" rows={6} placeholder="Опишите опыт, стек, процесс и критерии качества" className="rounded-md border px-3 py-2 bg-background" />
+                  <textarea
+                    name="description"
+                    rows={6}
+                    placeholder="Опишите опыт, стек, процесс и критерии качества"
+                    className="rounded-md border px-3 py-2 bg-background"
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      checkContent(`${title} ${e.target.value}`);
+                    }}
+                  />
                 </Field>
                 <Field label="Теги (через запятую)">
                   <Input name="tags" placeholder="React, Tailwind, SSR" className="h-11" />
@@ -361,7 +392,7 @@ export default function TaskCreatePage() {
                 <div className="flex justify-end items-center pt-2">
                   <div className="flex gap-3">
                     <Button type="button" variant="ghost" asChild><a href="#/market">Отменить</a></Button>
-                    <Button type="submit" disabled={loading}>{loading ? 'Публикация...' : 'Опубликовать'}</Button>
+                    <Button type="submit" disabled={loading || isBlocked}>{loading ? 'Публикация...' : 'Опубликовать'}</Button>
                   </div>
                 </div>
               </CardContent>

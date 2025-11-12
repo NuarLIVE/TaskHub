@@ -174,24 +174,44 @@ function moderateContent(content: string): ModerationResult {
     }
   }
 
+  const sexualContentPatterns = [
+    /\b(секс|sex|интим|intimate|голая|голый|nude|naked|порно|porn|xxx|эротик|erotic)\w*/gi,
+    /\b(минет|blowjob|оральн|oral|анал|anal|вагин|vagina|член|penis|грудь|breast|сиськ|tits|жопа|ass|попа|butt)\w*/gi,
+    /\b(проститут|prostitut|эскорт|escort|секс[-\s]?услуг|sex[-\s]?service|интим[-\s]?услуг)\w*/gi,
+    /\b(познаком|встреч|свидан|date|relationship)\w*\s+(для|за|с)\s+(секс|интим|ночь|постел)/gi,
+  ];
+
+  for (const pattern of sexualContentPatterns) {
+    if (pattern.test(contentLower)) {
+      reasons.push('sexual_content');
+      maxConfidence = Math.max(maxConfidence, 0.95);
+      break;
+    }
+  }
+
   const flagged = reasons.length > 0;
   let action: 'none' | 'warning' | 'blocked' = 'none';
   let message = '';
 
   if (flagged) {
-    if (reasons.includes('profanity')) {
-      action = 'warning';
-      message = 'Обнаружена ненормативная лексика. Пожалуйста, общайтесь уважительно.';
+    if (reasons.includes('sexual_content')) {
+      action = 'blocked';
+      message = 'Объявление содержит запрещённый контент сексуального характера. Пожалуйста, измените его содержание или напишите в поддержку.';
     }
-    
+
+    if (reasons.includes('profanity')) {
+      action = reasons.includes('sexual_content') ? 'blocked' : 'blocked';
+      message = 'Объявление содержит ненормативную лексику. Пожалуйста, измените его содержание или напишите в поддержку.';
+    }
+
     if (reasons.includes('external_payment')) {
       action = 'blocked';
-      message = 'Запрещена оплата вне платформы. Все платежи должны проходить через защищенную систему платформы.';
+      message = 'Объявление содержит запрещённый контент. Запрещена оплата вне платформы. Пожалуйста, измените его содержание или напишите в поддержку.';
     }
-    
+
     if (reasons.includes('external_platform') || reasons.includes('phone_number')) {
       action = 'blocked';
-      message = 'Запрещено предлагать переход на другие платформы или обмен контактными данными на этом этапе.';
+      message = 'Объявление содержит запрещённый контент. Запрещены контактные данные и ссылки на другие платформы. Пожалуйста, измените его содержание или напишите в поддержку.';
     }
   }
 

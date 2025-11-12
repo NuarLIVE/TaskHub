@@ -33,6 +33,8 @@ import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
 import { MediaEditor } from '@/components/MediaEditor';
+import { useContentModeration } from '@/hooks/useContentModeration';
+import { ModerationAlert } from '@/components/ui/ModerationAlert';
 import { ImageViewer } from '@/components/ImageViewer';
 import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 import { CRMConfirmation } from '@/components/CRMConfirmation';
@@ -109,6 +111,10 @@ export default function MessagesPage() {
   const [imageViewerImages, setImageViewerImages] = useState<Array<{ url: string; name?: string }>>([]);
   const [isUserBlocked, setIsUserBlocked] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+
+  const { isBlocked, blockMessage, checkContent } = useContentModeration({
+    contentType: 'message',
+  });
   const [crmPanelOpen, setCrmPanelOpen] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
@@ -616,6 +622,11 @@ export default function MessagesPage() {
 
     if (isBlockedByOther) {
       alert('Невозможно отправить сообщение. Пользователь заблокировал вас.');
+      return;
+    }
+
+    if (isBlocked) {
+      alert(blockMessage);
       return;
     }
 
@@ -1580,6 +1591,7 @@ export default function MessagesPage() {
                         value={message}
                         onChange={(e) => {
                           setMessage(e.target.value);
+                          checkContent(e.target.value);
                           if (e.target.value.trim()) sendTypingIndicator();
                           autosize();
                         }}
@@ -1589,8 +1601,9 @@ export default function MessagesPage() {
                         rows={1}
                         className="min-h-11 w-full h-auto resize-none leading-5 px-3 py-2 rounded-md border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
+                      <ModerationAlert message={blockMessage} isVisible={isBlocked} />
 
-                      <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading}>
+                      <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading || isBlocked}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </form>

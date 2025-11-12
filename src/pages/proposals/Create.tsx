@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabaseClient';
+import { useContentModeration } from '@/hooks/useContentModeration';
+import { ModerationAlert } from '@/components/ui/ModerationAlert';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
@@ -17,6 +19,10 @@ export default function ProposalsCreate() {
   const [days, setDays] = useState('');
   const [message, setMessage] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
+
+  const { isBlocked, blockMessage, checkContent } = useContentModeration({
+    contentType: 'proposal',
+  });
   const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -233,6 +239,11 @@ export default function ProposalsCreate() {
 
     if (!price || !days || !message) {
       alert('Заполните все обязательные поля');
+      return;
+    }
+
+    if (isBlocked) {
+      alert(blockMessage);
       return;
     }
 
@@ -490,12 +501,16 @@ export default function ProposalsCreate() {
                 <label className="text-sm font-medium mb-1 block">Сообщение</label>
                 <textarea
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    checkContent(e.target.value);
+                  }}
                   rows={8}
                   placeholder="Опишите ваш опыт, подход к задаче и почему вы подходите для этого проекта..."
                   className="w-full rounded-md border px-3 py-2 bg-background"
                   required
                 />
+                <ModerationAlert message={blockMessage} isVisible={isBlocked} />
               </div>
 
               <div>
@@ -721,7 +736,7 @@ export default function ProposalsCreate() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1" disabled={loading}>
+                <Button type="submit" className="flex-1" disabled={loading || isBlocked}>
                   <Send className="h-4 w-4 mr-2" />
                   {loading ? 'Отправка...' : 'Отправить отклик'}
                 </Button>
