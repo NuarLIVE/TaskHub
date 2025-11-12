@@ -625,12 +625,20 @@ export default function MessagesPage() {
       return;
     }
 
+    const messageText = message;
+
+    if (messageText.trim() && checkContentImmediate) {
+      const immediateCheck = await checkContentImmediate(messageText);
+      if (immediateCheck?.flagged && immediateCheck?.action === 'blocked') {
+        alert(immediateCheck.message || 'Ваше сообщение содержит запрещенный контент');
+        return;
+      }
+    }
+
     if (isBlocked) {
       alert(blockMessage);
       return;
     }
-
-    const messageText = message;
 
     if (messageText.trim()) {
       try {
