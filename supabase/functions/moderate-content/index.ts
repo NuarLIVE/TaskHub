@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const result = await moderateContent(content);
+    const result = moderateContent(content);
 
     await supabase.from('moderation_logs').insert({
       user_id: user.id,
@@ -81,8 +81,15 @@ Deno.serve(async (req: Request) => {
         severity,
       });
 
-      await supabase.from('profiles')
-        .update({ warning_count: supabase.raw('warning_count + 1') })
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('warning_count')
+        .eq('id', user.id)
+        .single();
+
+      await supabase
+        .from('profiles')
+        .update({ warning_count: (profile?.warning_count || 0) + 1 })
         .eq('id', user.id);
     }
 
