@@ -72,7 +72,7 @@ export default function ProfileBadges({
         )}
         {isNew && (
           <Badge variant="outline" className="text-xs border-[#6FE7C8] text-[#3F7F6E]">
-            Новый исполнитель
+            Недавно на бирже
           </Badge>
         )}
       </div>
@@ -97,7 +97,7 @@ export default function ProfileBadges({
         )}
         {isNew && (
           <Badge variant="outline" className="border-[#6FE7C8] text-[#3F7F6E]">
-            Новый исполнитель
+            Недавно на бирже
           </Badge>
         )}
       </div>

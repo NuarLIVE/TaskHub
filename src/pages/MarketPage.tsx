@@ -10,6 +10,7 @@ import { BoostBadge } from '@/components/ui/BoostBadge';
 import { ProposalLimitIndicator } from '@/components/ui/ProposalLimitIndicator';
 import PriceDisplay from '@/components/PriceDisplay';
 import ProfileBadges from '@/components/ui/ProfileBadges';
+import StarRating from '@/components/ui/StarRating';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -501,15 +502,25 @@ export default function MarketPage() {
                             {profiles[item.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
                           </div>
                         )}
-                        <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
-                        <ProfileBadges
-                          avgRating={profiles[item.user_id]?.avg_rating}
-                          reviewsCount={profiles[item.user_id]?.reviews_count}
-                          fiveStarCount={profiles[item.user_id]?.five_star_count}
-                          createdAt={profiles[item.user_id]?.created_at}
-                          showStars={true}
-                          compact={true}
-                        />
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
+                            <StarRating
+                              rating={profiles[item.user_id]?.avg_rating || 0}
+                              reviewsCount={profiles[item.user_id]?.reviews_count || 0}
+                              size="sm"
+                              showCount={false}
+                            />
+                          </div>
+                          <ProfileBadges
+                            avgRating={profiles[item.user_id]?.avg_rating}
+                            reviewsCount={profiles[item.user_id]?.reviews_count}
+                            fiveStarCount={profiles[item.user_id]?.five_star_count}
+                            createdAt={profiles[item.user_id]?.created_at}
+                            showStars={false}
+                            compact={true}
+                          />
+                        </div>
                       </div>
                       {activeTab === 'orders' ? (
                         <PriceDisplay

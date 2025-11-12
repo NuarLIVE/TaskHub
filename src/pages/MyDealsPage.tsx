@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import PriceDisplay from '@/components/PriceDisplay';
 import ProfileBadges from '@/components/ui/ProfileBadges';
+import StarRating from '@/components/ui/StarRating';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -584,7 +585,15 @@ export default function MyDealsPage() {
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex flex-col gap-1">
                                       <div className="flex items-center gap-2">
-                                        <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
+                                        <div className="font-medium flex items-center gap-1.5">
+                                          <span>{proposal.profile?.name || 'Пользователь'}</span>
+                                          <StarRating
+                                            rating={proposal.profile?.avg_rating || 0}
+                                            reviewsCount={proposal.profile?.reviews_count || 0}
+                                            size="sm"
+                                            showCount={false}
+                                          />
+                                        </div>
                                         <Badge variant="outline">
                                           <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
                                         </Badge>
@@ -595,7 +604,7 @@ export default function MyDealsPage() {
                                         reviewsCount={proposal.profile?.reviews_count}
                                         fiveStarCount={proposal.profile?.five_star_count}
                                         createdAt={proposal.profile?.created_at}
-                                        showStars={true}
+                                        showStars={false}
                                         compact={true}
                                       />
                                     </div>
@@ -802,7 +811,15 @@ export default function MyDealsPage() {
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex flex-col gap-1">
                                       <div className="flex items-center gap-2">
-                                        <div className="font-medium">{proposal.profile?.name || 'Пользователь'}</div>
+                                        <div className="font-medium flex items-center gap-1.5">
+                                          <span>{proposal.profile?.name || 'Пользователь'}</span>
+                                          <StarRating
+                                            rating={proposal.profile?.avg_rating || 0}
+                                            reviewsCount={proposal.profile?.reviews_count || 0}
+                                            size="sm"
+                                            showCount={false}
+                                          />
+                                        </div>
                                         <Badge variant="outline">
                                           <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
                                         </Badge>
@@ -813,7 +830,7 @@ export default function MyDealsPage() {
                                         reviewsCount={proposal.profile?.reviews_count}
                                         fiveStarCount={proposal.profile?.five_star_count}
                                         createdAt={proposal.profile?.created_at}
-                                        showStars={true}
+                                        showStars={false}
                                         compact={true}
                                       />
                                     </div>

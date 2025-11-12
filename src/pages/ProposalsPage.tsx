@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProfileBadges from '@/components/ui/ProfileBadges';
+import StarRating from '@/components/ui/StarRating';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -574,8 +575,21 @@ export default function ProposalsPage() {
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold">
-                            {activeTab === 'sent' ? getProposalTitle(proposal) : `${profiles[proposal.user_id]?.name || 'Пользователь'} — ${getProposalTitle(proposal)}`}
+                          <div className="font-semibold flex items-center gap-1.5">
+                            {activeTab === 'sent' ? (
+                              getProposalTitle(proposal)
+                            ) : (
+                              <>
+                                <span>{profiles[proposal.user_id]?.name || 'Пользователь'}</span>
+                                <StarRating
+                                  rating={profiles[proposal.user_id]?.avg_rating || 0}
+                                  reviewsCount={profiles[proposal.user_id]?.reviews_count || 0}
+                                  size="sm"
+                                  showCount={false}
+                                />
+                                <span> — {getProposalTitle(proposal)}</span>
+                              </>
+                            )}
                           </div>
                           <div className="text-sm text-[#3F7F6E]">
                             {activeTab === 'sent' && getItemOwnerId(proposal) && `Заказчик: ${profiles[getItemOwnerId(proposal)]?.name || 'Пользователь'}`}
@@ -586,7 +600,7 @@ export default function ProposalsPage() {
                               reviewsCount={profiles[proposal.user_id]?.reviews_count}
                               fiveStarCount={profiles[proposal.user_id]?.five_star_count}
                               createdAt={profiles[proposal.user_id]?.created_at}
-                              showStars={true}
+                              showStars={false}
                               compact={true}
                             />
                           )}
