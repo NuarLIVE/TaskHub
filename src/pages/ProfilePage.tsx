@@ -114,7 +114,7 @@ export default function ProfilePage() {
           id,
           email
         ),
-        profiles!reviews_reviewer_id_fkey (
+        reviewer_profile:profiles!reviews_reviewer_id_fkey (
           name,
           avatar_url
         )
@@ -705,54 +705,59 @@ export default function ProfilePage() {
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {reviews.map((review) => (
-                        <Card key={review.id} className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-6 grid gap-3">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={review.profiles?.avatar_url || `https://i.pravatar.cc/64?u=${review.reviewer_id}`}
-                                className="h-10 w-10 rounded-full object-cover"
-                                alt={review.profiles?.name || 'Заказчик'}
-                              />
-                              <div>
-                                <div className="font-medium">{review.profiles?.name || review.reviewer?.email || 'Заказчик'}</div>
-                                <div className="text-xs text-[#3F7F6E]">
-                                  {new Date(review.created_at).toLocaleDateString('ru-RU', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric'
-                                  })}
+                      {reviews.map((review) => {
+                        const reviewerName = review.reviewer_profile?.name || review.reviewer?.email || 'Заказчик';
+                        const reviewerAvatar = review.reviewer_profile?.avatar_url || `https://i.pravatar.cc/64?u=${review.reviewer_id}`;
+
+                        return (
+                          <Card key={review.id} className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-6 grid gap-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={reviewerAvatar}
+                                  className="h-10 w-10 rounded-full object-cover"
+                                  alt={reviewerName}
+                                />
+                                <div>
+                                  <div className="font-medium">{reviewerName}</div>
+                                  <div className="text-xs text-[#3F7F6E]">
+                                    {new Date(review.created_at).toLocaleDateString('ru-RU', {
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric'
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="ml-auto flex items-center gap-1 text-emerald-600">
+                                  <Star className="h-4 w-4 fill-emerald-600" />
+                                  <span className="font-semibold">{review.rating}.0</span>
                                 </div>
                               </div>
-                              <div className="ml-auto flex items-center gap-1 text-emerald-600">
-                                <Star className="h-4 w-4 fill-emerald-600" />
-                                <span className="font-semibold">{review.rating}.0</span>
-                              </div>
-                            </div>
-                            <p className="text-sm text-[#3F7F6E] leading-relaxed">
-                              {review.comment}
-                            </p>
-                            <div className="flex items-center gap-4 pt-2 border-t">
-                              <button
-                                onClick={() => toggleHelpful(review.id)}
-                                className={`flex items-center gap-1.5 text-sm transition-colors ${
-                                  helpfulVotes.has(review.id)
-                                    ? 'text-[#6FE7C8] font-medium'
-                                    : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
-                                }`}
-                              >
-                                <Heart
-                                  className={`h-4 w-4 transition-all ${
-                                    helpfulVotes.has(review.id) ? 'fill-[#6FE7C8]' : ''
+                              <p className="text-sm text-[#3F7F6E] leading-relaxed">
+                                {review.comment}
+                              </p>
+                              <div className="flex items-center gap-4 pt-2 border-t">
+                                <button
+                                  onClick={() => toggleHelpful(review.id)}
+                                  className={`flex items-center gap-1.5 text-sm transition-colors ${
+                                    helpfulVotes.has(review.id)
+                                      ? 'text-[#6FE7C8] font-medium'
+                                      : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
                                   }`}
-                                />
-                                <span>Полезно</span>
-                                {review.likes_count > 0 && <span className="text-xs">({review.likes_count})</span>}
-                              </button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                                >
+                                  <Heart
+                                    className={`h-4 w-4 transition-all ${
+                                      helpfulVotes.has(review.id) ? 'fill-[#6FE7C8]' : ''
+                                    }`}
+                                  />
+                                  <span>Полезно</span>
+                                  {review.likes_count > 0 && <span className="text-xs">({review.likes_count})</span>}
+                                </button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
