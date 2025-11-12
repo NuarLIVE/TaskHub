@@ -330,13 +330,15 @@ export default function MessagesPage() {
       filter: `chat_id=eq.${selectedChatId}`,
       callback: async (payload) => {
         const newMessage = payload.new as Message;
-        if (newMessage.sender_id !== user.id) {
+        if (newMessage.sender_id !== user.id || newMessage.is_system) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMessage.id)) return prev;
             shouldScrollRef.current = true;
             return [...prev, newMessage];
           });
-          await markMessagesAsRead(selectedChatId);
+          if (newMessage.sender_id !== user.id) {
+            await markMessagesAsRead(selectedChatId);
+          }
         }
       },
       onError: () => setTimeout(() => loadMessages(selectedChatId), 2000)
