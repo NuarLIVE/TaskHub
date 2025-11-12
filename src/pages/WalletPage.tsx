@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabaseClient';
+import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -55,7 +56,10 @@ interface Transaction {
 
 export default function WalletPage() {
   const { user } = useAuth();
+  const { currency, formatPrice, convertPrice } = useRegion();
   const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [profileBalance, setProfileBalance] = useState<number>(0);
+  const [profileCurrency, setProfileCurrency] = useState<string>('USD');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,11 +72,13 @@ export default function WalletPage() {
 
   useEffect(() => {
     if (user) {
+      loadProfileBalance();
       loadWalletData();
       loadTransactions();
 
       const handleVisibilityChange = () => {
         if (!document.hidden) {
+          loadProfileBalance();
           loadWalletData();
           loadTransactions();
         }
@@ -85,6 +91,26 @@ export default function WalletPage() {
       };
     }
   }, [user]);
+
+  const loadProfileBalance = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await getSupabase()
+        .from('profiles')
+        .select('balance, currency')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setProfileBalance(data.balance || 0);
+        setProfileCurrency(data.currency || 'USD');
+      }
+    } catch (error) {
+      console.error('Error loading profile balance:', error);
+    }
+  };
 
   const loadWalletData = async () => {
     if (!user) return;
@@ -165,6 +191,7 @@ export default function WalletPage() {
 
       setShowWithdrawModal(false);
       setWithdrawAmount('');
+      await loadProfileBalance();
       await loadWalletData();
       await loadTransactions();
     } catch (error) {
@@ -174,7 +201,7 @@ export default function WalletPage() {
   };
 
   const handleDeposit = async () => {
-    if (!user || !wallet || !depositAmount) return;
+    if (!user || !depositAmount) return;
 
     const amount = parseFloat(depositAmount);
     if (amount <= 0) {
@@ -183,30 +210,35 @@ export default function WalletPage() {
     }
 
     try {
+      const newBalance = profileBalance + amount;
+
       const { error } = await getSupabase()
-        .from('transactions')
-        .insert({
-          wallet_id: wallet.id,
-          type: 'deposit',
-          amount: amount,
-          status: 'completed',
-          description: `Пополнение баланса $${amount.toFixed(2)}`,
-          reference_type: 'deposit',
-          completed_at: new Date().toISOString()
-        });
+        .from('profiles')
+        .update({
+          balance: newBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
 
       if (error) throw error;
 
-      await getSupabase()
-        .from('wallets')
-        .update({
-          balance: wallet.balance + amount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', wallet.id);
+      if (wallet) {
+        await getSupabase()
+          .from('transactions')
+          .insert({
+            wallet_id: wallet.id,
+            type: 'deposit',
+            amount: amount,
+            status: 'completed',
+            description: `Тестовое пополнение ${formatPrice(amount, profileCurrency)}`,
+            reference_type: 'test_deposit',
+            completed_at: new Date().toISOString()
+          });
+      }
 
       setShowDepositModal(false);
       setDepositAmount('');
+      await loadProfileBalance();
       await loadWalletData();
       await loadTransactions();
     } catch (error) {
@@ -307,8 +339,18 @@ export default function WalletPage() {
                   Доступный баланс
                 </div>
                 <div className="text-5xl font-bold mb-8">
-                  ${wallet.balance.toFixed(2)}
+                  {formatPrice(profileBalance, profileCurrency)}
                 </div>
+                {profileCurrency !== currency && (
+                  <div className="text-sm opacity-80 mb-2">
+                    Оригинальная сумма: {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: profileCurrency,
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(profileBalance)}
+                  </div>
+                )}
                 {wallet.pending_balance > 0 && (
                   <div className="text-sm opacity-80 mb-6">
                     В обработке: ${wallet.pending_balance.toFixed(2)}
