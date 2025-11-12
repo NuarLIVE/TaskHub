@@ -828,7 +828,7 @@ export default function ProposalsPage() {
       <Dialog open={insufficientBalanceDialog.open} onOpenChange={(open) => setInsufficientBalanceDialog(prev => ({ ...prev, open }))}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-800">
+            <DialogTitle className="text-xl font-semibold text-gray-900">
               Недостаточно средств
             </DialogTitle>
             <DialogDescription className="text-gray-600">
@@ -836,46 +836,46 @@ export default function ProposalsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-600">Требуется:</span>
-                <span className="text-lg font-semibold text-red-600">
+          <div className="space-y-3 py-4">
+            <div className="bg-[#EFFFF8] border border-[#6FE7C8]/30 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-medium text-gray-700">Требуется:</span>
+                <span className="text-xl font-bold text-[#3F7F6E]">
                   {insufficientBalanceDialog.required.toFixed(2)} {insufficientBalanceDialog.currency}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Доступно:</span>
-                <span className="text-lg font-semibold text-gray-800">
+                <span className="text-sm font-medium text-gray-700">Доступно:</span>
+                <span className="text-xl font-semibold text-gray-600">
                   {insufficientBalanceDialog.available.toFixed(2)} {insufficientBalanceDialog.currency}
                 </span>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-gradient-to-r from-[#3F7F6E]/10 to-[#6FE7C8]/10 border border-[#3F7F6E]/20 rounded-lg p-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Необходимо пополнить:</span>
-                <span className="text-lg font-bold text-blue-600">
+                <span className="text-sm font-medium text-gray-700">Необходимо пополнить:</span>
+                <span className="text-2xl font-bold text-[#3F7F6E]">
                   {(insufficientBalanceDialog.required - insufficientBalanceDialog.available).toFixed(2)} {insufficientBalanceDialog.currency}
                 </span>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="flex gap-2">
+          <DialogFooter className="flex gap-3 sm:gap-3">
             <Button
               variant="outline"
               onClick={() => setInsufficientBalanceDialog(prev => ({ ...prev, open: false }))}
-              className="flex-1"
+              className="flex-1 border-gray-300 hover:bg-gray-50"
             >
               Отмена
             </Button>
             <Button
               onClick={() => {
                 setInsufficientBalanceDialog(prev => ({ ...prev, open: false }));
-                window.location.href = '/wallet';
+                window.location.href = '#/wallet';
               }}
-              className="flex-1 bg-[#3F7F6E] hover:bg-[#2d5f52]"
+              className="flex-1 bg-[#3F7F6E] hover:bg-[#2d5f52] text-white shadow-sm"
             >
               Пополнить баланс
             </Button>
