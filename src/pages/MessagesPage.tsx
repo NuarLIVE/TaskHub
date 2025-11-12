@@ -714,7 +714,7 @@ export default function MessagesPage() {
         setUploading(false);
       }
 
-      const { error } = await getSupabase().from('messages').insert({
+      const { data: insertedMessage, error } = await getSupabase().from('messages').insert({
         chat_id: selectedChatId,
         sender_id: user.id,
         text: messageText || '',
@@ -723,13 +723,49 @@ export default function MessagesPage() {
         file_url: fileUrl,
         file_name: fileName,
         file_type: fileType,
-      });
+      }).select().single();
 
       if (error) throw error;
 
       shouldScrollRef.current = false;
       loadMessages(selectedChatId);
       loadChats(false);
+
+      // Post-moderation: check message after it's sent
+      if (messageText.trim() && insertedMessage) {
+        try {
+          const moderationResponse = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                content: messageText,
+                contentType: 'message',
+                contentId: insertedMessage.id,
+              }),
+            }
+          );
+
+          const moderationResult = await moderationResponse.json();
+
+          if (moderationResult.flagged && moderationResult.action === 'blocked') {
+            await getSupabase()
+              .from('messages')
+              .delete()
+              .eq('id', insertedMessage.id);
+
+            setMessages((prev) => prev.filter((m) => m.id !== insertedMessage.id));
+
+            alert(moderationResult.message || 'Ваше сообщение было удалено, так как содержит запрещенный контент');
+          }
+        } catch (err) {
+          console.error('Post-moderation error:', err);
+        }
+      }
 
       // Trigger AI analysis
       if (messageText.trim()) {
@@ -1574,39 +1610,42 @@ export default function MessagesPage() {
                       </Button>
                     </div>
                   ) : (
-                    <form onSubmit={handleSendMessage} className="flex gap-2">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        className="hidden"
-                        accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
-                      />
-                      <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="hover:bg-[#EFFFF8]">
-                        <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
-                      </Button>
-
-                      <textarea
-                        ref={textareaRef}
-                        value={message}
-                        onChange={(e) => {
-                          setMessage(e.target.value);
-                          checkContent(e.target.value);
-                          if (e.target.value.trim()) sendTypingIndicator();
-                          autosize();
-                        }}
-                        onKeyDown={handleComposerKeyDown}
-                        placeholder="Введите сообщение..."
-                        disabled={uploading}
-                        rows={1}
-                        className="min-h-11 w-full h-auto resize-none leading-5 px-3 py-2 rounded-md border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
+                    <div className="flex flex-col gap-2">
                       <ModerationAlert message={blockMessage} isVisible={isBlocked} />
 
-                      <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading || isBlocked}>
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </form>
+                      <form onSubmit={handleSendMessage} className="flex gap-2">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
+                        />
+                        <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="hover:bg-[#EFFFF8]">
+                          <Paperclip className="h-4 w-4 text-[#3F7F6E]" />
+                        </Button>
+
+                        <textarea
+                          ref={textareaRef}
+                          value={message}
+                          onChange={(e) => {
+                            setMessage(e.target.value);
+                            checkContent(e.target.value);
+                            if (e.target.value.trim()) sendTypingIndicator();
+                            autosize();
+                          }}
+                          onKeyDown={handleComposerKeyDown}
+                          placeholder="Введите сообщение..."
+                          disabled={uploading}
+                          rows={1}
+                          className="min-h-11 w-full h-auto resize-none leading-5 px-3 py-2 rounded-md border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+
+                        <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading || isBlocked}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    </div>
                   )}
                 </div>
               </Card>
