@@ -110,13 +110,10 @@ export default function ProfilePage() {
       .from('reviews')
       .select(`
         *,
-        reviewer:reviewer_id (
-          id,
-          email
-        ),
-        reviewer_profile:profiles!reviews_reviewer_id_fkey (
+        reviewer_profile:profiles!reviewer_id (
           name,
-          avatar_url
+          avatar_url,
+          email
         )
       `)
       .eq('reviewee_id', user.id)
@@ -706,7 +703,7 @@ export default function ProfilePage() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {reviews.map((review) => {
-                        const reviewerName = review.reviewer_profile?.name || review.reviewer?.email || 'Заказчик';
+                        const reviewerName = review.reviewer_profile?.name || review.reviewer_profile?.email || 'Заказчик';
                         const reviewerAvatar = review.reviewer_profile?.avatar_url || `https://i.pravatar.cc/64?u=${review.reviewer_id}`;
 
                         return (

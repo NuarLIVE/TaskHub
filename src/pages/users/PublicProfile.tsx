@@ -145,13 +145,10 @@ export default function PublicProfile() {
         .from('reviews')
         .select(`
           *,
-          reviewer:reviewer_id (
-            id,
-            email
-          ),
-          reviewer_profile:profiles!reviews_reviewer_id_fkey (
+          reviewer_profile:profiles!reviewer_id (
             name,
-            avatar_url
+            avatar_url,
+            email
           )
         `)
         .eq('reviewee_id', userId)
@@ -668,7 +665,7 @@ export default function PublicProfile() {
                         month: 'long',
                         year: 'numeric'
                       });
-                      const reviewerName = review.reviewer_profile?.name || review.reviewer?.email || 'Заказчик';
+                      const reviewerName = review.reviewer_profile?.name || review.reviewer_profile?.email || 'Заказчик';
                       const reviewerAvatar = review.reviewer_profile?.avatar_url || `https://i.pravatar.cc/64?u=${review.reviewer_id}`;
 
                       return (
