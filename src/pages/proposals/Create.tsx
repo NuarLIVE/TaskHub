@@ -24,7 +24,7 @@ export default function ProposalsCreate() {
   const [currency, setCurrency] = useState('USD');
   const [options, setOptions] = useState<Array<{title: string; description: string; price: string; days: string}>>([]);
   const [showOptions, setShowOptions] = useState(false);
-  const [proposalLimitData, setProposalLimitData] = useState<{ used: number; monthStart: string } | null>(null);
+  const [proposalLimitData, setProposalLimitData] = useState<{ used: number; monthStart: string; purchased: number } | null>(null);
 
   const params = new URLSearchParams(window.location.hash.split('?')[1]);
   const type = params.get('type') || 'order';
@@ -46,7 +46,7 @@ export default function ProposalsCreate() {
     try {
       const { data, error } = await getSupabase()
         .from('profiles')
-        .select('proposals_used_this_month, proposals_month_start')
+        .select('proposals_used_this_month, proposals_month_start, purchased_proposals')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -57,11 +57,16 @@ export default function ProposalsCreate() {
         currentMonthStart.setHours(0, 0, 0, 0);
 
         if (monthStart < currentMonthStart) {
-          setProposalLimitData({ used: 0, monthStart: currentMonthStart.toISOString() });
+          setProposalLimitData({
+            used: 0,
+            monthStart: currentMonthStart.toISOString(),
+            purchased: data.purchased_proposals || 0
+          });
         } else {
           setProposalLimitData({
             used: data.proposals_used_this_month || 0,
-            monthStart: data.proposals_month_start
+            monthStart: data.proposals_month_start,
+            purchased: data.purchased_proposals || 0
           });
         }
       }
@@ -192,10 +197,15 @@ export default function ProposalsCreate() {
       return;
     }
 
-    if (type === 'order' && proposalLimitData && proposalLimitData.used >= 90) {
-      alert('Вы достигли месячного лимита откликов на заказы (90). Попробуйте в следующем месяце или откликайтесь на задачи фрилансеров.');
-      window.location.hash = '/market';
-      return;
+    if (type === 'order' && proposalLimitData) {
+      const monthlyRemaining = Math.max(0, 90 - proposalLimitData.used);
+      const totalAvailable = monthlyRemaining + proposalLimitData.purchased;
+
+      if (totalAvailable <= 0) {
+        alert('У вас закончились отклики. Купите дополнительные отклики на странице Биржа.');
+        window.location.hash = '/market';
+        return;
+      }
     }
 
     if (!price || !days || !message) {
@@ -240,6 +250,28 @@ export default function ProposalsCreate() {
         console.error('Error creating proposal:', error);
         alert('Ошибка при отправке отклика: ' + error.message);
         return;
+      }
+
+      if (type === 'order' && proposalLimitData) {
+        const monthlyRemaining = Math.max(0, 90 - proposalLimitData.used);
+        let newUsed = proposalLimitData.used;
+        let newPurchased = proposalLimitData.purchased;
+
+        if (newPurchased > 0) {
+          newPurchased -= 1;
+        } else if (monthlyRemaining > 0) {
+          newUsed += 1;
+        }
+
+        await getSupabase()
+          .from('profiles')
+          .update({
+            proposals_used_this_month: newUsed,
+            purchased_proposals: newPurchased,
+            proposals_month_start: proposalLimitData.monthStart,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
       }
 
       if (showOptions && options.length > 0 && proposalResult) {
@@ -290,16 +322,22 @@ export default function ProposalsCreate() {
           Отправить отклик на {type === 'order' ? 'заказ' : 'объявление'}
         </h1>
 
-        {type === 'order' && proposalLimitData && proposalLimitData.used >= 90 && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-red-900 mb-1">Лимит откликов исчерпан</p>
-              <p className="text-sm text-red-700">
-                Вы достигли месячного лимита откликов на заказы (90 из 90). Попробуйте в следующем месяце или откликайтесь на задачи фрилансеров.
-              </p>
-            </div>
-          </div>
+        {type === 'order' && proposalLimitData && (
+          (() => {
+            const monthlyRemaining = Math.max(0, 90 - proposalLimitData.used);
+            const totalAvailable = monthlyRemaining + proposalLimitData.purchased;
+            return totalAvailable <= 0 ? (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-red-900 mb-1">Все отклики исчерпаны</p>
+                  <p className="text-sm text-red-700">
+                    У вас закончились отклики. Купите дополнительные отклики на странице Биржа или попробуйте в следующем месяце.
+                  </p>
+                </div>
+              </div>
+            ) : null;
+          })()
         )}
 
         {type === 'order' && proposalLimitData && proposalLimitData.used >= 72 && proposalLimitData.used < 90 && (
