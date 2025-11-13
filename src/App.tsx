@@ -25,6 +25,14 @@ const PublicProfile = lazy(() => import('./pages/users/PublicProfile'));
 const PortfolioAdd = lazy(() => import('./pages/me/PortfolioAdd'));
 const DealOpen = lazy(() => import('./pages/deal/Open'));
 const BlockedUsersPage = lazy(() => import('./pages/BlockedUsersPage'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminDeals = lazy(() => import('./pages/admin/AdminDeals'));
+const AdminFinance = lazy(() => import('./pages/admin/AdminFinance'));
+const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
+const AdminSuggestions = lazy(() => import('./pages/admin/AdminSuggestions'));
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -141,7 +149,19 @@ function App() {
   } else if (route === '/media' || route === '/media-library') {
     Page = MediaLibraryPage;
   } else if (route === '/admin') {
-    Page = AdminPage;
+    Page = AdminDashboard;
+  } else if (route === '/admin/settings') {
+    Page = AdminSettings;
+  } else if (route === '/admin/users') {
+    Page = AdminUsers;
+  } else if (route === '/admin/deals') {
+    Page = AdminDeals;
+  } else if (route === '/admin/finance') {
+    Page = AdminFinance;
+  } else if (route === '/admin/moderation') {
+    Page = AdminModeration;
+  } else if (route === '/admin/suggestions') {
+    Page = AdminSuggestions;
   } else if (route === '/terms') {
     Page = TermsPage;
   } else if (route === '/privacy') {
@@ -161,12 +181,13 @@ function App() {
   }
 
   const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding';
+  const isAdminPage = route.startsWith('/admin');
 
   return (
     <AuthProvider>
       <RegionProvider>
         <div className="min-h-screen bg-background text-foreground">
-          {!isAuthPage && <NavBar />}
+          {!isAuthPage && !isAdminPage && <NavBar />}
           <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
               <div className="text-center">
@@ -175,10 +196,16 @@ function App() {
               </div>
             </div>
           }>
-            <Page />
+            {isAdminPage ? (
+              <AdminLayout currentPage={route}>
+                <Page />
+              </AdminLayout>
+            ) : (
+              <Page />
+            )}
           </Suspense>
-          {!isAuthPage && <Footer />}
-          <DbStatus />
+          {!isAuthPage && !isAdminPage && <Footer />}
+          {!isAdminPage && <DbStatus />}
         </div>
       </RegionProvider>
     </AuthProvider>

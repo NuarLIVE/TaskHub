@@ -32,3 +32,5 @@ export async function resetSupabase(): Promise<SupabaseClient> {
   _client.realtime?.connect?.();
   return _client!;
 }
+
+export const supabase = getSupabase();
