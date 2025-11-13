@@ -121,36 +121,56 @@ export default function AdminSettings() {
   };
 
   const handleAddAdmin = async () => {
+    if (!newAdminEmail.trim()) {
+      setMessage('Введите email пользователя');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error: selectError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('email', newAdminEmail)
-        .single();
+        .eq('email', newAdminEmail.trim())
+        .maybeSingle();
+
+      if (selectError) {
+        console.error('Error fetching profile:', selectError);
+        setMessage('Ошибка при поиске пользователя: ' + selectError.message);
+        setLoading(false);
+        return;
+      }
 
       if (!profile) {
         setMessage('Пользователь с таким email не найден');
+        setLoading(false);
         return;
       }
 
       if (profile.role === 'ADMIN') {
         setMessage('Этот пользователь уже администратор');
+        setLoading(false);
         return;
       }
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ role: 'ADMIN' })
         .eq('id', profile.id);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('Error updating role:', updateError);
+        setMessage('Ошибка при обновлении роли: ' + updateError.message);
+        setLoading(false);
+        return;
+      }
 
       setMessage('Администратор успешно добавлен');
       setNewAdminEmail('');
-      loadAdmins();
+      await loadAdmins();
     } catch (error: any) {
+      console.error('Unexpected error:', error);
       setMessage('Ошибка: ' + error.message);
     } finally {
       setLoading(false);
@@ -163,16 +183,22 @@ export default function AdminSettings() {
     setLoading(true);
     setMessage('');
     try {
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ role: 'FREELANCER' })
         .eq('id', adminId);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('Error removing admin:', updateError);
+        setMessage('Ошибка при удалении администратора: ' + updateError.message);
+        setLoading(false);
+        return;
+      }
 
       setMessage('Администратор успешно удалён');
-      loadAdmins();
+      await loadAdmins();
     } catch (error: any) {
+      console.error('Unexpected error:', error);
       setMessage('Ошибка: ' + error.message);
     } finally {
       setLoading(false);
