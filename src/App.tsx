@@ -32,6 +32,7 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminDeals = lazy(() => import('./pages/admin/AdminDeals'));
 const AdminFinance = lazy(() => import('./pages/admin/AdminFinance'));
 const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
+const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminSuggestions = lazy(() => import('./pages/admin/AdminSuggestions'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
@@ -161,6 +162,8 @@ function App() {
     Page = AdminDeals;
   } else if (route === '/admin/finance') {
     Page = AdminFinance;
+  } else if (route === '/admin/categories') {
+    Page = AdminCategories;
   } else if (route === '/admin/moderation') {
     Page = AdminModeration;
   } else if (route === '/admin/suggestions') {

@@ -94,7 +94,7 @@ export default function AdminDeals() {
 
   return (
     <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-gradient-to-b from-[#EFFFF8]/30 to-background">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Мониторинг сделок</h1>
           <p className="text-[#3F7F6E] mt-2">Отслеживание всех сделок на платформе</p>

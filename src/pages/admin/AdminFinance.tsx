@@ -9,6 +9,7 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 
 export default function AdminFinance() {
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [platformBalance, setPlatformBalance] = useState(0);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalEscrow: 0,
@@ -30,6 +31,10 @@ export default function AdminFinance() {
       .order('created_at', { ascending: false })
       .limit(100);
 
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('balance');
+
     if (ledgerData) {
       setTransactions(ledgerData);
 
@@ -50,11 +55,16 @@ export default function AdminFinance() {
         .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
 
       setStats({
-        totalRevenue: revenue / 100,
-        totalEscrow: escrow / 100,
-        totalDeposits: deposits / 100,
-        totalWithdrawals: withdrawals / 100
+        totalRevenue: revenue,
+        totalEscrow: escrow,
+        totalDeposits: deposits,
+        totalWithdrawals: withdrawals
       });
+    }
+
+    if (profilesData) {
+      const totalBalance = profilesData.reduce((sum, p) => sum + Number(p.balance || 0), 0);
+      setPlatformBalance(totalBalance);
     }
   };
 
@@ -95,15 +105,30 @@ export default function AdminFinance() {
   };
 
   return (
-    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-gradient-to-b from-[#EFFFF8]/30 to-background">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Финансовые операции</h1>
           <p className="text-[#3F7F6E] mt-2">Мониторинг всех транзакций и финансовой активности</p>
         </div>
 
+        <Card className="border-[#6FE7C8]/20 shadow-md mb-6 bg-gradient-to-br from-[#6FE7C8]/10 to-[#3F7F6E]/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Сейчас на платформе</p>
+                <p className="text-4xl font-bold text-[#3F7F6E]">${platformBalance.toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-2">Общий баланс всех пользователей</p>
+              </div>
+              <div className="h-16 w-16 bg-[#6FE7C8]/30 rounded-full flex items-center justify-center">
+                <Wallet className="h-8 w-8 text-[#3F7F6E]" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="border-[#6FE7C8]/20 shadow-md">
+          <Card className="border-[#6FE7C8]/20 shadow-md hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Комиссии</p>
@@ -116,7 +141,7 @@ export default function AdminFinance() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#6FE7C8]/20 shadow-md">
+          <Card className="border-[#6FE7C8]/20 shadow-md hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Escrow</p>
@@ -129,7 +154,7 @@ export default function AdminFinance() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#6FE7C8]/20 shadow-md">
+          <Card className="border-[#6FE7C8]/20 shadow-md hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Пополнения</p>
@@ -142,7 +167,7 @@ export default function AdminFinance() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#6FE7C8]/20 shadow-md">
+          <Card className="border-[#6FE7C8]/20 shadow-md hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-600">Выводы</p>
