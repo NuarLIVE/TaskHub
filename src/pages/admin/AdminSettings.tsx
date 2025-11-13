@@ -23,6 +23,27 @@ export default function AdminSettings() {
   useEffect(() => {
     loadSettings();
     loadAdmins();
+
+    // Real-time subscription for admin list
+    const channel = supabase
+      .channel('admin-profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: 'role=eq.ADMIN'
+        },
+        () => {
+          loadAdmins();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadSettings = async () => {
@@ -33,7 +54,7 @@ export default function AdminSettings() {
   };
 
   const loadAdmins = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('role', 'ADMIN');
+    const { data } = await supabase.from('profiles').select('*').eq('role', 'ADMIN').order('created_at', { ascending: true });
     setAdmins(data || []);
   };
 
@@ -180,7 +201,7 @@ export default function AdminSettings() {
                 Комиссия платформы
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Процентная ставка (%)
@@ -215,7 +236,7 @@ export default function AdminSettings() {
                 Изменить пароль
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Новый пароль
@@ -252,7 +273,7 @@ export default function AdminSettings() {
                 Управление администраторами
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Добавить администратора
@@ -272,10 +293,10 @@ export default function AdminSettings() {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-3">Текущие администраторы</p>
+                <p className="text-sm font-medium text-gray-700 mb-3">Текущие администраторы ({admins.length})</p>
                 <div className="space-y-2">
                   {admins.map((admin) => (
-                    <div key={admin.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={admin.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                       <div>
                         <p className="font-medium text-gray-900">{admin.name}</p>
                         <p className="text-sm text-gray-500">{admin.email}</p>

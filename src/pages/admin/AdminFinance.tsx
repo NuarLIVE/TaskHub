@@ -157,35 +157,35 @@ export default function AdminFinance() {
         </div>
 
         <Card className="border-[#6FE7C8]/20 shadow-md">
-          <CardHeader>
+          <CardHeader className="pb-4 border-b">
             <CardTitle>Последние транзакции</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b text-left text-sm text-gray-600">
-                    <th className="pb-3 font-medium">Дата</th>
-                    <th className="pb-3 font-medium">Пользователь</th>
-                    <th className="pb-3 font-medium">Тип</th>
-                    <th className="pb-3 font-medium text-right">Сумма</th>
-                    <th className="pb-3 font-medium">Описание</th>
+                  <tr className="border-b-2 border-gray-200 text-left text-sm text-gray-600">
+                    <th className="pb-4 pt-2 font-semibold">Дата</th>
+                    <th className="pb-4 pt-2 font-semibold">Пользователь</th>
+                    <th className="pb-4 pt-2 font-semibold">Тип</th>
+                    <th className="pb-4 pt-2 font-semibold text-right">Сумма</th>
+                    <th className="pb-4 pt-2 font-semibold">Описание</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-100">
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-gray-500">
+                      <td colSpan={5} className="text-center py-12 text-gray-500">
                         Нет транзакций
                       </td>
                     </tr>
                   ) : (
                     transactions.map((tx) => (
-                      <tr key={tx.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="py-3 text-sm text-gray-600">
+                      <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-4 text-sm text-gray-600">
                           {formatDate(tx.created_at)}
                         </td>
-                        <td className="py-3 text-sm">
+                        <td className="py-4 text-sm">
                           {tx.profile ? (
                             <div>
                               <p className="font-medium text-gray-900">{tx.profile.name}</p>
@@ -195,17 +195,17 @@ export default function AdminFinance() {
                             <span className="text-gray-500">—</span>
                           )}
                         </td>
-                        <td className="py-3">
-                          <span className={`text-sm font-medium ${getTypeColor(tx.entry_type)}`}>
+                        <td className="py-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.entry_type)} bg-gray-50`}>
                             {getTypeLabel(tx.entry_type)}
                           </span>
                         </td>
-                        <td className="py-3 text-right">
-                          <span className={`font-semibold ${Number(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className="py-4 text-right">
+                          <span className={`font-semibold text-base ${Number(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {Number(tx.amount) >= 0 ? '+' : ''}${(Number(tx.amount) / 100).toFixed(2)}
                           </span>
                         </td>
-                        <td className="py-3 text-sm text-gray-600">
+                        <td className="py-4 text-sm text-gray-600 max-w-xs truncate">
                           {tx.description || '—'}
                         </td>
                       </tr>

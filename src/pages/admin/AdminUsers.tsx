@@ -76,7 +76,7 @@ export default function AdminUsers() {
         </div>
 
         <Card className="border-[#6FE7C8]/20 shadow-md mb-6">
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -88,11 +88,12 @@ export default function AdminUsers() {
                   className="pl-10"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant={roleFilter === 'all' ? 'default' : 'outline'}
                   onClick={() => setRoleFilter('all')}
                   size="sm"
+                  className="min-w-[80px]"
                 >
                   Все
                 </Button>
@@ -100,6 +101,7 @@ export default function AdminUsers() {
                   variant={roleFilter === 'ADMIN' ? 'default' : 'outline'}
                   onClick={() => setRoleFilter('ADMIN')}
                   size="sm"
+                  className="min-w-[80px]"
                 >
                   Админы
                 </Button>
@@ -107,6 +109,7 @@ export default function AdminUsers() {
                   variant={roleFilter === 'FREELANCER' ? 'default' : 'outline'}
                   onClick={() => setRoleFilter('FREELANCER')}
                   size="sm"
+                  className="min-w-[100px]"
                 >
                   Исполнители
                 </Button>
@@ -114,6 +117,7 @@ export default function AdminUsers() {
                   variant={roleFilter === 'CLIENT' ? 'default' : 'outline'}
                   onClick={() => setRoleFilter('CLIENT')}
                   size="sm"
+                  className="min-w-[100px]"
                 >
                   Заказчики
                 </Button>
@@ -138,7 +142,7 @@ export default function AdminUsers() {
           ) : (
             filteredUsers.map((user) => (
               <Card key={user.id} className="border-[#6FE7C8]/20 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="p-4">
+                <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
                       <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#6FE7C8] to-[#3F7F6E] flex items-center justify-center text-white font-semibold">
@@ -173,9 +177,9 @@ export default function AdminUsers() {
                             </span>
                           )}
                         </div>
-                        {user.balance !== undefined && (
+                        {user.balance !== undefined && user.balance !== null && (
                           <p className="text-sm font-medium text-[#3F7F6E] mt-2">
-                            Баланс: ${(user.balance / 100).toFixed(2)}
+                            Баланс: ${Number(user.balance).toFixed(2)}
                           </p>
                         )}
                       </div>

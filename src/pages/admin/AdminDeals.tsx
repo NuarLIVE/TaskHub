@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Briefcase, TrendingUp, DollarSign, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
@@ -10,6 +11,7 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 
 export default function AdminDeals() {
   const [deals, setDeals] = useState<any[]>([]);
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -172,15 +174,56 @@ export default function AdminDeals() {
 
         <Card className="border-[#6FE7C8]/20 shadow-md">
           <CardHeader>
-            <CardTitle>Все сделки</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Все сделки</CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant={filter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter('all')}
+                >
+                  Все
+                </Button>
+                <Button
+                  variant={filter === 'active' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter('active')}
+                >
+                  Активные
+                </Button>
+                <Button
+                  variant={filter === 'completed' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter('completed')}
+                >
+                  Завершенные
+                </Button>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-3">
-              {deals.length === 0 ? (
+              {deals.filter(deal => {
+                if (filter === 'active') {
+                  return ['STARTED', 'SUBMITTED', 'REVISION_REQUESTED'].includes(deal.status);
+                }
+                if (filter === 'completed') {
+                  return ['ACCEPTED', 'RESOLVED'].includes(deal.status);
+                }
+                return true;
+              }).length === 0 ? (
                 <p className="text-center text-gray-500 py-8">Нет сделок</p>
               ) : (
-                deals.map((deal) => (
-                  <div key={deal.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                deals.filter(deal => {
+                  if (filter === 'active') {
+                    return ['STARTED', 'SUBMITTED', 'REVISION_REQUESTED'].includes(deal.status);
+                  }
+                  if (filter === 'completed') {
+                    return ['ACCEPTED', 'RESOLVED'].includes(deal.status);
+                  }
+                  return true;
+                }).map((deal) => (
+                  <div key={deal.id} className="p-5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -212,9 +255,12 @@ export default function AdminDeals() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mt-2 pt-2 border-t">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-3 pt-3 border-t">
                       <span>ID: {deal.id.slice(0, 8)}</span>
                       <span>Создана: {formatDate(deal.created_at)}</span>
+                      {deal.updated_at && deal.updated_at !== deal.created_at && (
+                        <span>Обновлена: {formatDate(deal.updated_at)}</span>
+                      )}
                       {deal.escrow_amount && (
                         <span className="font-medium text-[#3F7F6E]">
                           Escrow: ${(deal.escrow_amount / 100).toFixed(2)}

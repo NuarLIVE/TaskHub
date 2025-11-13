@@ -10,7 +10,7 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children, currentPage }: AdminLayoutProps) {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,8 +42,8 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    window.location.hash = '#/';
+    await logout();
+    window.location.hash = '#/admin/login';
   };
 
   const navigation = [
