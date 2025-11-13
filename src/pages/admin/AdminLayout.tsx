@@ -21,7 +21,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
 
   const checkAdminAccess = async () => {
     if (!user) {
-      window.location.hash = '#/login';
+      window.location.hash = '#/admin/login';
       return;
     }
 
@@ -33,7 +33,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
 
     if (!profileData || profileData.role !== 'ADMIN') {
       alert('У вас нет доступа к админ-панели');
-      window.location.hash = '#/';
+      window.location.hash = '#/admin/login';
       return;
     }
 

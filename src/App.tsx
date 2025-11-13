@@ -25,6 +25,7 @@ const PublicProfile = lazy(() => import('./pages/users/PublicProfile'));
 const PortfolioAdd = lazy(() => import('./pages/me/PortfolioAdd'));
 const DealOpen = lazy(() => import('./pages/deal/Open'));
 const BlockedUsersPage = lazy(() => import('./pages/BlockedUsersPage'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
@@ -148,6 +149,8 @@ function App() {
     Page = BlockedUsersPage;
   } else if (route === '/media' || route === '/media-library') {
     Page = MediaLibraryPage;
+  } else if (route === '/admin/login') {
+    Page = AdminLogin;
   } else if (route === '/admin') {
     Page = AdminDashboard;
   } else if (route === '/admin/settings') {
@@ -182,6 +185,7 @@ function App() {
 
   const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding';
   const isAdminPage = route.startsWith('/admin');
+  const isAdminLoginPage = route === '/admin/login';
 
   return (
     <AuthProvider>
@@ -196,7 +200,7 @@ function App() {
               </div>
             </div>
           }>
-            {isAdminPage ? (
+            {isAdminPage && !isAdminLoginPage ? (
               <AdminLayout currentPage={route}>
                 <Page />
               </AdminLayout>

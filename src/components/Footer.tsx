@@ -124,6 +124,7 @@ export default function Footer() {
             <a href="#/terms" className="hover:text-foreground transition">Условия</a>
             <a href="#/privacy" className="hover:text-foreground transition">Конфиденциальность</a>
             <a href="#/contact" className="hover:text-foreground transition">Контакты</a>
+            <a href="#/admin/login" className="hover:text-foreground transition opacity-50 text-xs">Admin</a>
           </div>
         </div>
       </div>
