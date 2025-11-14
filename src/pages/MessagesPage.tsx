@@ -41,6 +41,7 @@ import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 import { CRMConfirmation } from '@/components/CRMConfirmation';
 import DealProgressPanel from '@/components/DealProgressPanel';
 import { ReviewInChat } from '@/components/ReviewInChat';
+import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
 const pageTransition = { duration: 0.2 };
@@ -87,6 +88,7 @@ const isOnlineFresh = (p?: { last_seen_at?: string | null }) => {
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const { language } = useRegion();
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -122,7 +124,6 @@ export default function MessagesPage() {
   const [showTranslationSettings, setShowTranslationSettings] = useState(false);
   const [translateChat, setTranslateChat] = useState(false);
   const [translateMyMessages, setTranslateMyMessages] = useState(false);
-  const [targetLanguage, setTargetLanguage] = useState('en');
   const [aiAgentEnabled, setAiAgentEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.4);
   const [translating, setTranslating] = useState(false);
@@ -155,29 +156,29 @@ export default function MessagesPage() {
     return () => clearInterval(t);
   }, []);
 
-  // Auto-translate incoming messages when translateChat is enabled
+  // Auto-translate all messages when translateChat is enabled
   useEffect(() => {
     if (!translateChat || !user) {
       setTranslatedMessages({});
       return;
     }
 
-    const translateIncomingMessages = async () => {
+    const translateAllMessages = async () => {
       const messagesToTranslate = messages.filter(
-        (msg) => msg.sender_id !== user.id && (msg.content || msg.text) && !translatedMessages[msg.id]
+        (msg) => (msg.content || msg.text) && !translatedMessages[msg.id]
       );
 
       for (const msg of messagesToTranslate) {
         const textToTranslate = msg.content || msg.text;
         if (textToTranslate) {
-          const translated = await translateText(textToTranslate, targetLanguage);
+          const translated = await translateText(textToTranslate, language);
           setTranslatedMessages((prev) => ({ ...prev, [msg.id]: translated }));
         }
       }
     };
 
-    translateIncomingMessages();
-  }, [translateChat, messages, targetLanguage, user]);
+    translateAllMessages();
+  }, [translateChat, messages, language, user]);
 
   // Clear translated messages when chat changes
   useEffect(() => {
@@ -707,7 +708,7 @@ export default function MessagesPage() {
 
     setTranslating(true);
     try {
-      const translated = await translateText(message, targetLanguage);
+      const translated = await translateText(message, language);
       setTranslatedInput(translated);
       setMessage(translated);
     } catch (error) {
@@ -1625,7 +1626,7 @@ export default function MessagesPage() {
                             {(msg.content || msg.text) && (
                               <div className="p-3">
                                 <div className="text-sm whitespace-pre-wrap break-words">
-                                  {translateChat && !isOwn ? (translatedMessages[msg.id] || msg.content || msg.text) : (msg.content || msg.text)}
+                                  {translateChat ? (translatedMessages[msg.id] || msg.content || msg.text) : (msg.content || msg.text)}
                                 </div>
                               </div>
                             )}
@@ -1903,24 +1904,10 @@ export default function MessagesPage() {
               </div>
 
               {(translateChat || translateMyMessages) && (
-                <div>
-                  <label className="text-sm font-medium block mb-2">Переводить на:</label>
-                  <select
-                    value={targetLanguage}
-                    onChange={(e) => setTargetLanguage(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#6FE7C8]"
-                  >
-                    <option value="ru">Русский</option>
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                    <option value="fr">Français</option>
-                    <option value="de">Deutsch</option>
-                    <option value="it">Italiano</option>
-                    <option value="pt">Português</option>
-                    <option value="pl">Polski</option>
-                    <option value="uk">Українська</option>
-                    <option value="kk">Қазақша</option>
-                  </select>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    Сообщения переводятся на язык, выбранный в настройках региона в NavBar: <span className="font-semibold">{language.toUpperCase()}</span>
+                  </p>
                 </div>
               )}
             </div>
