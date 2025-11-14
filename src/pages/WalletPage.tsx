@@ -204,26 +204,40 @@ export default function WalletPage() {
     if (!user || !depositAmount) return;
 
     const amount = parseFloat(depositAmount);
-    if (amount <= 0) {
+    if (amount <= 0 || isNaN(amount)) {
       alert('Некорректная сумма для пополнения');
       return;
     }
 
     try {
-      const newBalance = profileBalance + amount;
+      const newProfileBalance = profileBalance + amount;
 
-      const { error } = await getSupabase()
+      const profileUpdate = await getSupabase()
         .from('profiles')
         .update({
-          balance: newBalance,
+          balance: newProfileBalance,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (profileUpdate.error) throw profileUpdate.error;
 
       if (wallet) {
-        await getSupabase()
+        const newWalletBalance = wallet.balance + amount;
+        const newTotalEarned = wallet.total_earned + amount;
+
+        const walletUpdate = await getSupabase()
+          .from('wallets')
+          .update({
+            balance: newWalletBalance,
+            total_earned: newTotalEarned,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', wallet.id);
+
+        if (walletUpdate.error) throw walletUpdate.error;
+
+        const transactionInsert = await getSupabase()
           .from('transactions')
           .insert({
             wallet_id: wallet.id,
@@ -231,11 +245,14 @@ export default function WalletPage() {
             amount: amount,
             status: 'completed',
             description: `Тестовое пополнение ${formatPrice(amount, profileCurrency)}`,
-            reference_type: 'test_deposit',
+            reference_type: 'deposit',
             completed_at: new Date().toISOString()
           });
+
+        if (transactionInsert.error) throw transactionInsert.error;
       }
 
+      alert(`Успешно пополнено на ${formatPrice(amount, profileCurrency)}`);
       setShowDepositModal(false);
       setDepositAmount('');
       await loadProfileBalance();
@@ -243,7 +260,7 @@ export default function WalletPage() {
       await loadTransactions();
     } catch (error) {
       console.error('Error creating deposit:', error);
-      alert('Ошибка при пополнении баланса');
+      alert('Ошибка при пополнении баланса: ' + (error as Error).message);
     }
   };
 
