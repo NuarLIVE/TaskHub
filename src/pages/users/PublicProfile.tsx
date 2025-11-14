@@ -168,35 +168,50 @@ export default function PublicProfile() {
     try {
       const { data, error } = await supabase
         .from('reviews')
-        .select(`
-          *,
-          reviewer_profile:profiles!reviewer_id (
-            name,
-            avatar_url,
-            email
-          )
-        `)
+        .select('*')
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setReviews(data || []);
 
-      if (currentUser && data && data.length > 0) {
-        const reviewIds = data.map((r: any) => r.id);
-        const { data: votesData } = await supabase
-          .from('review_helpful_votes')
-          .select('review_id')
-          .in('review_id', reviewIds)
-          .eq('user_id', currentUser.id);
+      if (data && data.length > 0) {
+        const reviewerIds = [...new Set(data.map((r: any) => r.reviewer_id))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url, email')
+          .in('id', reviewerIds);
 
-        const likesMap: Record<string, boolean> = {};
-        (votesData || []).forEach((vote: any) => {
-          likesMap[vote.review_id] = true;
+        const profilesMap: Record<string, any> = {};
+        (profilesData || []).forEach((p: any) => {
+          profilesMap[p.id] = p;
         });
-        setReviewLikes(likesMap);
+
+        const reviewsWithProfiles = data.map((r: any) => ({
+          ...r,
+          reviewer_profile: profilesMap[r.reviewer_id] || { name: 'Пользователь', avatar_url: null, email: '' }
+        }));
+
+        setReviews(reviewsWithProfiles);
+
+        if (currentUser) {
+          const reviewIds = data.map((r: any) => r.id);
+          const { data: votesData } = await supabase
+            .from('review_helpful_votes')
+            .select('review_id')
+            .in('review_id', reviewIds)
+            .eq('user_id', currentUser.id);
+
+          const likesMap: Record<string, boolean> = {};
+          (votesData || []).forEach((vote: any) => {
+            likesMap[vote.review_id] = true;
+          });
+          setReviewLikes(likesMap);
+        }
+      } else {
+        setReviews([]);
       }
     } catch (error) {
+      console.error('Error loading reviews:', error);
       setReviews([]);
     }
   };
