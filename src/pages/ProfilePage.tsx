@@ -47,6 +47,12 @@ export default function ProfilePage() {
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
   const [editSkills, setEditSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
+  const [statistics, setStatistics] = useState({
+    rating: 0,
+    completedProjects: 0,
+    avgResponseTime: '',
+    repeatOrders: 0
+  });
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -69,6 +75,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       loadUserProfile();
+      loadStatistics();
       if (tab === 'market') {
         loadUserMarketItems();
       } else if (tab === 'portfolio') {
@@ -107,6 +114,92 @@ export default function ProfilePage() {
         age: data.age || null,
       });
     }
+  };
+
+  const loadStatistics = async () => {
+    if (!user) return;
+
+    const supabase = getSupabase();
+
+    const { data: reviewsData } = await supabase
+      .from('reviews')
+      .select('rating')
+      .eq('reviewee_id', user.id);
+
+    const avgRating = reviewsData && reviewsData.length > 0
+      ? reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length
+      : 0;
+
+    const { data: dealsData } = await supabase
+      .from('deals')
+      .select('id, status, client_id')
+      .eq('freelancer_id', user.id)
+      .eq('status', 'completed');
+
+    const completedCount = dealsData?.length || 0;
+
+    const clientIds = dealsData?.map(d => d.client_id) || [];
+    const clientCounts = clientIds.reduce((acc, id) => {
+      acc[id] = (acc[id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const repeatCount = Object.values(clientCounts).reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+
+    const { data: proposalsData } = await supabase
+      .from('proposals')
+      .select('created_at, order_id, task_id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+
+    let avgResponseTimeStr = 'N/A';
+    if (proposalsData && proposalsData.length > 0) {
+      const responseTimes: number[] = [];
+
+      for (const proposal of proposalsData) {
+        let itemCreatedAt: string | null = null;
+
+        if (proposal.order_id) {
+          const { data: orderData } = await supabase
+            .from('orders')
+            .select('created_at')
+            .eq('id', proposal.order_id)
+            .maybeSingle();
+          itemCreatedAt = orderData?.created_at;
+        } else if (proposal.task_id) {
+          const { data: taskData } = await supabase
+            .from('tasks')
+            .select('created_at')
+            .eq('id', proposal.task_id)
+            .maybeSingle();
+          itemCreatedAt = taskData?.created_at;
+        }
+
+        if (itemCreatedAt) {
+          const itemTime = new Date(itemCreatedAt).getTime();
+          const proposalTime = new Date(proposal.created_at).getTime();
+          const diffHours = (proposalTime - itemTime) / (1000 * 60 * 60);
+          if (diffHours >= 0) {
+            responseTimes.push(diffHours);
+          }
+        }
+      }
+
+      if (responseTimes.length > 0) {
+        const avgHours = responseTimes.reduce((sum, t) => sum + t, 0) / responseTimes.length;
+        if (avgHours < 1) {
+          avgResponseTimeStr = `${Math.round(avgHours * 60)}м`;
+        } else {
+          avgResponseTimeStr = `${Math.round(avgHours)}ч`;
+        }
+      }
+    }
+
+    setStatistics({
+      rating: Math.round(avgRating * 10) / 10,
+      completedProjects: completedCount,
+      avgResponseTime: avgResponseTimeStr,
+      repeatOrders: repeatCount
+    });
   };
 
   useEffect(() => {
@@ -405,11 +498,14 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl border p-2">
                       <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
-                      <div className="font-semibold flex items-center justify-center gap-1"><Star className="h-4 w-4" />4.9</div>
+                      <div className="font-semibold flex items-center justify-center gap-1">
+                        <Star className="h-4 w-4" />
+                        {statistics.rating > 0 ? statistics.rating.toFixed(1) : 'N/A'}
+                      </div>
                     </div>
                     <div className="rounded-xl border p-2">
                       <div className="text-xs text-[#3F7F6E]">Проекты</div>
-                      <div className="font-semibold">27</div>
+                      <div className="font-semibold">{statistics.completedProjects}</div>
                     </div>
                     <div className="rounded-xl border p-2">
                       <div className="text-xs text-[#3F7F6E]">Онлайн</div>
@@ -745,25 +841,34 @@ export default function ProfilePage() {
                           <div>
                             <div className="text-sm text-[#3F7F6E]">Общий рейтинг</div>
                             <div className="flex items-center gap-2 mt-1">
-                              <div className="text-2xl font-bold text-[#6FE7C8]">4.9</div>
+                              <div className="text-2xl font-bold text-[#6FE7C8]">
+                                {statistics.rating > 0 ? statistics.rating.toFixed(1) : 'N/A'}
+                              </div>
                               <div className="flex">
                                 {[1,2,3,4,5].map(i => (
-                                  <Star key={i} className="h-4 w-4 fill-[#6FE7C8] text-[#6FE7C8]" />
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${
+                                      i <= Math.floor(statistics.rating)
+                                        ? 'fill-[#6FE7C8] text-[#6FE7C8]'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
                                 ))}
                               </div>
                             </div>
                           </div>
                           <div>
                             <div className="text-sm text-[#3F7F6E]">Завершено проектов</div>
-                            <div className="text-2xl font-bold mt-1">27</div>
+                            <div className="text-2xl font-bold mt-1">{statistics.completedProjects}</div>
                           </div>
                           <div>
                             <div className="text-sm text-[#3F7F6E]">Среднее время отклика</div>
-                            <div className="text-2xl font-bold mt-1 text-emerald-600">2ч</div>
+                            <div className="text-2xl font-bold mt-1 text-emerald-600">{statistics.avgResponseTime}</div>
                           </div>
                           <div>
                             <div className="text-sm text-[#3F7F6E]">Повторных заказов</div>
-                            <div className="text-2xl font-bold mt-1">18</div>
+                            <div className="text-2xl font-bold mt-1">{statistics.repeatOrders}</div>
                           </div>
                         </div>
                       </div>
