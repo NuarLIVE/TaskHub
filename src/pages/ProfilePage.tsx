@@ -282,35 +282,68 @@ export default function ProfilePage() {
 
       if (reviewsData && reviewsData.length > 0) {
         const reviewerIds = [...new Set(reviewsData.map((r: any) => r.reviewer_id))];
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, name, avatar_url, email')
-          .in('id', reviewerIds);
+        const dealIds = [...new Set(reviewsData.map((r: any) => r.deal_id))];
+
+        const [profilesResult, dealsResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, name, avatar_url, email')
+            .in('id', reviewerIds),
+          supabase
+            .from('deals')
+            .select('id, task_id, order_id')
+            .in('id', dealIds)
+        ]);
 
         const profilesMap: Record<string, any> = {};
-        (profilesData || []).forEach((p: any) => {
+        (profilesResult.data || []).forEach((p: any) => {
           profilesMap[p.id] = p;
         });
 
-        const reviewsWithProfiles = reviewsData.map((r: any) => ({
-          ...r,
-          reviewer_profile: profilesMap[r.reviewer_id] || { name: 'Пользователь', avatar_url: null, email: '' }
-        }));
+        const dealsMap: Record<string, any> = {};
+        (dealsResult.data || []).forEach((d: any) => {
+          dealsMap[d.id] = d;
+        });
 
-        setReviews(reviewsWithProfiles);
+        const taskIds = (dealsResult.data || []).filter((d: any) => d.task_id).map((d: any) => d.task_id);
+        const orderIds = (dealsResult.data || []).filter((d: any) => d.order_id).map((d: any) => d.order_id);
+
+        const [tasksResult, ordersResult] = await Promise.all([
+          taskIds.length > 0 ? supabase.from('tasks').select('id, category').in('id', taskIds) : Promise.resolve({ data: [] }),
+          orderIds.length > 0 ? supabase.from('orders').select('id, category').in('id', orderIds) : Promise.resolve({ data: [] })
+        ]);
+
+        const tasksMap: Record<string, any> = {};
+        (tasksResult.data || []).forEach((t: any) => {
+          tasksMap[t.id] = t;
+        });
+
+        const ordersMap: Record<string, any> = {};
+        (ordersResult.data || []).forEach((o: any) => {
+          ordersMap[o.id] = o;
+        });
+
+        const reviewsWithData = reviewsData.map((r: any) => {
+          const deal = dealsMap[r.deal_id];
+          let category = 'Без категории';
+          if (deal) {
+            if (deal.task_id && tasksMap[deal.task_id]) {
+              category = tasksMap[deal.task_id].category || 'Без категории';
+            } else if (deal.order_id && ordersMap[deal.order_id]) {
+              category = ordersMap[deal.order_id].category || 'Без категории';
+            }
+          }
+
+          return {
+            ...r,
+            reviewer_profile: profilesMap[r.reviewer_id] || { name: 'Пользователь', avatar_url: null, email: '' },
+            category
+          };
+        });
+
+        setReviews(reviewsWithData);
       } else {
         setReviews([]);
-      }
-
-      if (user) {
-        const { data: votesData } = await supabase
-          .from('review_helpful_votes')
-          .select('review_id')
-          .eq('user_id', user.id);
-
-        if (votesData) {
-          setHelpfulVotes(new Set(votesData.map(v => v.review_id)));
-        }
       }
     } catch (error) {
       console.error('Error loading reviews:', error);
@@ -471,9 +504,39 @@ export default function ProfilePage() {
       contactTelegram: String(fd.get('contactTelegram') || ''),
       avatar: uploadedAvatarUrl
     };
-    saveProfile(next);
-    alert('Профиль обновлён');
-    setTab('about');
+
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          name: next.name,
+          specialty: next.role,
+          bio: next.bio,
+          skills: next.skills,
+          rate_min: next.rateMin,
+          rate_max: next.rateMax,
+          currency: next.currency,
+          location: next.location,
+          contact_gmail: next.contactEmail,
+          contact_telegram: next.contactTelegram,
+          avatar_url: next.avatar,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        alert(`Ошибка при обновлении профиля: ${updateError.message}`);
+        return;
+      }
+
+      saveProfile(next);
+      alert('Профиль обновлён');
+      setTab('about');
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      alert(`Ошибка при обновлении профиля: ${error.message}`);
+    }
   };
 
   const handleShareProfile = async () => {
@@ -970,7 +1033,7 @@ export default function ProfilePage() {
                           <Card key={review.id} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-6 grid gap-3">
                               <div className="flex items-center gap-3">
-                                <div>
+                                <div className="flex-1">
                                   <div className="font-medium">{reviewerName}</div>
                                   <div className="text-xs text-[#3F7F6E]">
                                     {new Date(review.created_at).toLocaleDateString('ru-RU', {
@@ -980,32 +1043,17 @@ export default function ProfilePage() {
                                     })}
                                   </div>
                                 </div>
-                                <div className="ml-auto flex items-center gap-1 text-emerald-600">
-                                  <Star className="h-4 w-4 fill-emerald-600" />
-                                  <span className="font-semibold">{review.rating}.0</span>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">{review.category}</Badge>
+                                  <div className="flex items-center gap-1 text-emerald-600">
+                                    <Star className="h-4 w-4 fill-emerald-600" />
+                                    <span className="font-semibold">{review.rating}.0</span>
+                                  </div>
                                 </div>
                               </div>
                               <p className="text-sm text-[#3F7F6E] leading-relaxed">
                                 {review.comment}
                               </p>
-                              <div className="flex items-center gap-4 pt-2 border-t">
-                                <button
-                                  onClick={() => toggleHelpful(review.id)}
-                                  className={`flex items-center gap-1.5 text-sm transition-colors ${
-                                    helpfulVotes.has(review.id)
-                                      ? 'text-[#6FE7C8] font-medium'
-                                      : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
-                                  }`}
-                                >
-                                  <Heart
-                                    className={`h-4 w-4 transition-all ${
-                                      helpfulVotes.has(review.id) ? 'fill-[#6FE7C8]' : ''
-                                    }`}
-                                  />
-                                  <span>Полезно</span>
-                                  {review.likes_count > 0 && <span className="text-xs">({review.likes_count})</span>}
-                                </button>
-                              </div>
                             </CardContent>
                           </Card>
                         );

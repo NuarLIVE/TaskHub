@@ -176,37 +176,66 @@ export default function PublicProfile() {
 
       if (data && data.length > 0) {
         const reviewerIds = [...new Set(data.map((r: any) => r.reviewer_id))];
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, name, avatar_url, email')
-          .in('id', reviewerIds);
+        const dealIds = [...new Set(data.map((r: any) => r.deal_id))];
+
+        const [profilesResult, dealsResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, name, avatar_url, email')
+            .in('id', reviewerIds),
+          supabase
+            .from('deals')
+            .select('id, task_id, order_id')
+            .in('id', dealIds)
+        ]);
 
         const profilesMap: Record<string, any> = {};
-        (profilesData || []).forEach((p: any) => {
+        (profilesResult.data || []).forEach((p: any) => {
           profilesMap[p.id] = p;
         });
 
-        const reviewsWithProfiles = data.map((r: any) => ({
-          ...r,
-          reviewer_profile: profilesMap[r.reviewer_id] || { name: 'Пользователь', avatar_url: null, email: '' }
-        }));
+        const dealsMap: Record<string, any> = {};
+        (dealsResult.data || []).forEach((d: any) => {
+          dealsMap[d.id] = d;
+        });
 
-        setReviews(reviewsWithProfiles);
+        const taskIds = (dealsResult.data || []).filter((d: any) => d.task_id).map((d: any) => d.task_id);
+        const orderIds = (dealsResult.data || []).filter((d: any) => d.order_id).map((d: any) => d.order_id);
 
-        if (currentUser) {
-          const reviewIds = data.map((r: any) => r.id);
-          const { data: votesData } = await supabase
-            .from('review_helpful_votes')
-            .select('review_id')
-            .in('review_id', reviewIds)
-            .eq('user_id', currentUser.id);
+        const [tasksResult, ordersResult] = await Promise.all([
+          taskIds.length > 0 ? supabase.from('tasks').select('id, category').in('id', taskIds) : Promise.resolve({ data: [] }),
+          orderIds.length > 0 ? supabase.from('orders').select('id, category').in('id', orderIds) : Promise.resolve({ data: [] })
+        ]);
 
-          const likesMap: Record<string, boolean> = {};
-          (votesData || []).forEach((vote: any) => {
-            likesMap[vote.review_id] = true;
-          });
-          setReviewLikes(likesMap);
-        }
+        const tasksMap: Record<string, any> = {};
+        (tasksResult.data || []).forEach((t: any) => {
+          tasksMap[t.id] = t;
+        });
+
+        const ordersMap: Record<string, any> = {};
+        (ordersResult.data || []).forEach((o: any) => {
+          ordersMap[o.id] = o;
+        });
+
+        const reviewsWithData = data.map((r: any) => {
+          const deal = dealsMap[r.deal_id];
+          let category = 'Без категории';
+          if (deal) {
+            if (deal.task_id && tasksMap[deal.task_id]) {
+              category = tasksMap[deal.task_id].category || 'Без категории';
+            } else if (deal.order_id && ordersMap[deal.order_id]) {
+              category = ordersMap[deal.order_id].category || 'Без категории';
+            }
+          }
+
+          return {
+            ...r,
+            reviewer_profile: profilesMap[r.reviewer_id] || { name: 'Пользователь', avatar_url: null, email: '' },
+            category
+          };
+        });
+
+        setReviews(reviewsWithData);
       } else {
         setReviews([]);
       }
@@ -711,27 +740,19 @@ export default function PublicProfile() {
                         <Card key={review.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-6 grid gap-3">
                             <div className="flex items-center gap-3">
-                              <div>
+                              <div className="flex-1">
                                 <div className="font-medium">{reviewerName}</div>
                                 <div className="text-xs text-[#3F7F6E]">{timeAgo}</div>
                               </div>
-                              <div className="ml-auto flex items-center gap-1 text-emerald-600">
-                                <Star className="h-4 w-4 fill-emerald-600" />
-                                <span className="font-semibold">{review.rating}.0</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">{review.category}</Badge>
+                                <div className="flex items-center gap-1 text-emerald-600">
+                                  <Star className="h-4 w-4 fill-emerald-600" />
+                                  <span className="font-semibold">{review.rating}.0</span>
+                                </div>
                               </div>
                             </div>
                             <p className="text-sm text-[#3F7F6E] whitespace-pre-wrap">{review.comment}</p>
-                            <div className="flex items-center justify-between pt-2 border-t">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleReviewLike(review.id)}
-                                className={`h-8 px-3 ${isLiked ? 'text-[#6FE7C8]' : 'text-[#3F7F6E]'}`}
-                              >
-                                <ThumbsUp className={`h-4 w-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
-                                Полезно ({review.likes_count})
-                              </Button>
-                            </div>
                           </CardContent>
                         </Card>
                       );
