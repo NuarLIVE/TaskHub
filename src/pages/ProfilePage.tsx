@@ -21,6 +21,13 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 export default function ProfilePage() {
   const { user } = useAuth();
   const [tab, setTab] = useState('portfolio');
+
+  useEffect(() => {
+    if (tab === 'edit') {
+      setEditSkills(profile.skills || []);
+      setSkillInput('');
+    }
+  }, [tab]);
   const [showCopied, setShowCopied] = useState(false);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userTasks, setUserTasks] = useState<any[]>([]);
@@ -38,6 +45,8 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showMediaEditor, setShowMediaEditor] = useState(false);
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
+  const [editSkills, setEditSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState('');
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -331,8 +340,7 @@ export default function ProfilePage() {
       }
     }
 
-    const skillsArray = String(fd.get('skills') || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (skillsArray.length > 10) {
+    if (editSkills.length > 10) {
       alert('Максимум 10 навыков');
       return;
     }
@@ -343,7 +351,7 @@ export default function ProfilePage() {
       role: String(fd.get('role') || ''),
       about: profile.about,
       bio: bioText,
-      skills: skillsArray,
+      skills: editSkills,
       rateMin: Math.min(Number(fd.get('rateMin') || 0), 1000),
       rateMax: Math.min(Number(fd.get('rateMax') || 0), 1000),
       currency: String(fd.get('currency') || 'USD'),
@@ -909,7 +917,8 @@ export default function ProfilePage() {
                               <img
                                 src={profile.avatar}
                                 alt="Current avatar"
-                                className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
+                                onClick={() => avatarInputRef.current?.click()}
+                                className="h-24 w-24 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
                               />
                             )}
                             <Button
@@ -927,7 +936,8 @@ export default function ProfilePage() {
                             <img
                               src={avatarPreview}
                               alt="Avatar preview"
-                              className="h-24 w-24 rounded-full object-cover border-2 border-[#6FE7C8]"
+                              onClick={() => avatarInputRef.current?.click()}
+                              className="h-24 w-24 rounded-full object-cover border-2 border-[#6FE7C8] cursor-pointer hover:opacity-80 transition-opacity"
                             />
                             <div className="flex gap-2">
                               <Button
@@ -977,10 +987,73 @@ export default function ProfilePage() {
                           {profile.bio?.length || 0} / 700
                         </div>
                       </label>
-                      <label className="grid gap-1">
-                        <span className="text-sm font-medium">Навыки (через запятую, максимум 10)</span>
-                        <Input name="skills" defaultValue={profile.skills.join(', ')} className="h-11" placeholder="Например: React, TypeScript, Node.js" />
-                      </label>
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">
+                          Навыки (максимум 10)
+                        </label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="text"
+                            value={skillInput}
+                            onChange={(e) => setSkillInput(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (skillInput.trim() && !editSkills.includes(skillInput.trim())) {
+                                  if (editSkills.length >= 10) {
+                                    alert('Максимум 10 навыков');
+                                    return;
+                                  }
+                                  setEditSkills([...editSkills, skillInput.trim()]);
+                                  setSkillInput('');
+                                }
+                              }
+                            }}
+                            placeholder="Добавьте навык"
+                            className="h-11"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              if (skillInput.trim() && !editSkills.includes(skillInput.trim())) {
+                                if (editSkills.length >= 10) {
+                                  alert('Максимум 10 навыков');
+                                  return;
+                                }
+                                setEditSkills([...editSkills, skillInput.trim()]);
+                                setSkillInput('');
+                              }
+                            }}
+                            disabled={editSkills.length >= 10}
+                            className="whitespace-nowrap"
+                          >
+                            Добавить
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {editSkills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-[#3F7F6E]/10 text-[#3F7F6E] rounded-full text-sm"
+                            >
+                              {skill}
+                              <button
+                                type="button"
+                                onClick={() => setEditSkills(editSkills.filter((s) => s !== skill))}
+                                className="hover:text-red-600"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        {editSkills.length > 0 && (
+                          <p className="text-xs text-gray-500">
+                            {editSkills.length} / 10 навыков
+                          </p>
+                        )}
+                        <input type="hidden" name="skills" value={editSkills.join(', ')} />
+                      </div>
                       <div className="grid sm:grid-cols-3 gap-4">
                         <label className="grid gap-1">
                           <span className="text-sm font-medium">Ставка min ($)</span>
