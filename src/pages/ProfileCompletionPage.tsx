@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Camera, Upload, X } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { MediaEditor } from '../components/MediaEditor';
 
 export default function ProfileCompletionPage() {
   const { user } = useAuth();
@@ -9,6 +10,8 @@ export default function ProfileCompletionPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const [skillInput, setSkillInput] = useState('');
+  const [showMediaEditor, setShowMediaEditor] = useState(false);
+  const [fileToEdit, setFileToEdit] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     specialty: '',
@@ -21,6 +24,7 @@ export default function ProfileCompletionPage() {
     location: '',
     contact_telegram: '',
     contact_gmail: '',
+    bio: '',
   });
 
   const [ageError, setAgeError] = useState('');
@@ -35,13 +39,34 @@ export default function ProfileCompletionPage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('image/')) {
+        setFileToEdit(file);
+        setShowMediaEditor(true);
+      } else {
+        setAvatarFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAvatarPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
+  };
+
+  const handleMediaSave = (editedFile: File) => {
+    setAvatarFile(editedFile);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(editedFile);
+    setShowMediaEditor(false);
+    setFileToEdit(null);
+  };
+
+  const handleMediaCancel = () => {
+    setShowMediaEditor(false);
+    setFileToEdit(null);
   };
 
   const handleAddSkill = () => {
@@ -101,6 +126,7 @@ export default function ProfileCompletionPage() {
         location: formData.location,
         contact_telegram: formData.contact_telegram,
         contact_gmail: formData.contact_gmail,
+        bio: formData.bio,
         profile_completed: true,
       };
 
@@ -255,6 +281,7 @@ export default function ProfileCompletionPage() {
                   type="number"
                   required
                   min="0"
+                  max="1000"
                   value={formData.rate_min}
                   onChange={(e) =>
                     setFormData({ ...formData, rate_min: e.target.value })
@@ -266,6 +293,7 @@ export default function ProfileCompletionPage() {
                   type="number"
                   required
                   min="0"
+                  max="1000"
                   value={formData.rate_max}
                   onChange={(e) =>
                     setFormData({ ...formData, rate_max: e.target.value })
@@ -340,6 +368,26 @@ export default function ProfileCompletionPage() {
               )}
             </div>
 
+            {/* About Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                О себе (до 700 символов)
+              </label>
+              <textarea
+                value={formData.bio}
+                onChange={(e) =>
+                  setFormData({ ...formData, bio: e.target.value })
+                }
+                rows={6}
+                maxLength={700}
+                placeholder="Расскажите о своём опыте, навыках и интересах..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3F7F6E] focus:border-transparent resize-none"
+              />
+              <div className="text-xs text-gray-500 text-right mt-1">
+                {formData.bio.length} / 700
+              </div>
+            </div>
+
             {/* Contact Information */}
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -407,6 +455,10 @@ export default function ProfileCompletionPage() {
           </form>
         </div>
       </div>
+
+      {showMediaEditor && fileToEdit && (
+        <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />
+      )}
     </div>
   );
 }

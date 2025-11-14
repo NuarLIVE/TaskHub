@@ -331,15 +331,21 @@ export default function ProfilePage() {
       }
     }
 
+    const skillsArray = String(fd.get('skills') || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (skillsArray.length > 10) {
+      alert('Максимум 10 навыков');
+      return;
+    }
+
     const next = {
       name: String(fd.get('name') || ''),
-      headline: String(fd.get('headline') || ''),
+      headline: profile.headline,
       role: String(fd.get('role') || ''),
-      about: String(fd.get('about') || ''),
+      about: profile.about,
       bio: bioText,
-      skills: String(fd.get('skills') || '').split(',').map(s => s.trim()).filter(Boolean),
-      rateMin: Number(fd.get('rateMin') || 0),
-      rateMax: Number(fd.get('rateMax') || 0),
+      skills: skillsArray,
+      rateMin: Math.min(Number(fd.get('rateMin') || 0), 1000),
+      rateMax: Math.min(Number(fd.get('rateMax') || 0), 1000),
       currency: String(fd.get('currency') || 'USD'),
       location: String(fd.get('location') || ''),
       contactEmail: String(fd.get('contactEmail') || ''),
@@ -953,24 +959,12 @@ export default function ProfilePage() {
                           <Input name="name" defaultValue={profile.name} className="h-11" />
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-sm font-medium">Заголовок</span>
-                          <Input name="headline" defaultValue={profile.headline} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Роль</span>
+                          <span className="text-sm font-medium">Специальность</span>
                           <Input name="role" defaultValue={profile.role} className="h-11" />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-sm font-medium">Аватар (URL)</span>
-                          <Input name="avatar" defaultValue={profile.avatar} className="h-11" placeholder="Или укажите URL изображения" />
                         </label>
                       </div>
                       <label className="grid gap-1">
-                        <span className="text-sm font-medium">О себе (краткое описание)</span>
-                        <textarea name="about" defaultValue={profile.about} rows={3} className="rounded-md border px-3 py-2 bg-background" />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-sm font-medium">Подробнее обо мне (до 700 символов)</span>
+                        <span className="text-sm font-medium">О себе (до 700 символов)</span>
                         <textarea
                           name="bio"
                           defaultValue={profile.bio || ''}
@@ -984,17 +978,17 @@ export default function ProfilePage() {
                         </div>
                       </label>
                       <label className="grid gap-1">
-                        <span className="text-sm font-medium">Навыки (через запятую)</span>
-                        <Input name="skills" defaultValue={profile.skills.join(', ')} className="h-11" />
+                        <span className="text-sm font-medium">Навыки (через запятую, максимум 10)</span>
+                        <Input name="skills" defaultValue={profile.skills.join(', ')} className="h-11" placeholder="Например: React, TypeScript, Node.js" />
                       </label>
                       <div className="grid sm:grid-cols-3 gap-4">
                         <label className="grid gap-1">
-                          <span className="text-sm font-medium">Ставка min</span>
-                          <Input type="number" name="rateMin" defaultValue={profile.rateMin} className="h-11" />
+                          <span className="text-sm font-medium">Ставка min ($)</span>
+                          <Input type="number" name="rateMin" defaultValue={profile.rateMin} className="h-11" min="0" max="1000" />
                         </label>
                         <label className="grid gap-1">
-                          <span className="text-sm font-medium">Ставка max</span>
-                          <Input type="number" name="rateMax" defaultValue={profile.rateMax} className="h-11" />
+                          <span className="text-sm font-medium">Ставка max ($)</span>
+                          <Input type="number" name="rateMax" defaultValue={profile.rateMax} className="h-11" min="0" max="1000" />
                         </label>
                         <label className="grid gap-1">
                           <span className="text-sm font-medium">Валюта</span>
