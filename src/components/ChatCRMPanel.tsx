@@ -52,6 +52,7 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
   const [showAISettings, setShowAISettings] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const settingsRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -84,8 +85,9 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
       const target = event.target as Node;
       const isClickOnPanel = panelRef.current && panelRef.current.contains(target);
       const isClickOnTrigger = triggerRef?.current && triggerRef.current.contains(target);
+      const isClickOnSettings = settingsRef.current && settingsRef.current.contains(target);
 
-      if (isOpen && !isClickOnPanel && !isClickOnTrigger) {
+      if (isOpen && !isClickOnPanel && !isClickOnTrigger && !isClickOnSettings) {
         onClose();
       }
     };
@@ -546,14 +548,13 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
-          onClick={() => setShowAISettings(false)}
         >
           <motion.div
+            ref={settingsRef}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
-            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-[#3F7F6E] mb-4">Настройки CRM AI агента</h3>
 
