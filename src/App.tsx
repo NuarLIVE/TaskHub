@@ -35,6 +35,7 @@ const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminSuggestions = lazy(() => import('./pages/admin/AdminSuggestions'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
+const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -80,6 +81,8 @@ function App() {
     Page = LoginPage;
   } else if (route === '/auth/register' || route === '/register') {
     Page = RegisterPage;
+  } else if (route === '/profile-completion') {
+    Page = ProfileCompletionPage;
   } else if (route === '/onboarding') {
     Page = OnboardingPage;
   } else if (route === '/me' || route === '/profile') {
@@ -186,7 +189,7 @@ function App() {
     Page = NotFound;
   }
 
-  const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding';
+  const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding' || route === '/profile-completion';
   const isAdminPage = route.startsWith('/admin');
   const isAdminLoginPage = route === '/admin/login';
 

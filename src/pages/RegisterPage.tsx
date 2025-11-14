@@ -50,7 +50,7 @@ export default function RegisterPage() {
       });
 
       if (result.success) {
-        window.location.hash = '/';
+        window.location.hash = '/profile-completion';
       } else {
         setError(result.error || 'Ошибка регистрации');
       }

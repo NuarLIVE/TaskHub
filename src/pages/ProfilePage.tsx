@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,7 @@ const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, m
 export default function ProfilePage() {
   const { user } = useAuth();
   const [tab, setTab] = useState('portfolio');
+  const [showCopied, setShowCopied] = useState(false);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [userTasks, setUserTasks] = useState<any[]>([]);
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
@@ -294,6 +295,20 @@ export default function ProfilePage() {
     setTab('about');
   };
 
+  const handleShareProfile = async () => {
+    if (!user) return;
+
+    const profileUrl = `${window.location.origin}/#/users/${user.id}`;
+
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 3000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -336,7 +351,28 @@ export default function ProfilePage() {
                     <Button asChild variant="secondary"><a href="#/order/new">Создать заказ</a></Button>
                   </div>
                   <div className="flex items-center justify-between text-sm text-[#3F7F6E]">
-                    <a className="underline" href="#">Поделиться профилем</a>
+                    <div className="relative">
+                      <button
+                        className="flex items-center gap-1 underline hover:text-[#2F6F5E] transition-colors"
+                        onClick={handleShareProfile}
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Поделиться профилем
+                      </button>
+                      <AnimatePresence>
+                        {showCopied && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            className="absolute left-0 top-full mt-2 bg-[#3F7F6E] text-white px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2 text-sm whitespace-nowrap z-10"
+                          >
+                            <Check className="h-4 w-4" />
+                            Скопировано
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                     <button className="underline" onClick={() => setTab('edit')}>Редактировать</button>
                   </div>
                 </CardContent>
