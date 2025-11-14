@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronRight, Code, Brush, Megaphone, Globe as Globe2, PenTool, Shield, Star, Clock, Rocket, Users, Sparkles } from 'lucide-react';
+import { Search, ChevronRight, Code, Brush, Megaphone, Globe as Globe2, PenTool, Shield, Star, Clock, Rocket, Users, Sparkles, Zap, Filter, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ const featured = [
     badges: ['React', 'Tailwind', 'Framer Motion'],
     price: '$600–900',
     meta: 'Срок: 10–14 дней',
+    category: 'Разработка',
     author: { name: 'NovaTech', avatar: 'https://i.pravatar.cc/64?img=12' }
   },
   {
@@ -37,6 +38,7 @@ const featured = [
     badges: ['Flutter', 'Figma', 'API'],
     price: '$1 200',
     meta: 'Срок: 2–3 недели',
+    category: 'Разработка',
     author: { name: 'AppNest', avatar: 'https://i.pravatar.cc/64?img=22' }
   },
   {
@@ -44,7 +46,32 @@ const featured = [
     badges: ['UX', 'SaaS', 'Design System'],
     price: '$800',
     meta: 'Срок: 7–10 дней',
+    category: 'Дизайн',
     author: { name: 'Metricly', avatar: 'https://i.pravatar.cc/64?img=33' }
+  },
+  {
+    title: 'SMM стратегия для B2B продукта',
+    badges: ['LinkedIn', 'Content', 'Analytics'],
+    price: '$450',
+    meta: 'Срок: 5–7 дней',
+    category: 'Маркетинг',
+    author: { name: 'GrowthLab', avatar: 'https://i.pravatar.cc/64?img=45' }
+  },
+  {
+    title: 'Локализация игры на 5 языков',
+    badges: ['EN→RU', 'Игры', 'LQA'],
+    price: '$950',
+    meta: 'Срок: 14 дней',
+    category: 'Локализация',
+    author: { name: 'LocalizePro', avatar: 'https://i.pravatar.cc/64?img=56' }
+  },
+  {
+    title: 'Тексты для лендинга SaaS продукта',
+    badges: ['Копирайт', 'SEO', 'Landing'],
+    price: '$350',
+    meta: 'Срок: 3–5 дней',
+    category: 'Копирайтинг',
+    author: { name: 'WordCraft', avatar: 'https://i.pravatar.cc/64?img=67' }
   }
 ];
 
@@ -56,7 +83,44 @@ const sponsors = [
   { name: 'Initech', logo: 'https://dummyimage.com/120x40/111/fff&text=Initech' }
 ];
 
+const testimonials = [
+  {
+    name: 'Александр Петров',
+    role: 'Fullstack Developer',
+    avatar: 'https://i.pravatar.cc/80?img=14',
+    text: 'Нашел 3 проекта за первую неделю. Быстрые выплаты, никаких скрытых комиссий.'
+  },
+  {
+    name: 'Мария Сидорова',
+    role: 'UI/UX Designer',
+    avatar: 'https://i.pravatar.cc/80?img=27',
+    text: 'Escrow защита дает уверенность, что работа не пропадет. Рекомендую всем дизайнерам.'
+  },
+  {
+    name: 'Дмитрий Козлов',
+    role: 'Product Owner',
+    avatar: 'https://i.pravatar.cc/80?img=51',
+    text: 'Нанял топового разработчика за 2 дня. Прозрачный процесс, четкие этапы сделки.'
+  }
+];
+
 function Hero() {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      window.location.hash = `/market?search=${encodeURIComponent(searchQuery.trim())}`;
+    } else {
+      window.location.hash = '/market';
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <section className="relative overflow-hidden border-b">
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-background to-background" />
@@ -78,13 +142,19 @@ function Hero() {
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <div className="relative w-full sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
-                <Input placeholder='Найдите задачу или навыки' className="pl-9 h-11" />
+                <Input
+                  placeholder='Найдите задачу или навыки'
+                  className="pl-9 h-11"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
                 <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                  <Button className="h-9 px-3">Искать</Button>
+                  <Button className="h-9 px-3" onClick={handleSearch}>Искать</Button>
                 </div>
               </div>
-              <Button variant="secondary" className="h-11" asChild>
-                <a href="#/order/new">Создать проект <ChevronRight className="ml-1 h-4 w-4" /></a>
+              <Button variant="secondary" className="h-11" onClick={() => window.location.hash = '/orders/create'}>
+                Опубликовать проект <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
 
@@ -158,7 +228,7 @@ function Featured() {
             <a href="#/task/new">Опубликовать задачу</a>
           </Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {featured.map((f, idx) => (
             <motion.div key={f.title} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.05 }}>
               <Card className="h-full flex flex-col">
@@ -226,6 +296,56 @@ function Sponsors() {
   );
 }
 
+function WhyTaskHub() {
+  const features = [
+    {
+      icon: <Shield className="h-6 w-6" />,
+      title: 'Escrow защита сделок',
+      desc: 'Деньги заморожены до сдачи работы — безопасность для обеих сторон'
+    },
+    {
+      icon: <Zap className="h-6 w-6" />,
+      title: 'AI-модерация и фильтрация токсичности',
+      desc: 'Автоматическая проверка контента и предотвращение конфликтов'
+    },
+    {
+      icon: <Filter className="h-6 w-6" />,
+      title: 'Умные рекомендации исполнителей',
+      desc: 'Алгоритмы подбирают лучших специалистов под ваши требования'
+    },
+    {
+      icon: <Award className="h-6 w-6" />,
+      title: 'Честные рейтинги и прозрачные комиссии',
+      desc: 'Реальные отзывы, понятные условия, без скрытых платежей'
+    }
+  ];
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
+      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-8 text-center">Почему TaskHub?</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {features.map((f, idx) => (
+          <motion.div
+            key={f.title}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: idx * 0.06 }}
+          >
+            <Card className="h-full">
+              <CardHeader className="pb-2">
+                <div className="p-3 rounded-xl bg-[#EFFFF8] w-fit mb-3">{f.icon}</div>
+                <CardTitle className="text-base leading-6">{f.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="px-6 pb-6 text-sm text-[#3F7F6E]">{f.desc}</CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function About() {
   return (
     <section id="about" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
@@ -233,10 +353,10 @@ function About() {
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Наша история и спонсоры</h2>
           <p className="mt-4 text-[#3F7F6E]">
-            Мы начали как маленькая команда разработчиков и дизайнеров, уставших от сложных правил и задержек выплат на старых биржах. Наша цель — сделать сделки честными и быстрыми, а поиск талантов — простым.
+            TaskHub вырос как независимый стартап, созданный разработчиками и дизайнерами, которые хотели избавиться от бюрократии и хаоса на других биржах. Мы построили платформу, где важнее всего честная работа, безопасные сделки и прозрачные правила.
           </p>
           <p className="mt-4 text-[#3F7F6E]">
-            Платформу поддерживают независимые инвесторы и партнёры из SaaS‑индустрии. Мы развиваем систему арбитража, прозрачные комиссии и инструменты для командной работы.
+            TaskHub не привязан к крупным корпорациям — мы финансируемся собственными средствами, что позволяет развивать продукт так, как нужно пользователям. Наша цель — создать универсальную площадку для фрилансеров и бизнеса, где ценится результат.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Badge variant="secondary">0% комиссия на старте</Badge>
@@ -258,6 +378,38 @@ function About() {
             <img src="https://images.pexels.com/photos/3184296/pexels-photo-3184296.jpeg" alt="" className="h-full w-full object-cover" />
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function Testimonials() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
+      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-8 text-center">Отзывы пользователей</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {testimonials.map((t, idx) => (
+          <motion.div
+            key={t.name}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: idx * 0.08 }}
+          >
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <img src={t.avatar} alt={t.name} className="h-12 w-12 rounded-full object-cover" />
+                  <div>
+                    <div className="font-semibold">{t.name}</div>
+                    <div className="text-xs text-[#3F7F6E]">{t.role}</div>
+                  </div>
+                </div>
+                <p className="text-sm text-[#3F7F6E] leading-relaxed">{t.text}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
     </section>
   );
@@ -300,10 +452,12 @@ export default function HomePage() {
       >
         <Hero />
         <Sponsors />
+        <WhyTaskHub />
         <Categories />
         <Featured />
         <HowItWorks />
         <About />
+        <Testimonials />
         {!isAuthenticated && <CTA />}
       </motion.main>
     </AnimatePresence>
