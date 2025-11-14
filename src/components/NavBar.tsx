@@ -66,65 +66,92 @@ export default function NavBar() {
     }
 
     const viewedDealsStr = localStorage.getItem(`viewed_deals_${user.id}`);
-    const viewedDeals = viewedDealsStr ? JSON.parse(viewedDealsStr) : { timestamp: 0 };
+    let viewedDeals = viewedDealsStr ? JSON.parse(viewedDealsStr) : null;
 
-    const { data: dealsData } = await queryWithRetry(() =>
-      getSupabase()
-        .from('deals')
-        .select('id, created_at')
-        .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
-        .gte('created_at', new Date(viewedDeals.timestamp).toISOString())
-    );
-
-    setHasNewDeals((dealsData?.length || 0) > 0);
-
-    const viewedProposalsStr = localStorage.getItem(`viewed_proposals_${user.id}`);
-    const viewedProposals = viewedProposalsStr ? JSON.parse(viewedProposalsStr) : { timestamp: 0 };
-
-    const { data: ordersData } = await queryWithRetry(() =>
-      getSupabase()
-        .from('orders')
-        .select('id')
-        .eq('user_id', user.id)
-    );
-
-    const { data: tasksData } = await queryWithRetry(() =>
-      getSupabase()
-        .from('tasks')
-        .select('id')
-        .eq('user_id', user.id)
-    );
-
-    const orderIds = ordersData?.map(o => o.id) || [];
-    const taskIds = tasksData?.map(t => t.id) || [];
-
-    if (orderIds.length > 0 || taskIds.length > 0) {
-      const { data: proposalsData } = await queryWithRetry(() =>
+    if (!viewedDeals) {
+      viewedDeals = { timestamp: Date.now() };
+      localStorage.setItem(`viewed_deals_${user.id}`, JSON.stringify(viewedDeals));
+      setHasNewDeals(false);
+    } else {
+      const { data: dealsData } = await queryWithRetry(() =>
         getSupabase()
-          .from('proposals')
+          .from('deals')
           .select('id, created_at')
-          .or(`order_id.in.(${orderIds.join(',')}),task_id.in.(${taskIds.join(',')})`)
-          .gte('created_at', new Date(viewedProposals.timestamp).toISOString())
+          .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
+          .gte('created_at', new Date(viewedDeals.timestamp).toISOString())
       );
 
-      setHasNewProposals((proposalsData?.length || 0) > 0);
-    } else {
+      setHasNewDeals((dealsData?.length || 0) > 0);
+    }
+
+    const viewedProposalsStr = localStorage.getItem(`viewed_proposals_${user.id}`);
+    let viewedProposals = viewedProposalsStr ? JSON.parse(viewedProposalsStr) : null;
+
+    if (!viewedProposals) {
+      viewedProposals = { timestamp: Date.now() };
+      localStorage.setItem(`viewed_proposals_${user.id}`, JSON.stringify(viewedProposals));
       setHasNewProposals(false);
+    } else {
+      const { data: ordersData } = await queryWithRetry(() =>
+        getSupabase()
+          .from('orders')
+          .select('id')
+          .eq('user_id', user.id)
+      );
+
+      const { data: tasksData } = await queryWithRetry(() =>
+        getSupabase()
+          .from('tasks')
+          .select('id')
+          .eq('user_id', user.id)
+      );
+
+      const orderIds = ordersData?.map(o => o.id) || [];
+      const taskIds = tasksData?.map(t => t.id) || [];
+
+      if (orderIds.length > 0 || taskIds.length > 0) {
+        const { data: proposalsData } = await queryWithRetry(() =>
+          getSupabase()
+            .from('proposals')
+            .select('id, created_at')
+            .or(`order_id.in.(${orderIds.join(',')}),task_id.in.(${taskIds.join(',')})`)
+            .gte('created_at', new Date(viewedProposals.timestamp).toISOString())
+        );
+
+        setHasNewProposals((proposalsData?.length || 0) > 0);
+      } else {
+        setHasNewProposals(false);
+      }
     }
 
     const viewedWalletStr = localStorage.getItem(`viewed_wallet_${user.id}`);
-    const viewedWallet = viewedWalletStr ? JSON.parse(viewedWalletStr) : { balance: 0 };
+    let viewedWallet = viewedWalletStr ? JSON.parse(viewedWalletStr) : null;
 
-    const { data: profileData } = await queryWithRetry(() =>
-      getSupabase()
-        .from('profiles')
-        .select('balance')
-        .eq('id', user.id)
-        .maybeSingle()
-    );
+    if (!viewedWallet) {
+      const { data: profileData } = await queryWithRetry(() =>
+        getSupabase()
+          .from('profiles')
+          .select('balance')
+          .eq('id', user.id)
+          .maybeSingle()
+      );
 
-    const currentBalance = profileData?.balance || 0;
-    setHasWalletUpdate(currentBalance !== viewedWallet.balance);
+      const currentBalance = profileData?.balance || 0;
+      viewedWallet = { balance: currentBalance };
+      localStorage.setItem(`viewed_wallet_${user.id}`, JSON.stringify(viewedWallet));
+      setHasWalletUpdate(false);
+    } else {
+      const { data: profileData } = await queryWithRetry(() =>
+        getSupabase()
+          .from('profiles')
+          .select('balance')
+          .eq('id', user.id)
+          .maybeSingle()
+      );
+
+      const currentBalance = profileData?.balance || 0;
+      setHasWalletUpdate(currentBalance !== viewedWallet.balance);
+    }
   };
 
   useSupabaseKeepAlive({

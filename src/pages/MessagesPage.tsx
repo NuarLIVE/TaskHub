@@ -330,15 +330,24 @@ export default function MessagesPage() {
       filter: `chat_id=eq.${selectedChatId}`,
       callback: async (payload) => {
         const newMessage = payload.new as Message;
-        if (newMessage.sender_id !== user.id || newMessage.is_system) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
-            shouldScrollRef.current = true;
-            return [...prev, newMessage];
-          });
-          if (newMessage.sender_id !== user.id) {
-            await markMessagesAsRead(selectedChatId);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === newMessage.id && !m.id.startsWith('temp-'))) return prev;
+
+          const hasTempMessage = prev.some((m) => m.id.startsWith('temp-') && m.text === newMessage.text);
+          if (hasTempMessage && newMessage.sender_id === user.id) {
+            return prev.map(m => m.id.startsWith('temp-') && m.text === newMessage.text ? newMessage : m);
           }
+
+          if (newMessage.sender_id === user.id) {
+            return prev;
+          }
+
+          shouldScrollRef.current = true;
+          return [...prev, newMessage];
+        });
+
+        if (newMessage.sender_id !== user.id) {
+          await markMessagesAsRead(selectedChatId);
         }
       },
       onError: () => setTimeout(() => loadMessages(selectedChatId), 2000)
@@ -628,55 +637,6 @@ export default function MessagesPage() {
     }
 
     const messageText = message;
-
-    if (messageText.trim() && checkContentImmediate) {
-      const immediateCheck = await checkContentImmediate(messageText);
-      if (immediateCheck?.flagged && immediateCheck?.action === 'blocked') {
-        alert(immediateCheck.message || 'Ваше сообщение содержит запрещенный контент');
-        return;
-      }
-    }
-
-    if (isBlocked) {
-      alert(blockMessage);
-      return;
-    }
-
-    if (messageText.trim()) {
-      try {
-        const moderationResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              content: messageText,
-              contentType: 'message',
-            }),
-          }
-        );
-
-        const moderationResult = await moderationResponse.json();
-
-        if (moderationResult.flagged && moderationResult.action === 'blocked') {
-          alert(moderationResult.message || 'Ваше сообщение содержит запрещенный контент');
-          return;
-        }
-
-        if (moderationResult.flagged && moderationResult.action === 'warning') {
-          const proceed = confirm(`${moderationResult.message || 'Обнаружено потенциально нежелательное содержимое'}\\n\\nПродолжить?`);
-          if (!proceed) {
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('Moderation error:', err);
-      }
-    }
-
     const tempId = `temp-${Date.now()}`;
 
     const optimisticMessage: Message = {
@@ -693,6 +653,7 @@ export default function MessagesPage() {
     shouldScrollRef.current = true;
     setMessages((prev) => [...prev, optimisticMessage]);
     setMessage('');
+    const fileToUpload = selectedFile;
     setSelectedFile(null);
     scrollToBottom('smooth');
 
@@ -701,24 +662,24 @@ export default function MessagesPage() {
       let fileName: string | null = null;
       let fileType: 'image' | 'video' | 'file' | null = null;
 
-      if (selectedFile) {
+      if (fileToUpload) {
         setUploading(true);
-        const fileExt = selectedFile.name.split('.').pop();
+        const fileExt = fileToUpload.name.split('.').pop();
         const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await getSupabase()
           .storage
           .from('message-attachments')
-          .upload(filePath, selectedFile);
+          .upload(filePath, fileToUpload);
 
         if (uploadError) throw uploadError;
 
         const { data: pub } = getSupabase().storage.from('message-attachments').getPublicUrl(filePath);
         fileUrl = pub.publicUrl;
-        fileName = selectedFile.name;
+        fileName = fileToUpload.name;
 
-        if (selectedFile.type.startsWith('image/')) fileType = 'image';
-        else if (selectedFile.type.startsWith('video/')) fileType = 'video';
+        if (fileToUpload.type.startsWith('image/')) fileType = 'image';
+        else if (fileToUpload.type.startsWith('video/')) fileType = 'video';
         else fileType = 'file';
 
         setUploading(false);
@@ -737,29 +698,29 @@ export default function MessagesPage() {
 
       if (error) throw error;
 
+      setMessages((prev) => prev.map(m => m.id === tempId ? insertedMessage : m));
       shouldScrollRef.current = false;
-      loadMessages(selectedChatId);
-      loadChats(false);
 
-      // Post-moderation: check message after it's sent
-      if (messageText.trim() && insertedMessage) {
-        try {
-          const moderationResponse = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              },
-              body: JSON.stringify({
-                content: messageText,
-                contentType: 'message',
-                contentId: insertedMessage.id,
-              }),
-            }
-          );
+      if (messageText.trim()) {
+        analyzeMessage(selectedChatId, messageText, user.id).catch(err =>
+          console.error('AI analysis error:', err)
+        );
 
+        fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-content`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              content: messageText,
+              contentType: 'message',
+              contentId: insertedMessage.id,
+            }),
+          }
+        ).then(async (moderationResponse) => {
           const moderationResult = await moderationResponse.json();
 
           if (moderationResult.flagged && moderationResult.action === 'blocked') {
@@ -772,16 +733,12 @@ export default function MessagesPage() {
 
             alert(moderationResult.message || 'Ваше сообщение было удалено, так как содержит запрещенный контент');
           }
-        } catch (err) {
+        }).catch(err => {
           console.error('Post-moderation error:', err);
-        }
+        });
       }
-
-      // Trigger AI analysis
-      if (messageText.trim()) {
-        analyzeMessage(selectedChatId, messageText, user.id);
-      }
-    } catch {
+    } catch (err) {
+      console.error('Send message error:', err);
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setMessage(messageText);
       alert('Ошибка при отправке сообщения');
