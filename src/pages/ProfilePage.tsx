@@ -965,17 +965,11 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {reviews.map((review) => {
                         const reviewerName = review.reviewer_profile?.name || review.reviewer_profile?.email || 'Заказчик';
-                        const reviewerAvatar = review.reviewer_profile?.avatar_url || `https://i.pravatar.cc/64?u=${review.reviewer_id}`;
 
                         return (
                           <Card key={review.id} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-6 grid gap-3">
                               <div className="flex items-center gap-3">
-                                <img
-                                  src={reviewerAvatar}
-                                  className="h-10 w-10 rounded-full object-cover"
-                                  alt={reviewerName}
-                                />
                                 <div>
                                   <div className="font-medium">{reviewerName}</div>
                                   <div className="text-xs text-[#3F7F6E]">
