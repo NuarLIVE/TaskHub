@@ -125,6 +125,9 @@ export default function MessagesPage() {
   const [targetLanguage, setTargetLanguage] = useState('en');
   const [aiAgentEnabled, setAiAgentEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.4);
+  const [translating, setTranslating] = useState(false);
+  const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
+  const [translatedInput, setTranslatedInput] = useState('');
 
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -151,6 +154,36 @@ export default function MessagesPage() {
     const t = setInterval(() => setNowTick(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Auto-translate incoming messages when translateChat is enabled
+  useEffect(() => {
+    if (!translateChat || !user) {
+      setTranslatedMessages({});
+      return;
+    }
+
+    const translateIncomingMessages = async () => {
+      const messagesToTranslate = messages.filter(
+        (msg) => msg.sender_id !== user.id && (msg.content || msg.text) && !translatedMessages[msg.id]
+      );
+
+      for (const msg of messagesToTranslate) {
+        const textToTranslate = msg.content || msg.text;
+        if (textToTranslate) {
+          const translated = await translateText(textToTranslate, targetLanguage);
+          setTranslatedMessages((prev) => ({ ...prev, [msg.id]: translated }));
+        }
+      }
+    };
+
+    translateIncomingMessages();
+  }, [translateChat, messages, targetLanguage, user]);
+
+  // Clear translated messages when chat changes
+  useEffect(() => {
+    setTranslatedMessages({});
+    setTranslatedInput('');
+  }, [selectedChatId]);
 
   // Check if review was left when deal or messages change
   useEffect(() => {
@@ -656,9 +689,37 @@ export default function MessagesPage() {
     }
   };
 
+  const translateText = async (text: string, targetLang: string): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`
+      );
+      const data = await response.json();
+      return data[0].map((item: any) => item[0]).join('');
+    } catch (error) {
+      console.error('Translation error:', error);
+      return text;
+    }
+  };
+
+  const handleTranslateInput = async () => {
+    if (!message.trim() || translating) return;
+
+    setTranslating(true);
+    try {
+      const translated = await translateText(message, targetLanguage);
+      setTranslatedInput(translated);
+      setMessage(translated);
+    } catch (error) {
+      console.error('Error translating input:', error);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!message.trim() && !selectedFile) || !selectedChatId || !user) return;
+    if ((!message.trim() && !selectedFile) || !selectedChatId || !user || translating) return;
 
     const selectedChat = chats.find((c) => c.id === selectedChatId);
     if (!selectedChat) return;
@@ -1563,7 +1624,9 @@ export default function MessagesPage() {
                             )}
                             {(msg.content || msg.text) && (
                               <div className="p-3">
-                                <div className="text-sm whitespace-pre-wrap break-words">{msg.content || msg.text}</div>
+                                <div className="text-sm whitespace-pre-wrap break-words">
+                                  {translateChat && !isOwn ? (translatedMessages[msg.id] || msg.content || msg.text) : (msg.content || msg.text)}
+                                </div>
                               </div>
                             )}
                             <div className={`px-3 pb-2 text-xs flex items-center justify-between gap-2 ${isOwn ? 'text-white/70' : 'text-[#3F7F6E]'}`}>
@@ -1652,18 +1715,37 @@ export default function MessagesPage() {
                           value={message}
                           onChange={(e) => {
                             setMessage(e.target.value);
+                            setTranslatedInput('');
                             checkContent(e.target.value);
                             if (e.target.value.trim()) sendTypingIndicator();
                             autosize();
                           }}
-                          onKeyDown={handleComposerKeyDown}
+                          onKeyDown={(e) => {
+                            if (translating) {
+                              e.preventDefault();
+                              return;
+                            }
+                            handleComposerKeyDown(e);
+                          }}
                           placeholder="Введите сообщение..."
-                          disabled={uploading}
+                          disabled={uploading || translating}
                           rows={1}
                           className="min-h-11 w-full h-auto resize-none leading-5 px-3 py-2 rounded-md border border-input bg-background text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         />
 
-                        <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading || isBlocked}>
+                        {translateMyMessages && message.trim() && !translatedInput && (
+                          <Button
+                            type="button"
+                            onClick={handleTranslateInput}
+                            disabled={translating || uploading}
+                            variant="outline"
+                            className="hover:bg-[#EFFFF8]"
+                          >
+                            <Languages className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        <Button type="submit" disabled={(!message.trim() && !selectedFile) || uploading || isBlocked || translating}>
                           <Send className="h-4 w-4" />
                         </Button>
                       </form>
