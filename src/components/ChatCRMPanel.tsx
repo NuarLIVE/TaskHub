@@ -87,12 +87,13 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
       const isClickOnTrigger = triggerRef?.current && triggerRef.current.contains(target);
       const isClickOnSettings = settingsRef.current && settingsRef.current.contains(target);
 
-      // Закрываем настройки AI если клик вне их окна
-      if (showAISettings && !isClickOnSettings) {
-        setShowAISettings(false);
+      // Не закрываем ничего если открыто окно настроек AI (клик обрабатывается в самом модальном окне)
+      if (showAISettings) {
+        return;
       }
-      // Закрываем панель CRM если клик вне панели и настройки закрыты
-      else if (isOpen && !isClickOnPanel && !isClickOnTrigger) {
+
+      // Закрываем панель CRM если клик вне панели
+      if (isOpen && !isClickOnPanel && !isClickOnTrigger) {
         onClose();
       }
     };
