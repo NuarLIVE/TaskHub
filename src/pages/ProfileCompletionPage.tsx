@@ -43,6 +43,10 @@ export default function ProfileCompletionPage() {
 
   const handleAddSkill = () => {
     if (skillInput.trim() && !formData.skills.includes(skillInput.trim())) {
+      if (formData.skills.length >= 10) {
+        alert('Максимум 10 навыков');
+        return;
+      }
       setFormData({
         ...formData,
         skills: [...formData.skills, skillInput.trim()],
@@ -189,6 +193,7 @@ export default function ProfileCompletionPage() {
                   type="number"
                   required
                   min="0"
+                  max="40"
                   value={formData.experience_years}
                   onChange={(e) =>
                     setFormData({ ...formData, experience_years: e.target.value })
@@ -196,6 +201,7 @@ export default function ProfileCompletionPage() {
                   placeholder="0"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3F7F6E] focus:border-transparent"
                 />
+                <p className="mt-1 text-xs text-gray-500">Максимум 40 лет</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -300,6 +306,11 @@ export default function ProfileCompletionPage() {
               {formData.skills.length === 0 && (
                 <p className="text-sm text-gray-500 mt-2">
                   Добавьте хотя бы один навык
+                </p>
+              )}
+              {formData.skills.length > 0 && (
+                <p className="text-sm text-gray-500 mt-2">
+                  {formData.skills.length} / 10 навыков
                 </p>
               )}
             </div>

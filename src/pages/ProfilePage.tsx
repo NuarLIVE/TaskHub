@@ -56,6 +56,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      loadUserProfile();
       if (tab === 'market') {
         loadUserMarketItems();
       } else if (tab === 'portfolio') {
@@ -65,6 +66,36 @@ export default function ProfilePage() {
       }
     }
   }, [user, tab]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (data) {
+      setProfile({
+        name: data.name || 'Пользователь',
+        headline: data.headline || data.specialty || '',
+        role: data.specialty || data.role || 'Фрилансер',
+        about: data.about || '',
+        bio: data.bio || '',
+        skills: data.skills || [],
+        rateMin: data.rate_min || 0,
+        rateMax: data.rate_max || 0,
+        currency: data.currency || 'USD',
+        location: data.location || '',
+        contactEmail: data.contact_gmail || data.email || '',
+        contactTelegram: data.contact_telegram || '',
+        avatar: data.avatar_url || 'https://i.pravatar.cc/120?img=49',
+        experienceYears: data.experience_years || 0,
+        age: data.age || null,
+      });
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -654,11 +685,15 @@ export default function ProfilePage() {
                         </div>
                         <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
                           <div className="text-sm text-[#3F7F6E] mb-1">Опыт работы</div>
-                          <div className="font-semibold">5+ лет</div>
+                          <div className="font-semibold">
+                            {profile.experienceYears ? `${profile.experienceYears} ${profile.experienceYears === 1 ? 'год' : profile.experienceYears < 5 ? 'года' : 'лет'}` : 'Не указано'}
+                          </div>
                         </div>
                         <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
                           <div className="text-sm text-[#3F7F6E] mb-1">Возраст</div>
-                          <div className="font-semibold">28 лет</div>
+                          <div className="font-semibold">
+                            {profile.age ? `${profile.age} ${profile.age === 1 ? 'год' : profile.age < 5 || profile.age > 20 ? (profile.age % 10 === 1 && profile.age !== 11 ? 'год' : profile.age % 10 >= 2 && profile.age % 10 <= 4 && (profile.age < 10 || profile.age > 20) ? 'года' : 'лет') : 'лет'}` : 'Не указано'}
+                          </div>
                         </div>
                       </div>
 
