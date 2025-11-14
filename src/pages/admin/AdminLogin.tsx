@@ -61,19 +61,22 @@ export default function AdminLogin() {
       transition={pageTransition}
       className="min-h-screen bg-gradient-to-br from-[#EFFFF8] via-white to-[#EFFFF8] flex items-center justify-center p-4"
     >
-      <Card className="w-full max-w-md border-[#6FE7C8]/20 shadow-2xl">
+      <Card className="w-full max-w-md border-[#6FE7C8]/20 shadow-2xl px-8 py-6 rounded-2xl">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-4 h-16 w-16 bg-gradient-to-br from-[#6FE7C8] to-[#3F7F6E] rounded-2xl flex items-center justify-center shadow-lg">
             <Shield className="h-8 w-8 text-white" />
           </div>
+
           <CardTitle className="text-2xl font-bold text-gray-900">
             Панель администратора
           </CardTitle>
+
           <p className="text-sm text-[#3F7F6E] mt-2">
             TaskHub Admin Access
           </p>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -86,7 +89,7 @@ export default function AdminLogin() {
                 Email администратора
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
                   type="email"
                   value={email}
@@ -104,7 +107,7 @@ export default function AdminLogin() {
                 Пароль
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
                   type="password"
                   value={password}
@@ -136,22 +139,13 @@ export default function AdminLogin() {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="pt-4 border-t border-gray-200">
             <p className="text-center text-sm text-gray-600">
               Нет доступа?{' '}
               <a href="#/" className="text-[#3F7F6E] hover:underline font-medium">
                 Вернуться на главную
               </a>
             </p>
-          </div>
-
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-xs text-yellow-800">
-              <strong>Первый вход:</strong> Зарегистрируйтесь обычным пользователем, затем выполните в Supabase SQL Editor:
-            </p>
-            <code className="block mt-2 p-2 bg-yellow-100 rounded text-xs">
-              UPDATE profiles SET role = 'ADMIN' WHERE email = 'ваш@email.com';
-            </code>
           </div>
         </CardContent>
       </Card>
