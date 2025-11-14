@@ -23,6 +23,9 @@ export default function ProfileCompletionPage() {
     contact_gmail: '',
   });
 
+  const [ageError, setAgeError] = useState('');
+  const [experienceError, setExperienceError] = useState('');
+
   useEffect(() => {
     if (!user) {
       window.location.hash = '/login';
@@ -195,13 +198,25 @@ export default function ProfileCompletionPage() {
                   min="0"
                   max="40"
                   value={formData.experience_years}
-                  onChange={(e) =>
-                    setFormData({ ...formData, experience_years: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, experience_years: value });
+                    if (parseInt(value) > 40) {
+                      setExperienceError('Установите корректный опыт работы');
+                    } else {
+                      setExperienceError('');
+                    }
+                  }}
                   placeholder="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3F7F6E] focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#3F7F6E] focus:border-transparent ${
+                    experienceError ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
-                <p className="mt-1 text-xs text-gray-500">Максимум 40 лет</p>
+                {experienceError ? (
+                  <p className="mt-1 text-xs text-red-600">{experienceError}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-500">Максимум 40 лет</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -210,14 +225,23 @@ export default function ProfileCompletionPage() {
                 <input
                   type="number"
                   min="16"
-                  max="100"
+                  max="80"
                   value={formData.age}
-                  onChange={(e) =>
-                    setFormData({ ...formData, age: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, age: value });
+                    if (parseInt(value) > 80) {
+                      setAgeError('Установите корректный возраст');
+                    } else {
+                      setAgeError('');
+                    }
+                  }}
                   placeholder="Не указано"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3F7F6E] focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#3F7F6E] focus:border-transparent ${
+                    ageError ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {ageError && <p className="mt-1 text-xs text-red-600">{ageError}</p>}
               </div>
             </div>
 
@@ -281,7 +305,8 @@ export default function ProfileCompletionPage() {
                 <button
                   type="button"
                   onClick={handleAddSkill}
-                  className="px-6 py-3 bg-[#3F7F6E] text-white rounded-lg hover:bg-[#2F6F5E] transition-colors"
+                  disabled={formData.skills.length >= 10}
+                  className="px-6 py-3 bg-[#3F7F6E] text-white rounded-lg hover:bg-[#2F6F5E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Добавить
                 </button>
@@ -373,7 +398,7 @@ export default function ProfileCompletionPage() {
             <div className="pt-6">
               <button
                 type="submit"
-                disabled={loading || formData.skills.length === 0}
+                disabled={loading || formData.skills.length === 0 || !!ageError || !!experienceError}
                 className="w-full py-4 bg-[#3F7F6E] text-white rounded-lg font-semibold hover:bg-[#2F6F5E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Сохранение...' : 'Завершить настройку профиля'}

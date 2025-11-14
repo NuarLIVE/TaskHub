@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check } from 'lucide-react';
+import { MediaEditor } from '@/components/MediaEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +36,8 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [showMediaEditor, setShowMediaEditor] = useState(false);
+  const [fileToEdit, setFileToEdit] = useState<File | null>(null);
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -245,13 +248,35 @@ export default function ProfilePage() {
         alert('Размер файла не должен превышать 5 МБ');
         return;
       }
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('image/')) {
+        setFileToEdit(file);
+        setShowMediaEditor(true);
+      } else {
+        setAvatarFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAvatarPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
+  };
+
+  const handleMediaSave = (editedFile: File) => {
+    setAvatarFile(editedFile);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(editedFile);
+    setShowMediaEditor(false);
+    setFileToEdit(null);
+  };
+
+  const handleMediaCancel = () => {
+    setShowMediaEditor(false);
+    setFileToEdit(null);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
   };
 
   const handleRemoveAvatar = () => {
@@ -1147,6 +1172,10 @@ export default function ProfilePage() {
             )}
           </DialogContent>
         </Dialog>
+
+      {showMediaEditor && fileToEdit && (
+        <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />
+      )}
       </motion.div>
     </AnimatePresence>
   );
