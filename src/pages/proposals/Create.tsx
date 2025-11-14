@@ -369,7 +369,7 @@ export default function ProposalsCreate() {
   };
 
   const handleCancel = () => {
-    window.location.hash = type === 'order' ? `/orders/${id}` : `/tasks/${id}`;
+    window.location.hash = '/market';
   };
 
   return (
