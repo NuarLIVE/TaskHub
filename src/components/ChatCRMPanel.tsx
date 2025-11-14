@@ -87,7 +87,12 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
       const isClickOnTrigger = triggerRef?.current && triggerRef.current.contains(target);
       const isClickOnSettings = settingsRef.current && settingsRef.current.contains(target);
 
-      if (isOpen && !isClickOnPanel && !isClickOnTrigger && !isClickOnSettings) {
+      // Закрываем настройки AI если клик вне их окна
+      if (showAISettings && !isClickOnSettings) {
+        setShowAISettings(false);
+      }
+      // Закрываем панель CRM если клик вне панели и настройки закрыты
+      else if (isOpen && !isClickOnPanel && !isClickOnTrigger) {
         onClose();
       }
     };
@@ -96,7 +101,7 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen, onClose, triggerRef]);
+  }, [isOpen, showAISettings, onClose, triggerRef]);
 
   const loadCRMData = async () => {
     setLoading(true);
@@ -542,20 +547,21 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
       )}
 
       {/* AI Settings Modal */}
-      {showAISettings && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
-        >
+      <AnimatePresence>
+        {showAISettings && (
           <motion.div
-            ref={settingsRef}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
           >
+            <motion.div
+              ref={settingsRef}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
+            >
             <h3 className="text-lg font-bold text-[#3F7F6E] mb-4">Настройки CRM AI агента</h3>
 
             <div className="space-y-4">
@@ -628,7 +634,8 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
             </Button>
           </motion.div>
         </motion.div>
-      )}
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }
