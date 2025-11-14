@@ -584,57 +584,6 @@ export default function ProposalsCreate() {
                 )}
               </div>
 
-              {type === 'task' && (
-                <div className={`relative p-4 rounded-lg border-2 transition ${
-                  boostedTasksCount >= 3 ? 'bg-gray-100 border-gray-300 opacity-50 cursor-not-allowed' : 'bg-gradient-to-r from-[#6FE7C8]/10 to-[#3F7F6E]/10 border-[#6FE7C8]'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="use-boost"
-                      checked={useBoost}
-                      onChange={(e) => setUseBoost(e.target.checked)}
-                      disabled={boostedTasksCount >= 3}
-                      className="mt-1 h-4 w-4 rounded border-[#3F7F6E] text-[#6FE7C8] focus:ring-[#6FE7C8] disabled:opacity-50"
-                    />
-                    <div className="flex-1">
-                      <label
-                        htmlFor="use-boost"
-                        className={`font-medium text-sm flex items-center gap-2 ${
-                          boostedTasksCount >= 3 ? 'text-gray-500' : 'text-[#3F7F6E] cursor-pointer'
-                        }`}
-                      >
-                        Использовать продвижение
-                        <div
-                          className="relative"
-                          onMouseEnter={() => setShowBoostInfo(true)}
-                          onMouseLeave={() => setShowBoostInfo(false)}
-                        >
-                          <div className="h-5 w-5 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs cursor-help">
-                            <Info className="h-3 w-3" />
-                          </div>
-                          {showBoostInfo && (
-                            <div className="absolute left-0 top-6 z-50 w-72 p-3 bg-white border border-[#6FE7C8] rounded-lg shadow-lg text-xs text-gray-700 leading-relaxed">
-                              Ваше объявление получит ленточку &quot;Продвижение&quot; и будет поднято вверх списка объявлений в категории при публикации, но процентная ставка по заказу будет повышена до 25%. В целях сокращения продвинутых объявлений вы можете поставить данную опцию только на 3 ваших объявления
-                            </div>
-                          )}
-                        </div>
-                      </label>
-                      {boostedTasksCount >= 3 && (
-                        <p className="text-xs text-red-600 mt-1">
-                          У вас уже 3 активных объявления с продвижением. Отключите продвижение на одном из них, чтобы активировать здесь.
-                        </p>
-                      )}
-                      {useBoost && boostedTasksCount < 3 && (
-                        <p className="text-xs text-[#3F7F6E] mt-1">
-                          Комиссия платформы будет составлять 25% вместо стандартной ставки
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div>
                 <label className="text-sm font-medium mb-2 block">Вложение (необязательно)</label>
                 <div className="relative">
@@ -667,71 +616,6 @@ export default function ProposalsCreate() {
                 </div>
                 <p className="text-xs text-[#3F7F6E] mt-1">
                   Поддерживаются: PDF, DOC, DOCX, изображения (макс. 10 МБ)
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">Примеры работ из портфолио</label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.location.hash = '/me/portfolio/add'}
-                    className="h-8 text-xs"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Добавить в портфолио
-                  </Button>
-                </div>
-                {loading ? (
-                  <div className="text-sm text-[#3F7F6E] py-4 text-center">Загрузка...</div>
-                ) : portfolioItems.length === 0 ? (
-                  <div className="text-sm text-[#3F7F6E] py-4 text-center border border-dashed rounded-md">
-                    У вас пока нет проектов в портфолио
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-1">
-                    {portfolioItems.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => togglePortfolioItem(item.id)}
-                        className={`relative cursor-pointer rounded-lg border-2 transition overflow-hidden ${
-                          selectedPortfolio.includes(item.id)
-                            ? 'border-[#6FE7C8] bg-[#EFFFF8]/50'
-                            : 'border-transparent hover:border-[#6FE7C8]/30'
-                        }`}
-                      >
-                        {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.title}
-                            className="w-full h-24 object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-24 bg-[#EFFFF8] flex items-center justify-center">
-                            <Briefcase className="h-8 w-8 text-[#3F7F6E]/30" />
-                          </div>
-                        )}
-                        <div className="p-2">
-                          <p className="text-xs font-medium line-clamp-1">{item.title}</p>
-                          {item.project_url && (
-                            <ExternalLink className="h-3 w-3 text-[#3F7F6E] mt-1" />
-                          )}
-                        </div>
-                        {selectedPortfolio.includes(item.id) && (
-                          <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-[#6FE7C8] flex items-center justify-center">
-                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-[#3F7F6E] mt-2">
-                  Выберите до 5 релевантных проектов для демонстрации вашего опыта
                 </p>
               </div>
 
