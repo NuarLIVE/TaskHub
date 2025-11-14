@@ -559,7 +559,7 @@ export default function WalletPage() {
             </CardHeader>
             <CardContent className="space-y-4 p-6 pt-0">
               <div>
-                <label className="text-sm font-medium mb-2 block">Сумма пополнения</label>
+                <label className="text-sm font-medium mb-2 block">Сумма пополнения (тестовый ввод)</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -569,8 +569,8 @@ export default function WalletPage() {
                   placeholder="Введите сумму"
                 />
               </div>
-              <div className="text-sm text-[#3F7F6E]">
-                Средства будут зачислены мгновенно после подтверждения оплаты
+              <div className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <strong>Тестовый режим:</strong> Средства будут зачислены мгновенно для тестирования функционала
               </div>
               <div className="flex gap-3">
                 <Button onClick={handleDeposit} className="flex-1">
