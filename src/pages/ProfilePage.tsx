@@ -271,21 +271,36 @@ export default function ProfilePage() {
   const loadReviews = async () => {
     if (!user) return;
 
-    const { data: reviewsData } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        reviewer_profile:profiles!reviewer_id (
-          name,
-          avatar_url,
-          email
-        )
-      `)
-      .eq('reviewee_id', user.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data: reviewsData, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('reviewee_id', user.id)
+        .order('created_at', { ascending: false });
 
-    if (reviewsData) {
-      setReviews(reviewsData);
+      if (error) throw error;
+
+      if (reviewsData && reviewsData.length > 0) {
+        const reviewerIds = [...new Set(reviewsData.map((r: any) => r.reviewer_id))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url, email')
+          .in('id', reviewerIds);
+
+        const profilesMap: Record<string, any> = {};
+        (profilesData || []).forEach((p: any) => {
+          profilesMap[p.id] = p;
+        });
+
+        const reviewsWithProfiles = reviewsData.map((r: any) => ({
+          ...r,
+          reviewer_profile: profilesMap[r.reviewer_id] || { name: 'Пользователь', avatar_url: null, email: '' }
+        }));
+
+        setReviews(reviewsWithProfiles);
+      } else {
+        setReviews([]);
+      }
 
       if (user) {
         const { data: votesData } = await supabase
@@ -297,6 +312,9 @@ export default function ProfilePage() {
           setHelpfulVotes(new Set(votesData.map(v => v.review_id)));
         }
       }
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+      setReviews([]);
     }
   };
 
