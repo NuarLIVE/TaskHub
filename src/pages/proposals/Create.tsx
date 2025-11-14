@@ -417,13 +417,7 @@ export default function ProposalsCreate() {
           </div>
         )}
 
-        {!orderData ? (
-          <Card className="mb-6">
-            <CardContent className="p-6 text-center">
-              <p>Загрузка...</p>
-            </CardContent>
-          </Card>
-        ) : (
+        {orderData && (
           <Card className="mb-6">
             <CardHeader className="pb-3 px-6">
               <div className="flex items-start justify-between">
