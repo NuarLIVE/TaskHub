@@ -65,6 +65,7 @@ interface Task {
 }
 
 export default function MyDealsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -74,7 +75,12 @@ export default function MyDealsPage() {
   const [proposalPages, setProposalPages] = useState<Record<string, number>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`viewed_deals_${user.id}`, JSON.stringify({ timestamp: Date.now() }));
+    }
+  }, [user]);
 
   const PROPOSALS_PER_PAGE = 5;
 

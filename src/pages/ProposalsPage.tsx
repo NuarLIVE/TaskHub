@@ -40,6 +40,9 @@ export default function ProposalsPage() {
   }>({ open: false, required: 0, available: 0, currency: 'USD' });
 
   useEffect(() => {
+    if (user) {
+      localStorage.setItem(`viewed_proposals_${user.id}`, JSON.stringify({ timestamp: Date.now() }));
+    }
     loadProposals();
 
     if (!user) return;

@@ -30,7 +30,10 @@ const PRIVATE_LINKS = [
 export default function NavBar() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false); // флаг для зелёной точки
+  const [hasUnread, setHasUnread] = useState(false);
+  const [hasNewDeals, setHasNewDeals] = useState(false);
+  const [hasNewProposals, setHasNewProposals] = useState(false);
+  const [hasWalletUpdate, setHasWalletUpdate] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
 
   const computeHasUnread = async () => {
@@ -52,6 +55,76 @@ export default function NavBar() {
       c.participant1_id === user.id ? (c.unread_count_p1 || 0) > 0 : (c.unread_count_p2 || 0) > 0
     );
     setHasUnread(anyUnread);
+  };
+
+  const computeNotifications = async () => {
+    if (!user) {
+      setHasNewDeals(false);
+      setHasNewProposals(false);
+      setHasWalletUpdate(false);
+      return;
+    }
+
+    const viewedDealsStr = localStorage.getItem(`viewed_deals_${user.id}`);
+    const viewedDeals = viewedDealsStr ? JSON.parse(viewedDealsStr) : { timestamp: 0 };
+
+    const { data: dealsData } = await queryWithRetry(() =>
+      getSupabase()
+        .from('deals')
+        .select('id, created_at')
+        .or(`client_id.eq.${user.id},freelancer_id.eq.${user.id}`)
+        .gte('created_at', new Date(viewedDeals.timestamp).toISOString())
+    );
+
+    setHasNewDeals((dealsData?.length || 0) > 0);
+
+    const viewedProposalsStr = localStorage.getItem(`viewed_proposals_${user.id}`);
+    const viewedProposals = viewedProposalsStr ? JSON.parse(viewedProposalsStr) : { timestamp: 0 };
+
+    const { data: ordersData } = await queryWithRetry(() =>
+      getSupabase()
+        .from('orders')
+        .select('id')
+        .eq('user_id', user.id)
+    );
+
+    const { data: tasksData } = await queryWithRetry(() =>
+      getSupabase()
+        .from('tasks')
+        .select('id')
+        .eq('user_id', user.id)
+    );
+
+    const orderIds = ordersData?.map(o => o.id) || [];
+    const taskIds = tasksData?.map(t => t.id) || [];
+
+    if (orderIds.length > 0 || taskIds.length > 0) {
+      const { data: proposalsData } = await queryWithRetry(() =>
+        getSupabase()
+          .from('proposals')
+          .select('id, created_at')
+          .or(`order_id.in.(${orderIds.join(',')}),task_id.in.(${taskIds.join(',')})`)
+          .gte('created_at', new Date(viewedProposals.timestamp).toISOString())
+      );
+
+      setHasNewProposals((proposalsData?.length || 0) > 0);
+    } else {
+      setHasNewProposals(false);
+    }
+
+    const viewedWalletStr = localStorage.getItem(`viewed_wallet_${user.id}`);
+    const viewedWallet = viewedWalletStr ? JSON.parse(viewedWalletStr) : { balance: 0 };
+
+    const { data: profileData } = await queryWithRetry(() =>
+      getSupabase()
+        .from('profiles')
+        .select('balance')
+        .eq('id', user.id)
+        .maybeSingle()
+    );
+
+    const currentBalance = profileData?.balance || 0;
+    setHasWalletUpdate(currentBalance !== viewedWallet.balance);
   };
 
   useSupabaseKeepAlive({
@@ -76,14 +149,25 @@ export default function NavBar() {
     if (!user) return;
 
     computeHasUnread();
-    const interval = setInterval(computeHasUnread, 15000);
+    computeNotifications();
+    const interval = setInterval(() => {
+      computeHasUnread();
+      computeNotifications();
+    }, 15000);
 
     const handleVisibilityChange = () => {
-      if (!document.hidden) computeHasUnread();
+      if (!document.hidden) {
+        computeHasUnread();
+        computeNotifications();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     let chatsSub: any = null;
+    let dealsSub: any = null;
+    let proposalsSub: any = null;
+    let profilesSub: any = null;
+
     subscribeWithMonitoring('navbar-chats-unread', {
       table: 'chats',
       event: '*',
@@ -91,10 +175,35 @@ export default function NavBar() {
       onError: () => setTimeout(computeHasUnread, 1200)
     }).then(s => (chatsSub = s));
 
+    subscribeWithMonitoring('navbar-deals', {
+      table: 'deals',
+      event: '*',
+      callback: () => computeNotifications(),
+      onError: () => setTimeout(computeNotifications, 1200)
+    }).then(s => (dealsSub = s));
+
+    subscribeWithMonitoring('navbar-proposals', {
+      table: 'proposals',
+      event: '*',
+      callback: () => computeNotifications(),
+      onError: () => setTimeout(computeNotifications, 1200)
+    }).then(s => (proposalsSub = s));
+
+    subscribeWithMonitoring('navbar-profiles', {
+      table: 'profiles',
+      event: 'UPDATE',
+      filter: `id=eq.${user.id}`,
+      callback: () => computeNotifications(),
+      onError: () => setTimeout(computeNotifications, 1200)
+    }).then(s => (profilesSub = s));
+
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       chatsSub?.unsubscribe?.();
+      dealsSub?.unsubscribe?.();
+      proposalsSub?.unsubscribe?.();
+      profilesSub?.unsubscribe?.();
     };
   }, [user?.id]);
 
@@ -120,6 +229,10 @@ export default function NavBar() {
         <div className="hidden lg:flex items-center gap-6 text-sm">
           {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => {
             const isMessages = link.label === 'Сообщения';
+            const isDeals = link.label === 'Мои сделки';
+            const isProposals = link.label === 'Отклики';
+            const isWallet = link.label === 'Кошелёк';
+            const showBadge = (isMessages && hasUnread) || (isDeals && hasNewDeals) || (isProposals && hasNewProposals) || (isWallet && hasWalletUpdate);
             return (
               <a
                 key={link.href}
@@ -129,9 +242,9 @@ export default function NavBar() {
                 }`}
               >
                 {link.label}
-                {isAuthenticated && isMessages && hasUnread && (
+                {isAuthenticated && showBadge && (
                   <span
-                    aria-label="Есть новые сообщения"
+                    aria-label="Есть обновления"
                     className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-[#6FE7C8]"
                   />
                 )}

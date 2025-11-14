@@ -72,7 +72,18 @@ export default function WalletPage() {
 
   useEffect(() => {
     if (user) {
-      loadProfileBalance();
+      loadProfileBalance().then(() => {
+        getSupabase()
+          .from('profiles')
+          .select('balance')
+          .eq('id', user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) {
+              localStorage.setItem(`viewed_wallet_${user.id}`, JSON.stringify({ balance: data.balance || 0 }));
+            }
+          });
+      });
       loadWalletData();
       loadTransactions();
 
@@ -222,9 +233,29 @@ export default function WalletPage() {
 
       if (profileUpdate.error) throw profileUpdate.error;
 
-      if (wallet) {
-        const newWalletBalance = wallet.balance + amount;
-        const newTotalEarned = wallet.total_earned + amount;
+      let currentWallet = wallet;
+
+      if (!currentWallet) {
+        const { data: newWallet, error: walletCreateError } = await getSupabase()
+          .from('wallets')
+          .insert({
+            user_id: user.id,
+            balance: 0,
+            pending_balance: 0,
+            total_earned: 0,
+            total_withdrawn: 0,
+            currency: 'USD'
+          })
+          .select()
+          .single();
+
+        if (walletCreateError) throw walletCreateError;
+        currentWallet = newWallet;
+      }
+
+      if (currentWallet) {
+        const newWalletBalance = currentWallet.balance + amount;
+        const newTotalEarned = currentWallet.total_earned + amount;
 
         const walletUpdate = await getSupabase()
           .from('wallets')
@@ -233,14 +264,14 @@ export default function WalletPage() {
             total_earned: newTotalEarned,
             updated_at: new Date().toISOString()
           })
-          .eq('id', wallet.id);
+          .eq('id', currentWallet.id);
 
         if (walletUpdate.error) throw walletUpdate.error;
 
         const transactionInsert = await getSupabase()
           .from('transactions')
           .insert({
-            wallet_id: wallet.id,
+            wallet_id: currentWallet.id,
             type: 'deposit',
             amount: amount,
             status: 'completed',

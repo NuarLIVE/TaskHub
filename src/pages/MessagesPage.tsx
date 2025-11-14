@@ -112,7 +112,7 @@ export default function MessagesPage() {
   const [isUserBlocked, setIsUserBlocked] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
 
-  const { isBlocked, blockMessage, checkContent } = useContentModeration({
+  const { isBlocked, blockMessage, checkContent, checkContentImmediate } = useContentModeration({
     contentType: 'message',
   });
   const [crmPanelOpen, setCrmPanelOpen] = useState(false);
