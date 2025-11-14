@@ -16,6 +16,7 @@ import {
   Briefcase,
   ChevronDown,
   ChevronUp,
+  Languages,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -118,6 +119,10 @@ export default function MessagesPage() {
   const [crmPanelOpen, setCrmPanelOpen] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [showTranslationSettings, setShowTranslationSettings] = useState(false);
+  const [translateChat, setTranslateChat] = useState(false);
+  const [translateMyMessages, setTranslateMyMessages] = useState(false);
+  const [targetLanguage, setTargetLanguage] = useState('en');
 
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -144,6 +149,39 @@ export default function MessagesPage() {
     const t = setInterval(() => setNowTick(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Check if review was left when deal or messages change
+  useEffect(() => {
+    const checkReview = async () => {
+      if (!user || !selectedChatId) {
+        setHasReviewed(false);
+        return;
+      }
+
+      const deal = deals.find((d) => d.chat_id === selectedChatId);
+      if (!deal) {
+        setHasReviewed(false);
+        return;
+      }
+
+      try {
+        const { data } = await getSupabase()
+          .from('reviews')
+          .select('id')
+          .eq('deal_id', deal.id)
+          .eq('reviewer_id', user.id)
+          .maybeSingle();
+
+        setHasReviewed(!!data);
+      } catch (error) {
+        console.error('Error checking review status:', error);
+      }
+    };
+
+    if (messages.length > 0) {
+      checkReview();
+    }
+  }, [selectedChatId, deals, messages.length, user?.id]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -1429,6 +1467,15 @@ export default function MessagesPage() {
                   CRM
                 </button>
 
+                {/* Floating Translation Button */}
+                <button
+                  onClick={() => setShowTranslationSettings(true)}
+                  className="absolute left-4 top-36 w-12 h-12 rounded-full bg-[#6FE7C8] hover:bg-[#5cd4b5] text-white flex items-center justify-center transition shadow-lg z-20"
+                  title="Перевод"
+                >
+                  <Languages className="h-5 w-5" />
+                </button>
+
                 {/* CRM Confirmation Notifications */}
                 {selectedChatId && <CRMConfirmation chatId={selectedChatId} />}
 
@@ -1625,7 +1672,7 @@ export default function MessagesPage() {
                       <p className="text-sm">Нажмите "Написать" на странице пользователя, чтобы начать разговор</p>
                     </div>
                   ) : (
-                    <p>Выберите чат, чтобы начать общение</p>
+                    <p>TaskHub - ваш выбор в проведении безопасных сделок!</p>
                   )}
                 </div>
               </Card>
@@ -1714,6 +1761,84 @@ export default function MessagesPage() {
           currentUserId={user.id}
           triggerRef={crmButtonRef}
         />
+      )}
+
+      {/* Translation Settings Dialog */}
+      {showTranslationSettings && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowTranslationSettings(false)}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-[#3F7F6E] mb-4">Настройки перевода</h3>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Переводить чат</label>
+                <button
+                  onClick={() => setTranslateChat(!translateChat)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    translateChat ? 'bg-[#6FE7C8]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      translateChat ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Переводить мои сообщения</label>
+                <button
+                  onClick={() => setTranslateMyMessages(!translateMyMessages)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    translateMyMessages ? 'bg-[#6FE7C8]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      translateMyMessages ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {(translateChat || translateMyMessages) && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">Переводить на:</label>
+                  <select
+                    value={targetLanguage}
+                    onChange={(e) => setTargetLanguage(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#6FE7C8]"
+                  >
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                    <option value="pt">Português</option>
+                    <option value="pl">Polski</option>
+                    <option value="uk">Українська</option>
+                    <option value="kk">Қазақша</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <Button
+              onClick={() => setShowTranslationSettings(false)}
+              className="w-full mt-6 bg-[#3F7F6E] hover:bg-[#2d5f52]"
+            >
+              Сохранить
+            </Button>
+          </motion.div>
+        </div>
       )}
     </motion.div>
   );
