@@ -554,6 +554,7 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+            onClick={() => setShowAISettings(false)}
           >
             <motion.div
               ref={settingsRef}
@@ -561,6 +562,7 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
+              onClick={(e) => e.stopPropagation()}
             >
             <h3 className="text-lg font-bold text-[#3F7F6E] mb-4">Настройки CRM AI агента</h3>
 
