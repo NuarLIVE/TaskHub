@@ -397,7 +397,7 @@ function Testimonials() {
             transition={{ delay: idx * 0.08 }}
           >
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <img src={t.avatar} alt={t.name} className="h-12 w-12 rounded-full object-cover" />
                   <div>
