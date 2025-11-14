@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, AlertCircle, Settings, HelpCircle } from 'lucide-react';
+import { Check, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getSupabase } from '@/lib/supabaseClient';
@@ -17,15 +17,13 @@ interface PendingConfirmation {
 
 interface CRMConfirmationProps {
   chatId: string;
+  aiAgentEnabled: boolean;
+  confidenceThreshold: number;
 }
 
-export function CRMConfirmation({ chatId }: CRMConfirmationProps) {
+export function CRMConfirmation({ chatId, aiAgentEnabled, confidenceThreshold }: CRMConfirmationProps) {
   const [confirmations, setConfirmations] = useState<PendingConfirmation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [aiAgentEnabled, setAiAgentEnabled] = useState(true);
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.4);
-  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
     loadConfirmations();
@@ -149,102 +147,8 @@ export function CRMConfirmation({ chatId }: CRMConfirmationProps) {
 
   return (
     <>
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowSettings(false)}>
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-[#3F7F6E] mb-4">Настройки CRM AI агента</h3>
-
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">AI агент</label>
-                    <div className="relative">
-                      <button
-                        onMouseEnter={() => setShowTooltip(true)}
-                        onMouseLeave={() => setShowTooltip(false)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <HelpCircle className="h-4 w-4" />
-                      </button>
-                      {showTooltip && (
-                        <div className="absolute left-6 top-0 bg-gray-800 text-white text-xs rounded px-3 py-2 w-64 z-10">
-                          AI агент анализирует сообщения и автоматически предлагает обновления для CRM на основе обнаруженной информации
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setAiAgentEnabled(!aiAgentEnabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      aiAgentEnabled ? 'bg-[#6FE7C8]' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        aiAgentEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              {aiAgentEnabled && (
-                <div>
-                  <label className="text-sm font-medium block mb-2">Порог уверенности</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={confidenceThreshold}
-                      onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
-                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      style={{
-                        background: `linear-gradient(to right, #6FE7C8 0%, #6FE7C8 ${confidenceThreshold * 100}%, #e5e7eb ${confidenceThreshold * 100}%, #e5e7eb 100%)`
-                      }}
-                    />
-                    <span className="text-sm font-medium text-[#3F7F6E] w-12 text-right">
-                      {Math.round(confidenceThreshold * 100)}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Минимальная уверенность AI для показа предложений
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <Button
-              onClick={() => setShowSettings(false)}
-              className="w-full mt-6 bg-[#3F7F6E] hover:bg-[#2d5f52]"
-            >
-              Сохранить
-            </Button>
-          </motion.div>
-        </div>
-      )}
-
       {confirmations.length > 0 && (
         <div className="absolute left-1/2 -translate-x-1/2 top-16 z-20 w-full max-w-xl px-4">
-          <div className="flex justify-end mb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSettings(true)}
-              className="text-xs text-gray-600 hover:text-[#3F7F6E]"
-            >
-              <Settings className="h-3 w-3 mr-1" />
-              Настройки CRM AI
-            </Button>
-          </div>
       <AnimatePresence mode="popLayout">
         {confirmations.map((confirmation, index) => (
           <motion.div

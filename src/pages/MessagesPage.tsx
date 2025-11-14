@@ -123,6 +123,8 @@ export default function MessagesPage() {
   const [translateChat, setTranslateChat] = useState(false);
   const [translateMyMessages, setTranslateMyMessages] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState('en');
+  const [aiAgentEnabled, setAiAgentEnabled] = useState(true);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.4);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -1477,7 +1479,13 @@ export default function MessagesPage() {
                 </button>
 
                 {/* CRM Confirmation Notifications */}
-                {selectedChatId && <CRMConfirmation chatId={selectedChatId} />}
+                {selectedChatId && (
+                  <CRMConfirmation
+                    chatId={selectedChatId}
+                    aiAgentEnabled={aiAgentEnabled}
+                    confidenceThreshold={confidenceThreshold}
+                  />
+                )}
 
                 <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
 
@@ -1760,6 +1768,10 @@ export default function MessagesPage() {
           onClose={() => setCrmPanelOpen(false)}
           currentUserId={user.id}
           triggerRef={crmButtonRef}
+          aiAgentEnabled={aiAgentEnabled}
+          setAiAgentEnabled={setAiAgentEnabled}
+          confidenceThreshold={confidenceThreshold}
+          setConfidenceThreshold={setConfidenceThreshold}
         />
       )}
 

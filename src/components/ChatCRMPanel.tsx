@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, Trash2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { X, Calendar, DollarSign, AlertCircle, CheckCircle, Clock, Plus, Trash2, ChevronDown, ChevronUp, RefreshCw, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -37,14 +37,20 @@ interface ChatCRMPanelProps {
   onClose: () => void;
   currentUserId: string;
   triggerRef?: React.RefObject<HTMLButtonElement>;
+  aiAgentEnabled: boolean;
+  setAiAgentEnabled: (value: boolean) => void;
+  confidenceThreshold: number;
+  setConfidenceThreshold: (value: number) => void;
 }
 
-export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRef }: ChatCRMPanelProps) {
+export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRef, aiAgentEnabled, setAiAgentEnabled, confidenceThreshold, setConfidenceThreshold }: ChatCRMPanelProps) {
   const [crmData, setCrmData] = useState<CRMContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [newTask, setNewTask] = useState('');
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -513,6 +519,14 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
                 {editing ? 'Завершить редактирование' : 'Редактировать'}
               </Button>
               <Button
+                onClick={() => setShowAISettings(true)}
+                variant="outline"
+                className="w-full border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#EFFFF8]"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Настройки CRM AI
+              </Button>
+              <Button
                 onClick={clearCRMData}
                 variant="outline"
                 className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
@@ -523,6 +537,96 @@ export function ChatCRMPanel({ chatId, isOpen, onClose, currentUserId, triggerRe
             </div>
           </motion.div>
         </>
+      )}
+
+      {/* AI Settings Modal */}
+      {showAISettings && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowAISettings(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-[#3F7F6E] mb-4">Настройки CRM AI агента</h3>
+
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">AI агент</label>
+                    <div className="relative">
+                      <button
+                        onMouseEnter={() => setShowTooltip(true)}
+                        onMouseLeave={() => setShowTooltip(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </button>
+                      {showTooltip && (
+                        <div className="absolute left-6 top-0 bg-gray-800 text-white text-xs rounded px-3 py-2 w-64 z-10">
+                          AI агент анализирует сообщения и автоматически предлагает обновления для CRM на основе обнаруженной информации
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAiAgentEnabled(!aiAgentEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      aiAgentEnabled ? 'bg-[#6FE7C8]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        aiAgentEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {aiAgentEnabled && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">Порог уверенности</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={confidenceThreshold}
+                      onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, #6FE7C8 0%, #6FE7C8 ${confidenceThreshold * 100}%, #e5e7eb ${confidenceThreshold * 100}%, #e5e7eb 100%)`
+                      }}
+                    />
+                    <span className="text-sm font-medium text-[#3F7F6E] w-12 text-right">
+                      {Math.round(confidenceThreshold * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Минимальная уверенность AI для показа предложений
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <Button
+              onClick={() => setShowAISettings(false)}
+              className="w-full mt-6 bg-[#3F7F6E] hover:bg-[#2d5f52]"
+            >
+              Сохранить
+            </Button>
+          </motion.div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
