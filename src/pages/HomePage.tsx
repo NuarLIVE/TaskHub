@@ -106,6 +106,7 @@ const testimonials = [
 
 function Hero() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { isAuthenticated } = useAuth();
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
