@@ -168,13 +168,17 @@ export default function OrderCreatePage() {
       return;
     }
 
+    // Get category name instead of ID
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+    const categoryName = selectedCategory ? selectedCategory.name : '';
+
     const { data, error } = await getSupabase()
       .from('orders')
       .insert({
         user_id: authUser.id,
         title,
         description,
-        category: String(fd.get('category')),
+        category: categoryName,
         price_min: Number(minPrice),
         price_max: Number(maxPrice),
         currency: String(fd.get('currency')),
@@ -225,7 +229,6 @@ export default function OrderCreatePage() {
                   left={
                     <Field label="Категория">
                       <select
-                        name="category"
                         className="h-11 rounded-md border px-3 bg-background"
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}

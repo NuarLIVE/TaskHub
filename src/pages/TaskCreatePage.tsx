@@ -198,13 +198,17 @@ export default function TaskCreatePage() {
       return;
     }
 
+    // Get category name instead of ID
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+    const categoryName = selectedCategory ? selectedCategory.name : '';
+
     const { data, error } = await getSupabase()
       .from('tasks')
       .insert({
         user_id: authUser.id,
         title,
         description,
-        category: String(fd.get('category')),
+        category: categoryName,
         price: Number(price),
         currency: String(fd.get('currency')),
         delivery_days: Number(fd.get('delivery_days')),
@@ -255,7 +259,6 @@ export default function TaskCreatePage() {
                   left={
                     <Field label="Категория">
                       <select
-                        name="category"
                         className="h-11 rounded-md border px-3 bg-background"
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}
