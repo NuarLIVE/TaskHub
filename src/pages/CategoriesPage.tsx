@@ -236,16 +236,22 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
   };
 
   useEffect(() => {
-    checkScroll();
+    const timer = setTimeout(() => {
+      checkScroll();
+    }, 100);
+
     const ref = scrollRef.current;
     if (ref) {
       ref.addEventListener('scroll', checkScroll);
       window.addEventListener('resize', checkScroll);
       return () => {
+        clearTimeout(timer);
         ref.removeEventListener('scroll', checkScroll);
         window.removeEventListener('resize', checkScroll);
       };
     }
+
+    return () => clearTimeout(timer);
   }, []);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -302,10 +308,11 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
             className="flex-shrink-0 group/item"
           >
             <div className="w-[200px] rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer">
-              <div className="aspect-[16/10] overflow-hidden">
+              <div className="aspect-[16/10] overflow-hidden bg-muted">
                 <img
                   src={sub.image}
                   alt={sub.name}
+                  loading="lazy"
                   className="h-full w-full object-cover group-hover/item:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -374,7 +381,7 @@ function CategorySidebar() {
 export default function CategoriesPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -383,25 +390,22 @@ export default function CategoriesPage() {
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Все категории</h1>
           <p className="text-lg text-[#3F7F6E] mb-10">Найдите специалистов в любой области</p>
 
-          <div className="flex gap-8">
+          <div className="flex gap-8 items-start">
             <CategorySidebar />
 
-            <div className="flex-1 space-y-8">
-              {categories.map((category, idx) => (
-                <motion.div
+            <div className="flex-1 min-w-0 space-y-8">
+              {categories.map((category) => (
+                <div
                   key={category.title}
                   id={category.title.toLowerCase().replace(/\s+/g, '-')}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.03 }}
                 >
                   <Card>
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className={`p-3 rounded-xl ${category.color}`}>
+                        <div className={`p-3 rounded-xl ${category.color} flex-shrink-0`}>
                           {category.icon}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <CardTitle className="text-xl">{category.title}</CardTitle>
                           <p className="text-sm text-[#3F7F6E] mt-1">{category.description}</p>
                         </div>
@@ -411,12 +415,12 @@ export default function CategoriesPage() {
                       <SubcategoryCarousel subcategories={category.subcategories} />
                     </CardContent>
                   </Card>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
         </motion.div>
-      </section>
+      </div>
     </main>
   );
 }
