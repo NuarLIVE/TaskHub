@@ -266,11 +266,10 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const cardWidth = 200;
       const gap = 12;
-      const itemWidth = cardWidth + gap;
-      const visibleCards = Math.floor(scrollRef.current.clientWidth / itemWidth);
-      const scrollAmount = itemWidth * Math.max(1, visibleCards - 1);
+      const containerWidth = scrollRef.current.clientWidth;
+      const itemWidth = Math.floor((containerWidth - gap * 2) / 3);
+      const scrollAmount = itemWidth * 2 + gap * 2;
 
       const currentScroll = scrollRef.current.scrollLeft;
       let targetScroll: number;
@@ -281,8 +280,7 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
         targetScroll = currentScroll - scrollAmount;
       }
 
-      const snappedScroll = Math.round(targetScroll / itemWidth) * itemWidth;
-      scrollRef.current.scrollTo({ left: snappedScroll, behavior: 'smooth' });
+      scrollRef.current.scrollTo({ left: targetScroll, behavior: 'smooth' });
     }
   };
 
@@ -308,16 +306,17 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
       </style>
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {subcategories.map((sub, index) => (
+        {subcategories.map((sub) => (
           <a
             key={sub.slug}
             href={`#/market?category=${encodeURIComponent(sub.name)}`}
-            className={`flex-shrink-0 group/item ${index === subcategories.length - 1 ? 'pr-6' : ''}`}
+            className="flex-shrink-0 group/item snap-start"
+            style={{ width: 'calc((100% - 24px) / 3)' }}
           >
-            <div className="w-[200px] rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <div className="rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer h-full">
               <div className="aspect-[16/10] overflow-hidden bg-muted">
                 <img
                   src={`${sub.image}?auto=compress&cs=tinysrgb&w=400`}
@@ -548,7 +547,7 @@ export default function CategoriesPage() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="pb-5 pl-6 pr-0">
+                      <CardContent className="pb-5 px-6">
                         <SubcategoryCarousel subcategories={category.subcategories} />
                       </CardContent>
                     </Card>
