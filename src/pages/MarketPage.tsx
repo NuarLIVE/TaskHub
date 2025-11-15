@@ -483,8 +483,9 @@ export default function MarketPage() {
                     )}
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base leading-6 pr-32">{item.title}</CardTitle>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <Badge variant="secondary">{item.category}</Badge>
+                        {item.subcategory && <Badge variant="outline">{item.subcategory}</Badge>}
                         {activeTab === 'orders' && item.engagement && <Badge variant="outline">{item.engagement}</Badge>}
                         {activeTab === 'tasks' && item.delivery_days && (
                           <Badge variant="outline" className="flex items-center gap-1">
@@ -626,8 +627,9 @@ export default function MarketPage() {
                   <DialogTitle>
                     {previewItem.title}
                   </DialogTitle>
-                  <DialogDescription className="flex items-center gap-2 mt-2">
+                  <DialogDescription className="flex items-center gap-2 mt-2 flex-wrap">
                     <Badge variant="secondary">{previewItem.category}</Badge>
+                    {previewItem.subcategory && <Badge variant="outline">{previewItem.subcategory}</Badge>}
                     {previewType === 'order' && previewItem.engagement && <Badge variant="outline">{previewItem.engagement}</Badge>}
                     {previewType === 'task' && previewItem.delivery_days && (
                       <Badge variant="outline" className="flex items-center gap-1">
