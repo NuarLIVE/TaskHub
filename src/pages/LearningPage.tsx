@@ -697,12 +697,58 @@ export default function LearningPage() {
                   <h2 className="text-2xl font-bold mb-4">{currentLesson.title}</h2>
                 </div>
 
-                <div className="prose prose-slate max-w-none">
-                  {currentLesson.content.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="text-base leading-relaxed mb-4 whitespace-pre-line">
-                      {paragraph}
-                    </p>
-                  ))}
+                <div className="space-y-5">
+                  {currentLesson.content.split('\n\n').map((paragraph, index) => {
+                    const text = paragraph.trim();
+
+                    if (text.startsWith('Главная мысль:')) {
+                      return (
+                        <div key={index} className="mt-8 p-6 bg-gradient-to-r from-[#EFFFF8] to-[#E0F9F0] rounded-xl border-l-4 border-[#3F7F6E]">
+                          <div className="font-bold text-[#3F7F6E] text-lg mb-2">Главная мысль</div>
+                          <p className="text-base leading-relaxed text-gray-800">{text.replace('Главная мысль:', '').trim()}</p>
+                        </div>
+                      );
+                    }
+
+                    if (/^\d+\.\s+/.test(text)) {
+                      const parts = text.split('\n');
+                      const heading = parts[0];
+                      const content = parts.slice(1).join('\n');
+
+                      return (
+                        <div key={index} className="mt-6">
+                          <h3 className="text-xl font-bold text-gray-900 mb-3">{heading}</h3>
+                          {content && (
+                            <div className="text-base leading-relaxed text-gray-700 whitespace-pre-line pl-4 border-l-2 border-gray-200">
+                              {content}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (text.includes('Примеры:') || text.includes('Пример:') || text.includes('Структура:') || text.includes('Правила:') || text.includes('Некоторые признаки:')) {
+                      return (
+                        <div key={index} className="pl-4 border-l-2 border-[#6FE7C8]">
+                          <p className="text-base leading-relaxed text-gray-700 whitespace-pre-line">{text}</p>
+                        </div>
+                      );
+                    }
+
+                    if (text.startsWith('«') || text.includes('→')) {
+                      return (
+                        <div key={index} className="pl-6 py-2 italic text-gray-600 text-base leading-relaxed">
+                          {text}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <p key={index} className="text-base leading-relaxed text-gray-700 whitespace-pre-line">
+                        {text}
+                      </p>
+                    );
+                  })}
                 </div>
 
                 <div className="flex items-center justify-between mt-8 pt-6 border-t">
