@@ -713,14 +713,12 @@ export default function ProfilePage() {
 
             <div className="grid gap-6">
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
-                      <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
-                    ))}
-                  </div>
-                  <Button asChild variant="outline" className="w-full border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#3F7F6E]/5">
-                    <a href="#/recommendations" className="flex items-center justify-center gap-2">
+                <CardContent className="p-6 flex flex-wrap items-center gap-3">
+                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
+                    <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
+                  ))}
+                  <Button asChild variant="outline" className="border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#3F7F6E]/5 h-9 px-4">
+                    <a href="#/recommendations" className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4" />
                       Рекомендации заказов
                     </a>
