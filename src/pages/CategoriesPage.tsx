@@ -18,6 +18,16 @@ interface Category {
   subcategories: Subcategory[];
 }
 
+type FilterType = 'all' | 'business' | 'startup' | 'top' | 'new';
+
+interface FilterConfig {
+  id: FilterType;
+  label: string;
+  categories: {
+    [key: string]: string[];
+  };
+}
+
 const categories: Category[] = [
   {
     icon: <Code className="h-6 w-6" />,
@@ -379,16 +389,93 @@ function CategorySidebar() {
   );
 }
 
-export default function CategoriesPage() {
-  const [activeFilter, setActiveFilter] = useState('all');
+const filterConfigs: FilterConfig[] = [
+  {
+    id: 'all',
+    label: 'Все категории',
+    categories: {}
+  },
+  {
+    id: 'business',
+    label: 'Для бизнеса',
+    categories: {
+      'Разработка': ['Веб-разработка', 'Мобильная разработка', 'Backend', 'Full-stack', 'Десктоп-ПО', 'DevOps', 'Скрипты/автоматизации'],
+      'Дизайн': ['Лого', 'UX/UI', 'Веб-дизайн', 'Фирменный стиль', 'Презентации', '3D'],
+      'Маркетинг': ['Таргет', 'SEO', 'Контекстная реклама', 'Аналитика', 'Email маркетинг', 'Продвижение соцсетей'],
+      'Бизнес': ['Создание презентаций', 'Финансовая аналитика', 'Бизнес-планы', 'CRM сопровождение'],
+      'eCommerce': ['Shopify', 'WooCommerce', 'Маркетплейс-лендинги'],
+      'IT-поддержка': ['Настройка серверов', 'Поддержка сайтов', 'Установка CMS', 'Решение техпроблем']
+    }
+  },
+  {
+    id: 'startup',
+    label: 'Для старта',
+    categories: {
+      'Дизайн': ['Лого', 'Баннеры', 'UX/UI', 'Иллюстрации'],
+      'Тексты и переводы': ['Копирайт', 'Рерайт', 'Переводы', 'Описания товаров'],
+      'Видео и Аудио': ['Монтаж', 'Озвучка'],
+      'Соцсети': ['Создание постов', 'Оформление профиля', 'Ведение Instagram/TikTok', 'Монтаж Reels'],
+      'Жизненные задачи (Lifestyle)': ['Фото-обработка', 'Тестирование продуктов', 'Виртуальные ассистенты', 'Личные советы'],
+      'Образование и репетиторство': ['Домашние задания', 'Репетиторство', 'Подготовка к экзаменам']
+    }
+  },
+  {
+    id: 'top',
+    label: 'Топ направления',
+    categories: {
+      'Разработка': ['AI/ML', 'ChatGPT/AI-боты', 'Full-stack', 'GameDev', 'DevOps'],
+      'Дизайн': ['UX/UI', 'Презентации', 'Иллюстрации', '3D'],
+      'Маркетинг': ['SEO', 'Таргет'],
+      'Соцсети': ['Продвижение соцсетей'],
+      'Видео и Аудио': ['Видеомонтаж', 'Озвучка'],
+      'NFT / Web3': ['NFT-арт', 'Смарт-контракты'],
+      'Архитектура': ['Архвизуализация']
+    }
+  },
+  {
+    id: 'new',
+    label: 'Новые',
+    categories: {
+      'Разработка': ['ChatGPT/AI-боты', 'AI/ML'],
+      'NFT / Web3': ['NFT-арт', 'Смарт-контракты', 'Токен-экономика'],
+      'eCommerce': ['Shopify', 'WooCommerce', 'Прокатники товаров'],
+      'Инженерия': ['Arduino/IoT', 'Прототипирование', 'Электроника'],
+      'Архитектура': ['Архвизуализация', '3D-макеты']
+    }
+  }
+];
 
-  const filters = [
-    { id: 'all', label: 'Все категории' },
-    { id: 'business', label: 'Для бизнеса' },
-    { id: 'startup', label: 'Для старта' },
-    { id: 'top', label: 'Топ направления' },
-    { id: 'new', label: 'Новые' }
-  ];
+export default function CategoriesPage() {
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  const getFilteredCategories = () => {
+    if (activeFilter === 'all') {
+      return categories;
+    }
+
+    const activeConfig = filterConfigs.find(f => f.id === activeFilter);
+    if (!activeConfig) return categories;
+
+    return categories
+      .map(category => {
+        const allowedSubcategories = activeConfig.categories[category.title];
+        if (!allowedSubcategories) return null;
+
+        const filteredSubs = category.subcategories.filter(sub =>
+          allowedSubcategories.includes(sub.name)
+        );
+
+        if (filteredSubs.length === 0) return null;
+
+        return {
+          ...category,
+          subcategories: filteredSubs
+        };
+      })
+      .filter((cat): cat is Category => cat !== null);
+  };
+
+  const filteredCategories = getFilteredCategories();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -406,7 +493,7 @@ export default function CategoriesPage() {
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap gap-2 mb-6">
-                {filters.map((filter) => (
+                {filterConfigs.map((filter) => (
                   <Button
                     key={filter.id}
                     variant={activeFilter === filter.id ? 'default' : 'outline'}
@@ -440,7 +527,7 @@ export default function CategoriesPage() {
               </Card>
 
               <div className="space-y-5">
-                {categories.map((category) => (
+                {filteredCategories.map((category) => (
                   <div
                     key={category.title}
                     id={category.title.toLowerCase().replace(/\s+/g, '-')}
