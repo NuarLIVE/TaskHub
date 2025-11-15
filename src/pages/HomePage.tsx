@@ -219,6 +219,8 @@ function Categories() {
 }
 
 function Featured() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <section id="featured" className="border-y bg-[#C3FFE8]/20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
