@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
+import PriceDisplay from './PriceDisplay';
 
 interface SubscriptionPurchaseDialogProps {
   isOpen: boolean;
@@ -42,9 +44,36 @@ export default function SubscriptionPurchaseDialog({
   onSuccess,
 }: SubscriptionPurchaseDialogProps) {
   const { user } = useAuth();
+  const { currency } = useRegion();
   const [selectedPlan, setSelectedPlan] = useState('3months');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState(1);
+
+  useEffect(() => {
+    if (isOpen && currency !== 'RUB') {
+      loadExchangeRate();
+    } else {
+      setExchangeRate(1);
+    }
+  }, [isOpen, currency]);
+
+  const loadExchangeRate = async () => {
+    try {
+      const { data } = await supabase
+        .from('exchange_rates')
+        .select('rate')
+        .eq('from_currency', 'RUB')
+        .eq('to_currency', currency)
+        .single();
+
+      if (data) {
+        setExchangeRate(data.rate);
+      }
+    } catch (err) {
+      console.error('Error loading exchange rate:', err);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -64,15 +93,23 @@ export default function SubscriptionPurchaseDialog({
         .eq('id', user.id)
         .single();
 
-      if (!profile || profile.balance < plan.price) {
-        setError('Недостаточно средств на балансе');
+      if (!profile) {
+        setError('Профиль не найден');
+        setLoading(false);
+        return;
+      }
+
+      const priceInUserCurrency = Math.round(plan.price * exchangeRate);
+
+      if (profile.balance < priceInUserCurrency) {
+        setError(`Недостаточно средств на балансе. Необходимо: ${priceInUserCurrency.toLocaleString()} ${currency}`);
         setLoading(false);
         return;
       }
 
       const { error: balanceError } = await supabase
         .from('profiles')
-        .update({ balance: profile.balance - plan.price })
+        .update({ balance: profile.balance - priceInUserCurrency })
         .eq('id', user.id);
 
       if (balanceError) throw balanceError;
@@ -86,7 +123,7 @@ export default function SubscriptionPurchaseDialog({
           user_id: user.id,
           plan_type: selectedPlan,
           expires_at: expiresAt.toISOString(),
-          price_paid: plan.price,
+          price_paid: priceInUserCurrency,
           is_active: true,
         });
 
@@ -96,11 +133,11 @@ export default function SubscriptionPurchaseDialog({
         .from('wallet_ledger')
         .insert({
           user_id: user.id,
-          amount: -plan.price,
-          balance_after: profile.balance - plan.price,
+          amount: -priceInUserCurrency,
+          balance_after: profile.balance - priceInUserCurrency,
           type: 'purchase',
           description: `Подписка на рекомендации заказов (${plan.name})`,
-          metadata: { plan_type: selectedPlan, days: plan.days },
+          metadata: { plan_type: selectedPlan, days: plan.days, currency, exchange_rate: exchangeRate },
         });
 
       if (ledgerError) throw ledgerError;
@@ -194,7 +231,7 @@ export default function SubscriptionPurchaseDialog({
                   <div className="text-center">
                     <div className="text-lg font-bold mb-1">{plan.name}</div>
                     <div className="text-2xl font-bold text-[#3F7F6E] mb-1">
-                      {plan.price.toLocaleString()} ₽
+                      <PriceDisplay amount={Math.round(plan.price * exchangeRate)} />
                     </div>
                     {plan.savings && (
                       <div className="text-xs text-green-600 font-medium">
@@ -202,7 +239,7 @@ export default function SubscriptionPurchaseDialog({
                       </div>
                     )}
                     <div className="text-sm text-gray-500 mt-2">
-                      ~{Math.round(plan.price / plan.days)} ₽/день
+                      ~<PriceDisplay amount={Math.round((plan.price * exchangeRate) / plan.days)} />/день
                     </div>
                   </div>
                 </button>
@@ -220,7 +257,7 @@ export default function SubscriptionPurchaseDialog({
             <div className="flex items-center justify-between mb-4">
               <span className="text-gray-600">Итого к оплате:</span>
               <span className="text-2xl font-bold text-[#3F7F6E]">
-                {selectedPlanData?.price.toLocaleString()} ₽
+                <PriceDisplay amount={selectedPlanData ? Math.round(selectedPlanData.price * exchangeRate) : 0} />
               </span>
             </div>
 
