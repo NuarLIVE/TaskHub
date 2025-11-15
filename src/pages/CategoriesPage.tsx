@@ -308,14 +308,14 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
       </style>
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pr-4"
+        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {subcategories.map((sub, index) => (
           <a
             key={sub.slug}
             href={`#/market?category=${encodeURIComponent(sub.name)}`}
-            className={`flex-shrink-0 group/item ${index === subcategories.length - 1 ? 'mr-4' : ''}`}
+            className={`flex-shrink-0 group/item ${index === subcategories.length - 1 ? 'pr-6' : ''}`}
           >
             <div className="w-[200px] rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer">
               <div className="aspect-[16/10] overflow-hidden bg-muted">
@@ -548,7 +548,7 @@ export default function CategoriesPage() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="px-6 pb-5">
+                      <CardContent className="pb-5 pl-6 pr-0">
                         <SubcategoryCarousel subcategories={category.subcategories} />
                       </CardContent>
                     </Card>
