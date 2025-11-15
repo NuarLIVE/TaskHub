@@ -30,7 +30,23 @@ export default function NavBar() {
   const [hasNewDeals, setHasNewDeals] = useState(false);
   const [hasNewProposals, setHasNewProposals] = useState(false);
   const [hasWalletUpdate, setHasWalletUpdate] = useState(false);
+  const [learningCompleted, setLearningCompleted] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+
+  const checkLearningStatus = async () => {
+    if (!user) {
+      setLearningCompleted(false);
+      return;
+    }
+    const { data } = await queryWithRetry(() =>
+      getSupabase()
+        .from('profiles')
+        .select('learning_completed')
+        .eq('id', user.id)
+        .maybeSingle()
+    );
+    setLearningCompleted(data?.learning_completed || false);
+  };
 
   const computeHasUnread = async () => {
     if (!user) {
@@ -171,6 +187,7 @@ export default function NavBar() {
   useEffect(() => {
     if (!user) return;
 
+    checkLearningStatus();
     computeHasUnread();
     computeNotifications();
     const interval = setInterval(() => {
@@ -216,7 +233,10 @@ export default function NavBar() {
       table: 'profiles',
       event: 'UPDATE',
       filter: `id=eq.${user.id}`,
-      callback: () => computeNotifications(),
+      callback: () => {
+        checkLearningStatus();
+        computeNotifications();
+      },
       onError: () => setTimeout(computeNotifications, 1200)
     }).then(s => (profilesSub = s));
 
@@ -274,6 +294,16 @@ export default function NavBar() {
               </a>
             );
           })}
+          {isAuthenticated && learningCompleted && (
+            <a
+              href="#/learning"
+              className={`transition-colors font-medium relative ${
+                isActiveLink('#/learning') ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-foreground'
+              }`}
+            >
+              Обучение
+            </a>
+          )}
         </div>
 
         <div className="flex items-center gap-2">

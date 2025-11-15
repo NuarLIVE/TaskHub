@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, BookOpen, Check, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSupabase } from '@/lib/supabaseClient';
+import { queryWithRetry } from '@/lib/supabase-utils';
 
 interface Lesson {
   id: number;
@@ -595,15 +598,55 @@ const pageVariants = {
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function LearningPage() {
+  const { user } = useAuth();
   const [currentLessonId, setCurrentLessonId] = useState(1);
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await queryWithRetry(() =>
+        getSupabase()
+          .from('profiles')
+          .select('completed_lessons')
+          .eq('id', user.id)
+          .maybeSingle()
+      );
+
+      if (!error && data) {
+        setCompletedLessons(data.completed_lessons || []);
+      }
+      setIsLoading(false);
+    };
+
+    loadProgress();
+  }, [user?.id]);
 
   const currentLesson = lessons.find(l => l.id === currentLessonId) || lessons[0];
   const currentIndex = lessons.findIndex(l => l.id === currentLessonId);
 
-  const goToLesson = (lessonId: number) => {
+  const goToLesson = async (lessonId: number) => {
     if (!completedLessons.includes(lessonId)) {
-      setCompletedLessons([...completedLessons, lessonId]);
+      const newCompleted = [...completedLessons, lessonId];
+      setCompletedLessons(newCompleted);
+
+      if (user) {
+        const learningCompleted = newCompleted.length === 10;
+        await queryWithRetry(() =>
+          getSupabase()
+            .from('profiles')
+            .update({
+              completed_lessons: newCompleted,
+              learning_completed: learningCompleted
+            })
+            .eq('id', user.id)
+        );
+      }
     }
     setCurrentLessonId(lessonId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -615,10 +658,24 @@ export default function LearningPage() {
     }
   };
 
-  const goToNext = () => {
+  const goToNext = async () => {
     if (currentIndex < lessons.length - 1) {
       if (!completedLessons.includes(currentLessonId)) {
-        setCompletedLessons([...completedLessons, currentLessonId]);
+        const newCompleted = [...completedLessons, currentLessonId];
+        setCompletedLessons(newCompleted);
+
+        if (user) {
+          const learningCompleted = newCompleted.length === 10;
+          await queryWithRetry(() =>
+            getSupabase()
+              .from('profiles')
+              .update({
+                completed_lessons: newCompleted,
+                learning_completed: learningCompleted
+              })
+              .eq('id', user.id)
+          );
+        }
       }
       goToLesson(lessons[currentIndex + 1].id);
     }

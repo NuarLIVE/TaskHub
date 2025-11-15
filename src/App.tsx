@@ -4,6 +4,7 @@ import { RegionProvider } from './contexts/RegionContext';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import { DbStatus } from './components/DbStatus';
+import LearningPrompt from './components/LearningPrompt';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -222,6 +223,7 @@ function App() {
           </Suspense>
           {!isAuthPage && !isAdminPage && <Footer />}
           {!isAdminPage && <DbStatus />}
+          <LearningPrompt />
         </div>
       </RegionProvider>
     </AuthProvider>

@@ -83,7 +83,7 @@ export default function PublicProfile() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, learning_completed')
         .eq('id', userId)
         .maybeSingle();
 
@@ -108,7 +108,8 @@ export default function PublicProfile() {
           avgRating: data.avg_rating || 0,
           reviewsCount: data.reviews_count || 0,
           fiveStarCount: data.five_star_count || 0,
-          createdAt: data.created_at
+          createdAt: data.created_at,
+          learningCompleted: data.learning_completed || false
         });
       } else {
         setProfile(null);
@@ -395,6 +396,7 @@ export default function PublicProfile() {
                   avgRating={profile.avgRating}
                   reviewsCount={profile.reviewsCount}
                   fiveStarCount={profile.fiveStarCount}
+                  learningCompleted={profile.learningCompleted}
                   createdAt={profile.createdAt}
                   showStars={true}
                   compact={false}

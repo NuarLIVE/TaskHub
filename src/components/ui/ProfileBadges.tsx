@@ -1,4 +1,4 @@
-import { Star, Award, Crown } from 'lucide-react';
+import { Star, Award, Crown, GraduationCap } from 'lucide-react';
 import { Badge } from './badge';
 
 interface ProfileBadgesProps {
@@ -6,6 +6,7 @@ interface ProfileBadgesProps {
   reviewsCount?: number;
   fiveStarCount?: number;
   createdAt?: string;
+  learningCompleted?: boolean;
   showStars?: boolean;
   compact?: boolean;
 }
@@ -15,6 +16,7 @@ export default function ProfileBadges({
   reviewsCount = 0,
   fiveStarCount = 0,
   createdAt,
+  learningCompleted = false,
   showStars = true,
   compact = false
 }: ProfileBadgesProps) {
@@ -70,6 +72,12 @@ export default function ProfileBadges({
             Проверенный
           </Badge>
         )}
+        {learningCompleted && (
+          <Badge variant="default" className="bg-blue-500 text-white border-0 text-xs">
+            <GraduationCap className="h-3 w-3 mr-1" />
+            Прошел обучение
+          </Badge>
+        )}
         {isNew && (
           <Badge variant="outline" className="text-xs border-[#6FE7C8] text-[#3F7F6E]">
             Недавно на бирже
@@ -93,6 +101,12 @@ export default function ProfileBadges({
           <Badge variant="default" className="bg-[#6FE7C8] text-[#3F7F6E] border-0">
             <Award className="h-4 w-4 mr-1" />
             Проверенный специалист
+          </Badge>
+        )}
+        {learningCompleted && (
+          <Badge variant="default" className="bg-blue-500 text-white border-0">
+            <GraduationCap className="h-4 w-4 mr-1" />
+            Прошел обучение
           </Badge>
         )}
         {isNew && (
