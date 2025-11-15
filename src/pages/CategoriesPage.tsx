@@ -308,14 +308,14 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
       </style>
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pr-4"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {subcategories.map((sub) => (
+        {subcategories.map((sub, index) => (
           <a
             key={sub.slug}
             href={`#/market?category=${encodeURIComponent(sub.name)}`}
-            className="flex-shrink-0 group/item"
+            className={`flex-shrink-0 group/item ${index === subcategories.length - 1 ? 'mr-4' : ''}`}
           >
             <div className="w-[200px] rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer">
               <div className="aspect-[16/10] overflow-hidden bg-muted">
@@ -499,7 +499,11 @@ export default function CategoriesPage() {
                     variant={activeFilter === filter.id ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setActiveFilter(filter.id)}
-                    className="rounded-full"
+                    className={`rounded-full transition-all ${
+                      activeFilter === filter.id
+                        ? 'bg-[#3F7F6E] hover:bg-[#3F7F6E]/90 px-5 py-2'
+                        : 'hover:bg-muted'
+                    }`}
                   >
                     {filter.label}
                   </Button>
