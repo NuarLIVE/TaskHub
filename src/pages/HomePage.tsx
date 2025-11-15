@@ -197,7 +197,7 @@ function Categories() {
     <section id="categories" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
       <div className="flex items-end justify-between mb-8">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Популярные категории</h2>
-        <Button variant="ghost" className="hidden sm:inline-flex">Все категории</Button>
+        <Button variant="ghost" className="hidden sm:inline-flex" onClick={() => window.location.hash = '/categories'}>Все категории</Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories.map((c, idx) => (

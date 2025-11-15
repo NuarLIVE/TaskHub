@@ -36,6 +36,7 @@ const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminSuggestions = lazy(() => import('./pages/admin/AdminSuggestions'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'));
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -183,6 +184,8 @@ function App() {
     Page = ContactPage;
   } else if (route === '/market' || route.startsWith('/market?')) {
     Page = MarketPage;
+  } else if (route === '/categories') {
+    Page = CategoriesPage;
   } else if (route === '/404') {
     Page = NotFound;
   } else {
