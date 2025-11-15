@@ -30,7 +30,7 @@ export default function LearningPrompt() {
       const { data } = await queryWithRetry(() =>
         getSupabase()
           .from('profiles')
-          .select('learning_completed, created_at')
+          .select('learning_completed, profile_completed, created_at')
           .eq('id', user.id)
           .maybeSingle()
       );
@@ -44,7 +44,8 @@ export default function LearningPrompt() {
         ? (Date.now() - new Date(data.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000
         : false;
 
-      setShow(!data.learning_completed && isNewUser);
+      // Show only if profile is completed, learning not completed, and user is new
+      setShow(data.profile_completed && !data.learning_completed && isNewUser);
     };
 
     checkIfShouldShow();

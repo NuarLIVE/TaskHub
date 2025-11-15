@@ -116,17 +116,17 @@ export default function ProfileCompletionPage() {
       }
 
       const updateData: any = {
-        specialty: formData.specialty,
+        specialty: formData.specialty || 'не указана',
         experience_years: parseInt(formData.experience_years) || 0,
         age: parseInt(formData.age) || null,
         rate_min: parseInt(formData.rate_min) || 0,
         rate_max: parseInt(formData.rate_max) || 0,
         currency: formData.currency,
-        skills: formData.skills,
-        location: formData.location,
-        contact_telegram: formData.contact_telegram,
-        contact_gmail: formData.contact_gmail,
-        bio: formData.bio,
+        skills: formData.skills.length > 0 ? formData.skills : ['не указаны'],
+        location: formData.location || 'не указана',
+        contact_telegram: formData.contact_telegram || 'не указан',
+        contact_gmail: formData.contact_gmail || 'не указан',
+        bio: formData.bio || 'Привет! Я использую TaskHub',
         profile_completed: true,
       };
 
@@ -141,7 +141,7 @@ export default function ProfileCompletionPage() {
 
       if (error) throw error;
 
-      window.location.hash = '/';
+      window.location.hash = '/me';
     } catch (error) {
       console.error('Error completing profile:', error);
       alert('Ошибка при сохранении профиля');
