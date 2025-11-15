@@ -4,11 +4,13 @@ import { getSupabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { MediaEditor } from '../components/MediaEditor';
 
+const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect width="200" height="200" fill="%236FE7C8"/%3E%3Ctext x="100" y="140" font-family="Arial,sans-serif" font-size="120" font-weight="bold" fill="%233F7F6E" text-anchor="middle"%3ET%3C/text%3E%3C/svg%3E';
+
 export default function ProfileCompletionPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [avatarPreview, setAvatarPreview] = useState<string>(DEFAULT_AVATAR);
   const [skillInput, setSkillInput] = useState('');
   const [showMediaEditor, setShowMediaEditor] = useState(false);
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
@@ -167,16 +169,12 @@ export default function ProfileCompletionPage() {
             {/* Avatar Upload */}
             <div className="flex flex-col items-center mb-8">
               <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {avatarPreview ? (
-                    <img
-                      src={avatarPreview}
-                      alt="Avatar preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Camera className="w-12 h-12 text-gray-400" />
-                  )}
+                <div className="w-32 h-32 rounded-full bg-[#6FE7C8] flex items-center justify-center overflow-hidden">
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar preview"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <label
                   htmlFor="avatar-upload"

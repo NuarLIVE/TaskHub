@@ -45,10 +45,23 @@ export default function LearningPrompt() {
         : false;
 
       // Show only if profile is completed, learning not completed, and user is new
-      setShow(data.profile_completed && !data.learning_completed && isNewUser);
+      if (data.profile_completed && !data.learning_completed && isNewUser) {
+        // Delay showing prompt by 1 second to allow page transition
+        setTimeout(() => setShow(true), 1000);
+      } else {
+        setShow(false);
+      }
     };
 
     checkIfShouldShow();
+
+    // Re-check when hash changes
+    const handleHashChange = () => {
+      checkIfShouldShow();
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [user?.id]);
 
   const handleDismiss = () => {
