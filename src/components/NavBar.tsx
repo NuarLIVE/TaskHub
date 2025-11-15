@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Menu, X, User, LogOut } from 'lucide-react';
+import { Sparkles, Menu, X, User, LogOut, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -402,6 +402,35 @@ export default function NavBar() {
                   </a>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAuthenticated && !learningCompleted && (
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-200">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100">
+                  <GraduationCap className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-900">
+                    Пройдите обучение
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Узнайте, как эффективно работать на платформе
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+              >
+                <a href="#/learning">Начать</a>
+              </Button>
             </div>
           </div>
         </div>
