@@ -11,6 +11,7 @@ import { ProposalLimitIndicator } from '@/components/ui/ProposalLimitIndicator';
 import PriceDisplay from '@/components/PriceDisplay';
 import ProfileBadges from '@/components/ui/ProfileBadges';
 import StarRating from '@/components/ui/StarRating';
+import CategoryFilter from '@/components/CategoryFilter';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -30,7 +31,8 @@ export default function MarketPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('orders');
   const [q, setQ] = useState('');
-  const [category, setCategory] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [rating, setRating] = useState('');
   const [currency, setCurrency] = useState('');
   const [engagement, setEngagement] = useState('');
   const [min, setMin] = useState('');
@@ -79,7 +81,7 @@ export default function MarketPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, q, category, currency, engagement, min, max, sort]);
+  }, [activeTab, q, selectedCategories, rating, currency, engagement, min, max, sort]);
 
   const loadProposalLimits = async () => {
     if (!user) {
@@ -219,7 +221,16 @@ export default function MarketPage() {
       const s = q.toLowerCase();
       res = res.filter(o => o.title.toLowerCase().includes(s) || (o.tags || []).some((t: string) => t.toLowerCase().includes(s)));
     }
-    if (category) res = res.filter(o => o.category === category);
+    if (selectedCategories.length > 0) {
+      res = res.filter(o => selectedCategories.includes(o.category));
+    }
+    if (rating) {
+      const minRating = parseFloat(rating);
+      res = res.filter(o => {
+        const profile = profiles[o.user_id];
+        return profile && (profile.avg_rating || 0) >= minRating;
+      });
+    }
     if (currency) res = res.filter(o => o.currency === currency);
     if (activeTab === 'orders' && engagement) res = res.filter(o => o.engagement === engagement);
     const nMin = Number(min);
@@ -247,7 +258,7 @@ export default function MarketPage() {
 
   const allData = useMemo(() => {
     return activeTab === 'orders' ? applyFilters(orders) : applyFilters(tasks);
-  }, [activeTab, orders, tasks, q, category, currency, engagement, min, max, sort]);
+  }, [activeTab, orders, tasks, q, selectedCategories, rating, currency, engagement, min, max, sort, profiles]);
 
   const totalPages = Math.ceil(allData.length / ITEMS_PER_PAGE);
 
@@ -259,7 +270,8 @@ export default function MarketPage() {
 
   const reset = () => {
     setQ('');
-    setCategory('');
+    setSelectedCategories([]);
+    setRating('');
     setCurrency('');
     setEngagement('');
     setMin('');
@@ -408,14 +420,16 @@ export default function MarketPage() {
                   <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по названию или тегам" className="pl-9 h-11" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <select value={category} onChange={e => setCategory(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
-                    <option value="">Все категории</option>
-                    <option>Разработка</option>
-                    <option>Дизайн</option>
-                    <option>Маркетинг</option>
-                    <option>Локализация</option>
-                    <option>Копирайт</option>
-                    <option>QA / Безопасность</option>
+                  <CategoryFilter
+                    selectedCategories={selectedCategories}
+                    onCategoriesChange={setSelectedCategories}
+                  />
+                  <select value={rating} onChange={e => setRating(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
+                    <option value="">Рейтинг</option>
+                    <option value="4.5">4.5+</option>
+                    <option value="4.0">4.0+</option>
+                    <option value="3.5">3.5+</option>
+                    <option value="3.0">3.0+</option>
                   </select>
                   <select value={currency} onChange={e => setCurrency(e.target.value)} className="h-10 rounded-md border px-3 bg-background text-sm">
                     <option value="">Валюта</option>
