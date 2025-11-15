@@ -168,9 +168,13 @@ export default function OrderCreatePage() {
       return;
     }
 
-    // Get category name instead of ID
+    // Get category and subcategory names
     const selectedCategory = categories.find(c => c.id === selectedCategoryId);
     const categoryName = selectedCategory ? selectedCategory.name : '';
+
+    const subcategoryId = String(fd.get('subcategory') || '');
+    const selectedSubcategory = subcategories.find(sc => sc.id === subcategoryId);
+    const subcategoryName = selectedSubcategory ? selectedSubcategory.name : null;
 
     const { data, error } = await getSupabase()
       .from('orders')
@@ -179,6 +183,7 @@ export default function OrderCreatePage() {
         title,
         description,
         category: categoryName,
+        subcategory: subcategoryName,
         price_min: Number(minPrice),
         price_max: Number(maxPrice),
         currency: String(fd.get('currency')),

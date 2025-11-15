@@ -46,6 +46,9 @@ export default function TaskCreatePage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
+  const [subcategoryFeatures, setSubcategoryFeatures] = useState<any[]>([]);
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
 
   const { isBlocked, blockMessage, checkContent } = useContentModeration({
     contentType: 'task',
@@ -66,8 +69,18 @@ export default function TaskCreatePage() {
       loadSubcategories(selectedCategoryId);
     } else {
       setSubcategories([]);
+      setSelectedSubcategoryId('');
     }
   }, [selectedCategoryId]);
+
+  useEffect(() => {
+    if (selectedSubcategoryId) {
+      loadSubcategoryFeatures(selectedSubcategoryId);
+    } else {
+      setSubcategoryFeatures([]);
+      setSelectedFeatures([]);
+    }
+  }, [selectedSubcategoryId]);
 
   const loadCategories = async () => {
     const supabase = getSupabase();
@@ -86,6 +99,26 @@ export default function TaskCreatePage() {
       .eq('category_id', categoryId)
       .order('name');
     if (data) setSubcategories(data);
+  };
+
+  const loadSubcategoryFeatures = async (subcategoryId: string) => {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from('subcategory_features')
+      .select('*')
+      .eq('subcategory_id', subcategoryId)
+      .order('sort_order');
+    if (data) setSubcategoryFeatures(data);
+  };
+
+  const toggleFeature = (featureName: string) => {
+    setSelectedFeatures(prev => {
+      if (prev.includes(featureName)) {
+        return prev.filter(f => f !== featureName);
+      } else {
+        return [...prev, featureName];
+      }
+    });
   };
 
   const loadBoostedTasksCount = async () => {
@@ -176,20 +209,6 @@ export default function TaskCreatePage() {
     }
 
     const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
-    const features = [];
-    for (let i = 0; i < 6; i++) {
-      if (fd.get(`feature_${i}`) === 'on') {
-        const featureNames = [
-          'Дизайн по референсам',
-          'Адаптивная вёрстка',
-          'Интеграция с API',
-          'Анимации (Framer Motion)',
-          'Базовое SEO',
-          'Настройка деплоя'
-        ];
-        features.push(featureNames[i]);
-      }
-    }
 
     const { data: { user: authUser } } = await getSupabase().auth.getUser();
     if (!authUser) {
@@ -198,9 +217,12 @@ export default function TaskCreatePage() {
       return;
     }
 
-    // Get category name instead of ID
+    // Get category and subcategory names
     const selectedCategory = categories.find(c => c.id === selectedCategoryId);
     const categoryName = selectedCategory ? selectedCategory.name : '';
+
+    const selectedSubcategory = subcategories.find(sc => sc.id === selectedSubcategoryId);
+    const subcategoryName = selectedSubcategory ? selectedSubcategory.name : null;
 
     const { data, error } = await getSupabase()
       .from('tasks')
@@ -209,11 +231,12 @@ export default function TaskCreatePage() {
         title,
         description,
         category: categoryName,
+        subcategory: subcategoryName,
         price: Number(price),
         currency: String(fd.get('currency')),
         delivery_days: Number(fd.get('delivery_days')),
         tags,
-        features,
+        features: selectedFeatures,
         status: 'active',
         is_boosted: useBoost,
         boost_commission_rate: useBoost ? 25.00 : 0.00
@@ -274,8 +297,9 @@ export default function TaskCreatePage() {
                   right={
                     <Field label="Подкатегория">
                       <select
-                        name="subcategory"
                         className="h-11 rounded-md border px-3 bg-background"
+                        value={selectedSubcategoryId}
+                        onChange={(e) => setSelectedSubcategoryId(e.target.value)}
                         disabled={!selectedCategoryId || subcategories.length === 0}
                       >
                         <option value="">Не выбрано (опционально)</option>
@@ -286,6 +310,31 @@ export default function TaskCreatePage() {
                     </Field>
                   }
                 />
+                {subcategoryFeatures.length > 0 && (
+                  <Field label="Что входит (выберите до 10)">
+                    <div className="grid grid-cols-2 gap-2 p-4 border rounded-md bg-gray-50">
+                      {subcategoryFeatures.map((feature) => (
+                        <label
+                          key={feature.id}
+                          className="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedFeatures.includes(feature.name)}
+                            onChange={() => toggleFeature(feature.name)}
+                            className="w-4 h-4 rounded border-gray-300 text-[#3F7F6E] focus:ring-[#3F7F6E]"
+                          />
+                          <span className="text-sm">{feature.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {selectedFeatures.length > 0 && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        Выбрано: {selectedFeatures.length} из 10
+                      </div>
+                    )}
+                  </Field>
+                )}
                 <Field label="Срок выполнения (дней)">
                   <div className="relative">
                     <Input name="delivery_days" type="number" placeholder="7" min="1" required className="h-11 pr-10" />
@@ -322,23 +371,6 @@ export default function TaskCreatePage() {
                     </Field>
                   }
                 />
-                <Field label="Что входит">
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {[
-                      'Дизайн по референсам',
-                      'Адаптивная вёрстка',
-                      'Интеграция с API',
-                      'Анимации (Framer Motion)',
-                      'Базовое SEO',
-                      'Настройка деплоя'
-                    ].map((opt, i) => (
-                      <label key={i} className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" name={`feature_${i}`} className="h-4 w-4" />
-                        <span>{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </Field>
                 <Field label="Описание">
                   <textarea
                     name="description"
