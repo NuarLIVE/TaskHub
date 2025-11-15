@@ -310,13 +310,14 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
             <div className="w-[200px] rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer">
               <div className="aspect-[16/10] overflow-hidden bg-muted">
                 <img
-                  src={sub.image}
+                  src={`${sub.image}?auto=compress&cs=tinysrgb&w=400`}
                   alt={sub.name}
                   loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover group-hover/item:scale-105 transition-transform duration-300"
                 />
               </div>
-              <div className="p-3">
+              <div className="p-2.5">
                 <div className="text-sm font-medium text-center">{sub.name}</div>
               </div>
             </div>
@@ -379,44 +380,90 @@ function CategorySidebar() {
 }
 
 export default function CategoriesPage() {
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  const filters = [
+    { id: 'all', label: 'Все категории' },
+    { id: 'business', label: 'Для бизнеса' },
+    { id: 'startup', label: 'Для старта' },
+    { id: 'top', label: 'Топ направления' },
+    { id: 'new', label: 'Новые' }
+  ];
+
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Все категории</h1>
-          <p className="text-lg text-[#3F7F6E] mb-10">Найдите специалистов в любой области</p>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">Все категории</h1>
+          <p className="text-base text-[#3F7F6E] mb-6">Найдите специалистов в любой области</p>
 
           <div className="flex gap-8 items-start">
             <CategorySidebar />
 
-            <div className="flex-1 min-w-0 space-y-8">
-              {categories.map((category) => (
-                <div
-                  key={category.title}
-                  id={category.title.toLowerCase().replace(/\s+/g, '-')}
-                >
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className={`p-3 rounded-xl ${category.color} flex-shrink-0`}>
-                          {category.icon}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap gap-2 mb-6">
+                {filters.map((filter) => (
+                  <Button
+                    key={filter.id}
+                    variant={activeFilter === filter.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveFilter(filter.id)}
+                    className="rounded-full"
+                  >
+                    {filter.label}
+                  </Button>
+                ))}
+              </div>
+
+              <Card className="mb-6 border-[#3F7F6E] bg-gradient-to-r from-[#3F7F6E]/5 to-transparent">
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Не знаете, что выбрать?</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Почитайте: «Как выбрать исполнителя» / «С чего начать новичку»
+                      </p>
+                    </div>
+                    <Button
+                      variant="default"
+                      className="bg-[#3F7F6E] hover:bg-[#3F7F6E]/90 flex-shrink-0"
+                      onClick={() => window.location.hash = '#/learning'}
+                    >
+                      Перейти в раздел "Обучение"
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-5">
+                {categories.map((category) => (
+                  <div
+                    key={category.title}
+                    id={category.title.toLowerCase().replace(/\s+/g, '-')}
+                  >
+                    <Card>
+                      <CardHeader className="pb-2 pt-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl ${category.color} flex-shrink-0`}>
+                            {category.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-lg">{category.title}</CardTitle>
+                            <p className="text-xs text-[#3F7F6E] mt-0.5">{category.description}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <CardTitle className="text-xl">{category.title}</CardTitle>
-                          <p className="text-sm text-[#3F7F6E] mt-1">{category.description}</p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-6">
-                      <SubcategoryCarousel subcategories={category.subcategories} />
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+                      </CardHeader>
+                      <CardContent className="px-6 pb-5">
+                        <SubcategoryCarousel subcategories={category.subcategories} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </motion.div>
