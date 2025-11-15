@@ -10,12 +10,8 @@ import RegionSelector from './RegionSelector';
 
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
-  { href: '#/market?category=Разработка', label: 'Разработка' },
-  { href: '#/market?category=Дизайн', label: 'Дизайн' },
-  { href: '#/market?category=Маркетинг', label: 'Маркетинг' },
-  { href: '#/market?category=Локализация', label: 'Локализация' },
-  { href: '#/market?category=Копирайт', label: 'Копирайт' },
-  { href: '#/market?category=QA / Безопасность', label: 'QA' }
+  { href: '#/learning', label: 'Обучение' },
+  { href: '#/categories', label: 'Категории' }
 ];
 
 const PRIVATE_LINKS = [

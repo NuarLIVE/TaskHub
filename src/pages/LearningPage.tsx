@@ -602,6 +602,9 @@ export default function LearningPage() {
   const currentIndex = lessons.findIndex(l => l.id === currentLessonId);
 
   const goToLesson = (lessonId: number) => {
+    if (!completedLessons.includes(lessonId)) {
+      setCompletedLessons([...completedLessons, lessonId]);
+    }
     setCurrentLessonId(lessonId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

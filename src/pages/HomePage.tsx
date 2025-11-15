@@ -153,7 +153,7 @@ function Hero() {
                   <Button className="h-9 px-3" onClick={handleSearch}>Искать</Button>
                 </div>
               </div>
-              <Button variant="secondary" className="h-11" onClick={() => window.location.hash = '/orders/create'}>
+              <Button variant="secondary" className="h-11" onClick={() => window.location.hash = isAuthenticated ? '/orders/create' : '/login'}>
                 Опубликовать проект <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
@@ -225,7 +225,7 @@ function Featured() {
         <div className="flex items-end justify-between mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Горячие проекты</h2>
           <Button variant="secondary" className="hidden sm:inline-flex" asChild>
-            <a href="#/task/new">Опубликовать задачу</a>
+            <a href={isAuthenticated ? "#/task/new" : "#/login"}>Опубликовать задачу</a>
           </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
