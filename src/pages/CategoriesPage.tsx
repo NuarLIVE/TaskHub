@@ -268,8 +268,8 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
     if (scrollRef.current) {
       const gap = 12;
       const containerWidth = scrollRef.current.clientWidth;
-      const itemWidth = Math.floor((containerWidth - gap * 2) / 3);
-      const scrollAmount = itemWidth * 2 + gap * 2;
+      const itemWidth = Math.floor((containerWidth - gap * 3) / 4);
+      const scrollAmount = itemWidth * 3 + gap * 3;
 
       const currentScroll = scrollRef.current.scrollLeft;
       let targetScroll: number;
@@ -314,7 +314,7 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
             key={sub.slug}
             href={`#/market?category=${encodeURIComponent(sub.name)}`}
             className="flex-shrink-0 group/item snap-start"
-            style={{ width: 'calc((100% - 24px) / 3)' }}
+            style={{ width: 'calc((100% - 36px) / 4)' }}
           >
             <div className="rounded-xl overflow-hidden border bg-background hover:shadow-lg transition-all duration-300 cursor-pointer h-full">
               <div className="aspect-[16/10] overflow-hidden bg-muted">
