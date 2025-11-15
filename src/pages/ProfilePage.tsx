@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check, GraduationCap } from 'lucide-react';
 import { MediaEditor } from '@/components/MediaEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,7 +91,7 @@ export default function ProfilePage() {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, learning_completed')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -112,6 +112,8 @@ export default function ProfilePage() {
         avatar: data.avatar_url || 'https://i.pravatar.cc/120?img=49',
         experienceYears: data.experience_years || 0,
         age: data.age || null,
+        learningCompleted: data.learning_completed || false,
+        lastSeen: data.last_seen_at,
       });
     }
   };
@@ -570,7 +572,14 @@ export default function ProfilePage() {
               <Card>
                 <CardContent className="p-6 grid gap-4">
                   <div className="flex items-center gap-4">
-                    <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
+                    <div className="relative">
+                      <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
+                      {profile.learningCompleted && (
+                        <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1.5 shadow-lg" title="Прошел обучение">
+                          <GraduationCap className="h-3.5 w-3.5 text-white" />
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <div className="font-semibold">{profile.name} • {profile.headline}</div>
                       <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
@@ -590,7 +599,20 @@ export default function ProfilePage() {
                     </div>
                     <div className="rounded-xl border p-2">
                       <div className="text-xs text-[#3F7F6E]">Онлайн</div>
-                      <div className="font-semibold text-emerald-600">сейчас</div>
+                      <div className="font-semibold text-emerald-600">
+                        {(() => {
+                          if (!profile.lastSeen) return 'давно';
+                          const now = Date.now();
+                          const lastSeen = new Date(profile.lastSeen).getTime();
+                          const diffMinutes = Math.floor((now - lastSeen) / (1000 * 60));
+                          if (diffMinutes < 5) return 'сейчас';
+                          if (diffMinutes < 60) return `${diffMinutes}м назад`;
+                          const diffHours = Math.floor(diffMinutes / 60);
+                          if (diffHours < 24) return `${diffHours}ч назад`;
+                          const diffDays = Math.floor(diffHours / 24);
+                          return `${diffDays}д назад`;
+                        })()}
+                      </div>
                     </div>
                   </div>
                   <div className="grid gap-2">

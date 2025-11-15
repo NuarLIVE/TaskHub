@@ -5,6 +5,7 @@ import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import { DbStatus } from './components/DbStatus';
 import LearningPrompt from './components/LearningPrompt';
+import { useActivityTracker } from './hooks/useActivityTracker';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -60,7 +61,8 @@ import {
   NotFoundPage
 } from './pages/AllPages';
 
-function App() {
+function AppContent() {
+  useActivityTracker();
   const [route, setRoute] = useState(window.location.hash.slice(1) || '/');
 
   useEffect(() => {
@@ -201,30 +203,36 @@ function App() {
   const isAdminLoginPage = route === '/admin/login';
 
   return (
+    <div className="min-h-screen bg-background text-foreground">
+      {!isAuthPage && !isAdminPage && <NavBar />}
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
+            <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+          </div>
+        </div>
+      }>
+        {isAdminPage && !isAdminLoginPage ? (
+          <AdminLayout currentPage={route}>
+            <Page />
+          </AdminLayout>
+        ) : (
+          <Page />
+        )}
+      </Suspense>
+      {!isAuthPage && !isAdminPage && <Footer />}
+      {!isAdminPage && <DbStatus />}
+      <LearningPrompt />
+    </div>
+  );
+}
+
+function App() {
+  return (
     <AuthProvider>
       <RegionProvider>
-        <div className="min-h-screen bg-background text-foreground">
-          {!isAuthPage && !isAdminPage && <NavBar />}
-          <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
-                <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
-              </div>
-            </div>
-          }>
-            {isAdminPage && !isAdminLoginPage ? (
-              <AdminLayout currentPage={route}>
-                <Page />
-              </AdminLayout>
-            ) : (
-              <Page />
-            )}
-          </Suspense>
-          {!isAuthPage && !isAdminPage && <Footer />}
-          {!isAdminPage && <DbStatus />}
-          <LearningPrompt />
-        </div>
+        <AppContent />
       </RegionProvider>
     </AuthProvider>
   );
