@@ -83,7 +83,7 @@ export default function PublicProfile() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, learning_completed')
+        .select('*, learning_completed, last_seen_at')
         .eq('id', userId)
         .maybeSingle();
 
@@ -109,7 +109,8 @@ export default function PublicProfile() {
           reviewsCount: data.reviews_count || 0,
           fiveStarCount: data.five_star_count || 0,
           createdAt: data.created_at,
-          learningCompleted: data.learning_completed || false
+          learningCompleted: data.learning_completed || false,
+          lastSeen: data.last_seen_at
         });
       } else {
         setProfile(null);
@@ -412,7 +413,20 @@ export default function PublicProfile() {
                   </div>
                   <div className="rounded-xl border p-2">
                     <div className="text-xs text-[#3F7F6E]">Онлайн</div>
-                    <div className="font-semibold text-emerald-600">сейчас</div>
+                    <div className="font-semibold text-emerald-600">
+                      {(() => {
+                        if (!profile.lastSeen) return 'давно';
+                        const now = Date.now();
+                        const lastSeen = new Date(profile.lastSeen).getTime();
+                        const diffMinutes = Math.floor((now - lastSeen) / (1000 * 60));
+                        if (diffMinutes < 5) return 'сейчас';
+                        if (diffMinutes < 60) return `${diffMinutes}м назад`;
+                        const diffHours = Math.floor(diffMinutes / 60);
+                        if (diffHours < 24) return `${diffHours}ч назад`;
+                        const diffDays = Math.floor(diffHours / 24);
+                        return `${diffDays}д назад`;
+                      })()}
+                    </div>
                   </div>
                 </div>
                 <div className="grid gap-2">

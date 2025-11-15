@@ -427,7 +427,7 @@ export default function NavBar() {
               <Button
                 asChild
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 px-6"
               >
                 <a href="#/learning">Начать</a>
               </Button>
