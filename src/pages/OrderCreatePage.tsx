@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, DollarSign, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,10 +41,44 @@ export default function OrderCreatePage() {
   const [priceError, setPriceError] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [categories, setCategories] = useState<any[]>([]);
+  const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
   const { isBlocked, blockMessage, checkContent } = useContentModeration({
     contentType: 'order',
   });
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCategoryId) {
+      loadSubcategories(selectedCategoryId);
+    } else {
+      setSubcategories([]);
+    }
+  }, [selectedCategoryId]);
+
+  const loadCategories = async () => {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+    if (data) setCategories(data);
+  };
+
+  const loadSubcategories = async (categoryId: string) => {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from('subcategories')
+      .select('*')
+      .eq('category_id', categoryId)
+      .order('name');
+    if (data) setSubcategories(data);
+  };
 
   const validatePrices = () => {
     const min = Number(minPrice);
@@ -190,25 +224,41 @@ export default function OrderCreatePage() {
                 <TwoCol
                   left={
                     <Field label="Категория">
-                      <select name="category" className="h-11 rounded-md border px-3 bg-background">
-                        <option>Разработка</option>
-                        <option>Дизайн</option>
-                        <option>Маркетинг</option>
-                        <option>Локализация</option>
-                        <option>Копирайт</option>
-                        <option>QA / Безопасность</option>
+                      <select
+                        name="category"
+                        className="h-11 rounded-md border px-3 bg-background"
+                        value={selectedCategoryId}
+                        onChange={(e) => setSelectedCategoryId(e.target.value)}
+                        required
+                      >
+                        <option value="">Выберите категорию</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
                       </select>
                     </Field>
                   }
                   right={
-                    <Field label="Дедлайн">
-                      <div className="relative">
-                        <Input name="deadline" type="date" min={getTodayDate()} className="h-11 pr-10" />
-                        <Calendar className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#3F7F6E]" />
-                      </div>
+                    <Field label="Подкатегория">
+                      <select
+                        name="subcategory"
+                        className="h-11 rounded-md border px-3 bg-background"
+                        disabled={!selectedCategoryId || subcategories.length === 0}
+                      >
+                        <option value="">Не выбрано (опционально)</option>
+                        {subcategories.map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        ))}
+                      </select>
                     </Field>
                   }
                 />
+                <Field label="Дедлайн">
+                  <div className="relative">
+                    <Input name="deadline" type="date" min={getTodayDate()} className="h-11 pr-10" />
+                    <Calendar className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#3F7F6E]" />
+                  </div>
+                </Field>
                 <TwoCol
                   left={
                     <Field label="Бюджет (мин)">
