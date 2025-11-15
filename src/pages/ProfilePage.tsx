@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check, GraduationCap } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check, GraduationCap, Sparkles } from 'lucide-react';
 import { MediaEditor } from '@/components/MediaEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -618,6 +618,12 @@ export default function ProfilePage() {
                   <div className="grid gap-2">
                     <Button asChild><a href="#/task/new">Создать Task</a></Button>
                     <Button asChild variant="secondary"><a href="#/order/new">Создать заказ</a></Button>
+                    <Button asChild variant="outline" className="border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#3F7F6E]/5">
+                      <a href="#/recommendations" className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Рекомендации заказов
+                      </a>
+                    </Button>
                   </div>
                   <div className="flex items-center justify-between text-sm text-[#3F7F6E]">
                     <div className="relative">

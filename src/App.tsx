@@ -40,6 +40,7 @@ const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
 const LearningPage = lazy(() => import('./pages/LearningPage'));
+const RecommendationsPage = lazy(() => import('./pages/RecommendationsPage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -158,6 +159,8 @@ function AppContent() {
     Page = BlockedUsersPage;
   } else if (route === '/media' || route === '/media-library') {
     Page = MediaLibraryPage;
+  } else if (route === '/recommendations') {
+    Page = RecommendationsPage;
   } else if (route === '/admin/login') {
     Page = AdminLogin;
   } else if (route === '/admin') {
