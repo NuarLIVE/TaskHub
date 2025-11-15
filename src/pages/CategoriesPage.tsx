@@ -14,6 +14,7 @@ interface Category {
   icon: JSX.Element;
   title: string;
   color: string;
+  description: string;
   subcategories: Subcategory[];
 }
 
@@ -22,6 +23,7 @@ const categories: Category[] = [
     icon: <Code className="h-6 w-6" />,
     title: 'Разработка',
     color: 'bg-blue-50',
+    description: 'Создание сайтов, приложений, игр и программного обеспечения любой сложности',
     subcategories: [
       { name: 'Веб-разработка', slug: 'web-dev', image: 'https://images.pexels.com/photos/276452/pexels-photo-276452.jpeg' },
       { name: 'Мобильная разработка', slug: 'mobile-dev', image: 'https://images.pexels.com/photos/607812/pexels-photo-607812.jpeg' },
@@ -39,6 +41,7 @@ const categories: Category[] = [
     icon: <Brush className="h-6 w-6" />,
     title: 'Дизайн',
     color: 'bg-pink-50',
+    description: 'Графический дизайн, брендинг, создание логотипов и визуального контента',
     subcategories: [
       { name: 'Лого', slug: 'logo', image: 'https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg' },
       { name: 'UX/UI', slug: 'ux-ui', image: 'https://images.pexels.com/photos/326514/pexels-photo-326514.jpeg' },
@@ -55,6 +58,7 @@ const categories: Category[] = [
     icon: <Megaphone className="h-6 w-6" />,
     title: 'Маркетинг',
     color: 'bg-green-50',
+    description: 'Продвижение бизнеса, настройка рекламы и аналитика эффективности',
     subcategories: [
       { name: 'Таргет', slug: 'targeting', image: 'https://images.pexels.com/photos/265087/pexels-photo-265087.jpeg' },
       { name: 'SEO', slug: 'seo', image: 'https://images.pexels.com/photos/270637/pexels-photo-270637.jpeg' },
@@ -68,6 +72,7 @@ const categories: Category[] = [
     icon: <FileText className="h-6 w-6" />,
     title: 'Тексты и переводы',
     color: 'bg-yellow-50',
+    description: 'Создание качественных текстов, переводы и редактирование контента',
     subcategories: [
       { name: 'Копирайт', slug: 'copywriting', image: 'https://images.pexels.com/photos/261763/pexels-photo-261763.jpeg' },
       { name: 'Рерайт', slug: 'rewriting', image: 'https://images.pexels.com/photos/301703/pexels-photo-301703.jpeg' },
@@ -82,6 +87,7 @@ const categories: Category[] = [
     icon: <Video className="h-6 w-6" />,
     title: 'Видео и Аудио',
     color: 'bg-purple-50',
+    description: 'Монтаж видео, создание музыки, озвучка и звуковой дизайн',
     subcategories: [
       { name: 'Монтаж', slug: 'video-editing', image: 'https://images.pexels.com/photos/5081918/pexels-photo-5081918.jpeg' },
       { name: 'Озвучка', slug: 'voiceover', image: 'https://images.pexels.com/photos/7087833/pexels-photo-7087833.jpeg' },
@@ -95,6 +101,7 @@ const categories: Category[] = [
     icon: <Briefcase className="h-6 w-6" />,
     title: 'Бизнес',
     color: 'bg-indigo-50',
+    description: 'Консультации, финансовый анализ и бизнес-планирование',
     subcategories: [
       { name: 'Создание презентаций', slug: 'business-presentations', image: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg' },
       { name: 'Консультации', slug: 'consulting', image: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg' },
@@ -108,6 +115,7 @@ const categories: Category[] = [
     icon: <Share2 className="h-6 w-6" />,
     title: 'Соцсети',
     color: 'bg-red-50',
+    description: 'Ведение аккаунтов, создание контента и стратегии продвижения',
     subcategories: [
       { name: 'Ведение Instagram/TikTok', slug: 'social-management', image: 'https://images.pexels.com/photos/4065891/pexels-photo-4065891.jpeg' },
       { name: 'Монтаж Reels', slug: 'reels-editing', image: 'https://images.pexels.com/photos/5082579/pexels-photo-5082579.jpeg' },
@@ -120,6 +128,7 @@ const categories: Category[] = [
     icon: <Server className="h-6 w-6" />,
     title: 'IT-поддержка',
     color: 'bg-cyan-50',
+    description: 'Настройка серверов, хостинг и техническая поддержка',
     subcategories: [
       { name: 'Настройка серверов', slug: 'server-setup', image: 'https://images.pexels.com/photos/1148820/pexels-photo-1148820.jpeg' },
       { name: 'Хостинг', slug: 'hosting', image: 'https://images.pexels.com/photos/2881229/pexels-photo-2881229.jpeg' },
@@ -133,6 +142,7 @@ const categories: Category[] = [
     icon: <GraduationCap className="h-6 w-6" />,
     title: 'Образование и репетиторство',
     color: 'bg-orange-50',
+    description: 'Онлайн обучение, репетиторство и помощь с учебными задачами',
     subcategories: [
       { name: 'Репетиторы', slug: 'tutors', image: 'https://images.pexels.com/photos/8500285/pexels-photo-8500285.jpeg' },
       { name: 'Курсы', slug: 'courses', image: 'https://images.pexels.com/photos/6146929/pexels-photo-6146929.jpeg' },
@@ -144,6 +154,7 @@ const categories: Category[] = [
     icon: <Heart className="h-6 w-6" />,
     title: 'Жизненные задачи (Lifestyle)',
     color: 'bg-rose-50',
+    description: 'Персональные консультации и помощь в повседневных задачах',
     subcategories: [
       { name: 'Личные советы', slug: 'personal-advice', image: 'https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg' },
       { name: 'Фото-обработка', slug: 'photo-editing', image: 'https://images.pexels.com/photos/265722/pexels-photo-265722.jpeg' },
@@ -157,6 +168,7 @@ const categories: Category[] = [
     icon: <ShoppingCart className="h-6 w-6" />,
     title: 'eCommerce',
     color: 'bg-teal-50',
+    description: 'Создание и продвижение интернет-магазинов',
     subcategories: [
       { name: 'Shopify', slug: 'shopify', image: 'https://images.pexels.com/photos/3769747/pexels-photo-3769747.jpeg' },
       { name: 'WooCommerce', slug: 'woocommerce', image: 'https://images.pexels.com/photos/3944405/pexels-photo-3944405.jpeg' },
@@ -168,6 +180,7 @@ const categories: Category[] = [
     icon: <Coins className="h-6 w-6" />,
     title: 'NFT / Web3',
     color: 'bg-violet-50',
+    description: 'Блокчейн технологии, NFT и криптовалюты',
     subcategories: [
       { name: 'NFT-арт', slug: 'nft-art', image: 'https://images.pexels.com/photos/8369526/pexels-photo-8369526.jpeg' },
       { name: 'Смарт-контракты', slug: 'smart-contracts', image: 'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg' },
@@ -178,6 +191,7 @@ const categories: Category[] = [
     icon: <Building className="h-6 w-6" />,
     title: 'Архитектура',
     color: 'bg-slate-50',
+    description: 'Проектирование зданий и 3D визуализация объектов',
     subcategories: [
       { name: 'Чертежи', slug: 'blueprints', image: 'https://images.pexels.com/photos/834892/pexels-photo-834892.jpeg' },
       { name: '3D-макеты', slug: '3d-models', image: 'https://images.pexels.com/photos/4065876/pexels-photo-4065876.jpeg' },
@@ -188,6 +202,7 @@ const categories: Category[] = [
     icon: <Cog className="h-6 w-6" />,
     title: 'Инженерия',
     color: 'bg-zinc-50',
+    description: 'Прототипирование, электроника и IoT решения',
     subcategories: [
       { name: 'Прототипирование', slug: 'prototyping', image: 'https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg' },
       { name: 'Электроника', slug: 'electronics', image: 'https://images.pexels.com/photos/163100/circuit-circuit-board-resistor-computer-163100.jpeg' },
@@ -198,6 +213,7 @@ const categories: Category[] = [
     icon: <Users className="h-6 w-6" />,
     title: 'HR и управление',
     color: 'bg-amber-50',
+    description: 'Подбор персонала, карьерные консультации и HR услуги',
     subcategories: [
       { name: 'Найм персонала', slug: 'recruitment', image: 'https://images.pexels.com/photos/3184296/pexels-photo-3184296.jpeg' },
       { name: 'Создание резюме', slug: 'resume-writing', image: 'https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg' },
@@ -234,9 +250,23 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
-      const scrollAmount = 280;
-      const newScrollLeft = scrollRef.current.scrollLeft + (direction === 'right' ? scrollAmount : -scrollAmount);
-      scrollRef.current.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
+      const cardWidth = 200;
+      const gap = 12;
+      const itemWidth = cardWidth + gap;
+      const visibleCards = Math.floor(scrollRef.current.clientWidth / itemWidth);
+      const scrollAmount = itemWidth * Math.max(1, visibleCards - 1);
+
+      const currentScroll = scrollRef.current.scrollLeft;
+      let targetScroll: number;
+
+      if (direction === 'right') {
+        targetScroll = currentScroll + scrollAmount;
+      } else {
+        targetScroll = currentScroll - scrollAmount;
+      }
+
+      const snappedScroll = Math.round(targetScroll / itemWidth) * itemWidth;
+      scrollRef.current.scrollTo({ left: snappedScroll, behavior: 'smooth' });
     }
   };
 
@@ -301,6 +331,46 @@ function SubcategoryCarousel({ subcategories }: { subcategories: Subcategory[] }
   );
 }
 
+function CategorySidebar() {
+  return (
+    <aside className="hidden lg:block lg:sticky lg:top-4 lg:h-fit">
+      <Card className="w-64">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Категории</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-4">
+          <nav className="space-y-1">
+            {categories.map((category) => (
+              <div key={category.title}>
+                <a
+                  href={`#${category.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  <div className={`p-1.5 rounded-lg ${category.color}`}>
+                    {category.icon}
+                  </div>
+                  <span className="font-medium">{category.title}</span>
+                </a>
+                <div className="ml-11 space-y-0.5 mt-1 mb-2">
+                  {category.subcategories.map((sub) => (
+                    <a
+                      key={sub.slug}
+                      href={`#/market?category=${encodeURIComponent(sub.name)}`}
+                      className="block px-4 py-1 text-xs text-[#3F7F6E] hover:text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      {sub.name}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </CardContent>
+      </Card>
+    </aside>
+  );
+}
+
 export default function CategoriesPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -313,29 +383,37 @@ export default function CategoriesPage() {
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Все категории</h1>
           <p className="text-lg text-[#3F7F6E] mb-10">Найдите специалистов в любой области</p>
 
-          <div className="grid grid-cols-1 gap-8">
-            {categories.map((category, idx) => (
-              <motion.div
-                key={category.title}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
-              >
-                <Card>
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-3 rounded-xl ${category.color}`}>
-                        {category.icon}
+          <div className="flex gap-8">
+            <CategorySidebar />
+
+            <div className="flex-1 space-y-8">
+              {categories.map((category, idx) => (
+                <motion.div
+                  key={category.title}
+                  id={category.title.toLowerCase().replace(/\s+/g, '-')}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                >
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={`p-3 rounded-xl ${category.color}`}>
+                          {category.icon}
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl">{category.title}</CardTitle>
+                          <p className="text-sm text-[#3F7F6E] mt-1">{category.description}</p>
+                        </div>
                       </div>
-                      <CardTitle className="text-xl">{category.title}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-6 pb-6">
-                    <SubcategoryCarousel subcategories={category.subcategories} />
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                    </CardHeader>
+                    <CardContent className="px-6 pb-6">
+                      <SubcategoryCarousel subcategories={category.subcategories} />
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </motion.div>
       </section>
