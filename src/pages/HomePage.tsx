@@ -1,19 +1,11 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Search, ChevronRight, Code, Brush, Megaphone, Globe as Globe2, PenTool, Shield, Star, Clock, Rocket, Users, Sparkles, Zap, Filter, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-
-const pageVariants = {
-  initial: { opacity: 0, y: 16 },
-  in: { opacity: 1, y: 0 },
-  out: { opacity: 0, y: -16 }
-};
-
-const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 const categories = [
   { icon: <Code className="h-5 w-5" />, title: 'Разработка', desc: 'Веб, мобильная, backend, игры' },
@@ -443,26 +435,16 @@ export default function HomePage() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.main
-        key="home"
-        initial="initial"
-        animate="in"
-        exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
-        className="min-h-screen bg-background text-foreground"
-      >
-        <Hero />
-        <Sponsors />
-        <WhyTaskHub />
-        <Categories />
-        <Featured />
-        <HowItWorks />
-        <About />
-        <Testimonials />
-        {!isAuthenticated && <CTA />}
-      </motion.main>
-    </AnimatePresence>
+    <main className="min-h-screen bg-background text-foreground">
+      <Hero />
+      <Sponsors />
+      <WhyTaskHub />
+      <Categories />
+      <Featured />
+      <HowItWorks />
+      <About />
+      <Testimonials />
+      {!isAuthenticated && <CTA />}
+    </main>
   );
 }

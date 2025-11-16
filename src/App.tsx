@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './contexts/AuthContext';
 import { RegionProvider } from './contexts/RegionContext';
 import NavBar from './components/NavBar';
@@ -208,22 +209,32 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {!isAuthPage && !isAdminPage && <NavBar />}
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
-            <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
-          </div>
-        </div>
-      }>
-        {isAdminPage && !isAdminLoginPage ? (
-          <AdminLayout currentPage={route}>
-            <Page />
-          </AdminLayout>
-        ) : (
-          <Page />
-        )}
-      </Suspense>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={route}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeInOut' }}
+        >
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
+                <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+              </div>
+            </div>
+          }>
+            {isAdminPage && !isAdminLoginPage ? (
+              <AdminLayout currentPage={route}>
+                <Page />
+              </AdminLayout>
+            ) : (
+              <Page />
+            )}
+          </Suspense>
+        </motion.div>
+      </AnimatePresence>
       {!isAuthPage && !isAdminPage && <Footer />}
       {!isAdminPage && <DbStatus />}
       <LearningPrompt />

@@ -10,14 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
-const pageVariants = {
-  initial: { opacity: 0, y: 16 },
-  in: { opacity: 1, y: 0 },
-  out: { opacity: 0, y: -16 }
-};
-
-const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
-
 export default function ProfilePage() {
   const { user } = useAuth();
   const [tab, setTab] = useState('portfolio');
@@ -577,16 +569,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="profile"
-        initial="initial"
-        animate="in"
-        exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
-        className="min-h-screen bg-background"
-      >
+    <div className="min-h-screen bg-background">
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-6 items-start">
             <div className="grid gap-4 lg:gap-6 lg:sticky lg:top-24 lg:self-start">
@@ -1540,7 +1523,6 @@ export default function ProfilePage() {
       {showMediaEditor && fileToEdit && (
         <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />
       )}
-      </motion.div>
-    </AnimatePresence>
+    </div>
   );
 }
