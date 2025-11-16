@@ -494,9 +494,7 @@ export default function ProposalsCreate() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Описание (макс. 700 символов)
-                </label>
+                <label className="text-sm font-medium mb-1 block">Сообщение</label>
                 <textarea
                   value={message}
                   onChange={(e) => {
@@ -506,15 +504,9 @@ export default function ProposalsCreate() {
                   rows={8}
                   placeholder="Опишите ваш опыт, подход к задаче и почему вы подходите для этого проекта..."
                   className="w-full rounded-md border px-3 py-2 bg-background"
-                  maxLength={700}
                   required
                 />
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-[#3F7F6E]">
-                    {message.length}/700 символов
-                  </span>
-                  <ModerationAlert message={blockMessage} isVisible={isBlocked} />
-                </div>
+                <ModerationAlert message={blockMessage} isVisible={isBlocked} />
               </div>
 
               <div>
@@ -548,28 +540,16 @@ export default function ProposalsCreate() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div>
-                          <Input
-                            placeholder="Название опции (макс. 50)"
-                            value={option.title}
-                            maxLength={50}
-                            onChange={(e) => updateOption(index, 'title', e.target.value)}
-                          />
-                          <span className="text-xs text-[#3F7F6E] mt-1">
-                            {option.title.length}/50
-                          </span>
-                        </div>
-                        <div>
-                          <Input
-                            placeholder="Описание (необяз., макс. 700)"
-                            value={option.description}
-                            maxLength={700}
-                            onChange={(e) => updateOption(index, 'description', e.target.value)}
-                          />
-                          <span className="text-xs text-[#3F7F6E] mt-1">
-                            {option.description.length}/700
-                          </span>
-                        </div>
+                        <Input
+                          placeholder="Название опции"
+                          value={option.title}
+                          onChange={(e) => updateOption(index, 'title', e.target.value)}
+                        />
+                        <Input
+                          placeholder="Описание (необязательно)"
+                          value={option.description}
+                          onChange={(e) => updateOption(index, 'description', e.target.value)}
+                        />
                         <div className="grid grid-cols-2 gap-3">
                           <Input
                             type="number"

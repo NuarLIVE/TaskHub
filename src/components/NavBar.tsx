@@ -260,13 +260,13 @@ export default function NavBar() {
 
   return (
     <nav className="sticky top-0 z-40 w-full border-b border-[#6FE7C8] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-7xl px-3 xs-375:px-4 sm:px-6 lg:px-8 h-14 xs-375:h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2 xs-375:gap-3">
-          <Sparkles className="h-4 w-4 xs-375:h-5 xs-375:w-5 text-[#6FE7C8]" />
-          <a href="#/" className="font-bold text-sm xs-375:text-base tracking-tight hover:text-[#6FE7C8] transition">
-            TaskHub
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Sparkles className="h-5 w-5 text-[#6FE7C8]" />
+          <a href="#/" className="font-bold tracking-tight hover:text-[#6FE7C8] transition">
+            FreelanceHub
           </a>
-          <Badge className="ml-1 xs-375:ml-2 text-xs" variant="secondary">beta</Badge>
+          <Badge className="ml-2" variant="secondary">beta</Badge>
         </div>
 
         <div className="hidden lg:flex items-center gap-6 text-sm">

@@ -77,7 +77,7 @@ export default function RegisterPage() {
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold tracking-tight mb-2">Регистрация</h1>
-                <p className="text-[#3F7F6E]">Создайте аккаунт на TaskHub</p>
+                <p className="text-[#3F7F6E]">Создайте аккаунт на FreelanceHub</p>
               </div>
 
               <form onSubmit={handleSubmit} className="grid gap-4">

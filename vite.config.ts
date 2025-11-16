@@ -12,26 +12,5 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
-    include: ['react', 'react-dom', 'framer-motion'],
-  },
-  build: {
-    target: 'esnext',
-    minify: 'esbuild',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'motion-vendor': ['framer-motion'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          'icons-vendor': ['lucide-react'],
-        },
-      },
-    },
-    chunkSizeWarningLimit: 1000,
-  },
-  server: {
-    hmr: {
-      overlay: true,
-    },
   },
 });
