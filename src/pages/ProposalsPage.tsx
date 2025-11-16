@@ -618,7 +618,7 @@ export default function ProposalsPage() {
                         <Info className="w-4 h-4" />
                       </div>
                       <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
-                        <p>Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.</p>
+                        <p>{activeTab === 'sent' ? 'Платформа посчитала вас наиболее подходящим исполнителем для задачи.' : 'Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.'}</p>
                         <div className="absolute bottom-full right-6 mb-[-4px]">
                           <div className="w-2 h-2 bg-gray-900 rotate-45"></div>
                         </div>
@@ -682,7 +682,7 @@ export default function ProposalsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 ${proposal.source === 'recommendation' ? 'mt-8' : ''}`}>
                       {getStatusBadge(proposal.status)}
                       {activeTab === 'received' && proposal.status === 'pending' && (
                         <>
