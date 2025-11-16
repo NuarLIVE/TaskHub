@@ -11,7 +11,9 @@ import RegionSelector from './RegionSelector';
 const PUBLIC_LINKS = [
   { href: '#/market', label: 'Биржа' },
   { href: '#/learning', label: 'Обучение' },
-  { href: '#/categories', label: 'Категории' }
+  { href: '#/categories', label: 'Категории' },
+  { href: '#/login', label: 'Вход' },
+  { href: '#/terms', label: 'Политика использования' }
 ];
 
 const PRIVATE_LINKS = [
