@@ -6,26 +6,30 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase, resetSupabase } from '@/lib/supabaseClient';
 import { useSupabaseKeepAlive } from '@/hooks/useSupabaseKeepAlive';
 import { queryWithRetry, subscribeWithMonitoring } from '@/lib/supabase-utils';
+import { useTranslation } from '@/hooks/useTranslation';
 import RegionSelector from './RegionSelector';
 
-const PUBLIC_LINKS = [
-  { href: '#/market', label: 'Биржа' },
-  { href: '#/learning', label: 'Обучение' },
-  { href: '#/categories', label: 'Категории' },
-  { href: '#/login', label: 'Вход' },
-  { href: '#/terms', label: 'Политика использования' }
-];
-
-const PRIVATE_LINKS = [
-  { href: '#/market', label: 'Биржа' },
-  { href: '#/my-deals', label: 'Мои сделки' },
-  { href: '#/proposals', label: 'Отклики' },
-  { href: '#/messages', label: 'Сообщения' },
-  { href: '#/wallet', label: 'Кошелёк' },
-  { href: '#/me', label: 'Профиль' }
-];
-
 export default function NavBar() {
+  const { t, language } = useTranslation();
+
+  // Links are recreated on every render when language changes
+  const PUBLIC_LINKS = [
+    { href: '#/market', label: t('nav.market') },
+    { href: '#/learning', label: t('nav.learning') },
+    { href: '#/categories', label: t('nav.categories') },
+    { href: '#/login', label: t('nav.entrance') },
+    { href: '#/terms', label: t('nav.termsOfUse') }
+  ];
+
+  const PRIVATE_LINKS = [
+    { href: '#/market', label: t('nav.market') },
+    { href: '#/my-deals', label: t('nav.myDeals') },
+    { href: '#/proposals', label: t('nav.proposals') },
+    { href: '#/messages', label: t('nav.messages') },
+    { href: '#/wallet', label: t('nav.wallet') },
+    { href: '#/me', label: t('nav.profile') }
+  ];
+
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
@@ -320,16 +324,16 @@ export default function NavBar() {
               </Button>
               <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:inline-flex">
                 <LogOut className="h-4 w-4 mr-2" />
-                Выход
+                {t('common.logout')}
               </Button>
             </>
           ) : (
             <>
               <Button asChild variant="ghost" className="hidden sm:inline-flex">
-                <a href="#/login">Войти</a>
+                <a href="#/login">{t('common.login')}</a>
               </Button>
               <Button asChild className="hidden sm:inline-flex">
-                <a href="#/register">Зарегистрироваться</a>
+                <a href="#/register">{t('common.register')}</a>
               </Button>
             </>
           )}
@@ -350,7 +354,7 @@ export default function NavBar() {
         <div className="lg:hidden border-t border-[#6FE7C8] bg-background">
           <div className="px-4 py-3 space-y-1">
             {(isAuthenticated ? PRIVATE_LINKS : PUBLIC_LINKS).map((link) => {
-              const isMessages = link.label === 'Сообщения';
+              const isMessages = link.label === t('nav.messages');
               return (
                 <a
                   key={link.href}
@@ -385,7 +389,7 @@ export default function NavBar() {
                     className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50"
                   >
                     <LogOut className="h-4 w-4 inline mr-2" />
-                    Выход
+                    {t('common.logout')}
                   </button>
                 </>
               ) : (
@@ -394,13 +398,13 @@ export default function NavBar() {
                     href="#/login"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-[#3F7F6E] hover:bg-[#EFFFF8] hover:text-foreground"
                   >
-                    Войти
+                    {t('common.login')}
                   </a>
                   <a
                     href="#/register"
                     className="block px-3 py-2 rounded-md text-sm font-medium bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]"
                   >
-                    Зарегистрироваться
+                    {t('common.register')}
                   </a>
                 </>
               )}
@@ -419,10 +423,10 @@ export default function NavBar() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-blue-900">
-                    Пройдите обучение
+                    {t('learning.completeProfile')}
                   </p>
                   <p className="text-xs text-blue-700">
-                    Узнайте, как эффективно работать на платформе
+                    {t('learning.subtitle')}
                   </p>
                 </div>
               </div>
@@ -431,7 +435,7 @@ export default function NavBar() {
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 px-6"
               >
-                <a href="#/learning">Начать</a>
+                <a href="#/learning">{t('learning.getStarted')}</a>
               </Button>
             </div>
           </div>
