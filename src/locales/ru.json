@@ -63,6 +63,10 @@
     "loginButton": "Войти",
     "registerButton": "Зарегистрироваться",
     "loginWithGoogle": "Продолжить с Google",
+    "continueWithGoogle": "Продолжить с Google",
+    "continueWithGitHub": "Продолжить с GitHub",
+    "orLoginWith": "Или войти через",
+    "orRegisterWith": "Или зарегистрироваться через",
     "emailPlaceholder": "ваш@email.com",
     "passwordPlaceholder": "Введите пароль",
     "namePlaceholder": "Ваше имя"

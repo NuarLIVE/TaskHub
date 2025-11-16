@@ -4,8 +4,9 @@ import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
+import OAuthButtons from '@/components/auth/OAuthButtons';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -16,6 +17,7 @@ const pageVariants = {
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -182,16 +184,7 @@ export default function RegisterPage() {
                   {loading ? 'Регистрация...' : 'Зарегистрироваться'}
                 </Button>
 
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#6FE7C8]/20"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-background px-4 text-[#3F7F6E]">или</span>
-                  </div>
-                </div>
-
-                <GoogleAuthButton mode="register" />
+                <OAuthButtons onError={setError} mode="register" />
 
                 <div className="text-center text-sm text-[#3F7F6E]">
                   Уже есть аккаунт?{' '}

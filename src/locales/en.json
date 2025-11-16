@@ -63,6 +63,10 @@
     "loginButton": "Sign In",
     "registerButton": "Sign Up",
     "loginWithGoogle": "Continue with Google",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithGitHub": "Continue with GitHub",
+    "orLoginWith": "Or sign in with",
+    "orRegisterWith": "Or sign up with",
     "emailPlaceholder": "your@email.com",
     "passwordPlaceholder": "Enter password",
     "namePlaceholder": "Your name"
