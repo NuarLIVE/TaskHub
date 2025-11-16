@@ -72,12 +72,12 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
     <div className="min-h-screen bg-gradient-to-b from-[#EFFFF8]/30 to-background">
       <div className="lg:flex">
         <div
-          className={`fixed inset-y-0 left-0 z-50 w-56 xs-375:w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 lg:static ${
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 lg:static ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
           <div className="h-full flex flex-col">
-            <div className="p-4 xs-375:p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Admin Panel</h2>
@@ -92,7 +92,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
               </div>
             </div>
 
-            <nav className="flex-1 p-2 xs-375:p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.path;
@@ -100,7 +100,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
                   <a
                     key={item.path}
                     href={`#${item.path}`}
-                    className={`flex items-center gap-2 xs-375:gap-3 px-3 xs-375:px-4 py-2 xs-375:py-3 rounded-lg transition-colors text-sm xs-375:text-base ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
                         ? 'bg-[#6FE7C8]/20 text-[#3F7F6E] font-semibold'
                         : 'text-gray-700 hover:bg-gray-100'
@@ -114,7 +114,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
               })}
             </nav>
 
-            <div className="p-3 xs-375:p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-200">
               {profile && (
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                   <p className="font-medium text-gray-900 text-sm">{profile.name}</p>
@@ -144,7 +144,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
         )}
 
         <div className="flex-1">
-          <div className="lg:hidden bg-white border-b border-gray-200 p-3 xs-375:p-4 flex items-center justify-between sticky top-0 z-30">
+          <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="p-2 hover:bg-gray-100 rounded-lg"
@@ -155,7 +155,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
             <div className="w-10"></div>
           </div>
 
-          <main className="p-3 xs-375:p-4 md:p-6">{children}</main>
+          <main>{children}</main>
         </div>
       </div>
     </div>

@@ -153,7 +153,7 @@ export default function DealOpen() {
                 <div className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-[#6FE7C8]">
                   <CreditCard className="h-5 w-5 text-[#6FE7C8]" />
                   <div>
-                    <div className="font-semibold">Кошелёк TaskHub</div>
+                    <div className="font-semibold">Кошелёк FreelanceHub</div>
                     <div className="text-sm text-[#3F7F6E]">Баланс: $2,450</div>
                   </div>
                 </div>

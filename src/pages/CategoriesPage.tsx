@@ -488,9 +488,7 @@ export default function CategoriesPage() {
           <p className="text-base text-[#3F7F6E] mb-6">Найдите специалистов в любой области</p>
 
           <div className="flex gap-8 items-start">
-            <div className="hidden lg:block">
-              <CategorySidebar />
-            </div>
+            <CategorySidebar />
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap gap-2 mb-6">

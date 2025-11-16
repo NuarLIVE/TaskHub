@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -72,6 +72,7 @@ export default function MyDealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
+  const [proposalPages, setProposalPages] = useState<Record<string, number>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +82,7 @@ export default function MyDealsPage() {
     }
   }, [user]);
 
+  const PROPOSALS_PER_PAGE = 5;
 
   useEffect(() => {
     loadDeals();
@@ -328,6 +330,31 @@ export default function MyDealsPage() {
     }
   };
 
+  const changePage = (itemId: string, direction: 'next' | 'prev') => {
+    setProposalPages(prev => {
+      const currentPage = prev[itemId] || 1;
+      const totalPages = Math.ceil((proposals[itemId]?.length || 0) / PROPOSALS_PER_PAGE);
+
+      if (direction === 'next' && currentPage < totalPages) {
+        return { ...prev, [itemId]: currentPage + 1 };
+      } else if (direction === 'prev' && currentPage > 1) {
+        return { ...prev, [itemId]: currentPage - 1 };
+      }
+      return prev;
+    });
+  };
+
+  const getPaginatedProposals = (itemId: string) => {
+    const allProposals = proposals[itemId] || [];
+    const currentPage = proposalPages[itemId] || 1;
+    const startIdx = (currentPage - 1) * PROPOSALS_PER_PAGE;
+    const endIdx = startIdx + PROPOSALS_PER_PAGE;
+    return allProposals.slice(startIdx, endIdx);
+  };
+
+  const getTotalPages = (itemId: string) => {
+    return Math.ceil((proposals[itemId]?.length || 0) / PROPOSALS_PER_PAGE);
+  };
 
   const handlePauseResume = async (itemId: string, currentStatus: string, type: 'order' | 'task') => {
     const isPausing = currentStatus === 'open' || currentStatus === 'active';
@@ -383,45 +410,42 @@ export default function MyDealsPage() {
       transition={pageTransition}
       className="min-h-screen bg-background"
     >
-      <section className="mx-auto max-w-7xl px-3 xs-375:px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Мои сделки</h1>
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        <h1 className="text-3xl font-bold mb-6">Мои сделки</h1>
 
-        <div className="flex border-b mb-6 overflow-x-auto scrollbar-hide">
+        <div className="flex border-b mb-6">
           <button
             onClick={() => setActiveTab('orders')}
-            className={`relative px-3 xs-375:px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+            className={`relative px-6 py-3 font-medium transition-colors ${
               activeTab === 'orders' ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
             }`}
           >
-            <Package className="inline-block h-4 w-4 mr-1 xs-375:mr-2" />
-            <span className="hidden xs-375:inline">Мои заказы ({orders.length})</span>
-            <span className="xs-375:hidden">Заказы ({orders.length})</span>
+            <Package className="inline-block h-4 w-4 mr-2" />
+            Мои заказы ({orders.length})
             {activeTab === 'orders' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6FE7C8]" />
             )}
           </button>
           <button
             onClick={() => setActiveTab('tasks')}
-            className={`relative px-3 xs-375:px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+            className={`relative px-6 py-3 font-medium transition-colors ${
               activeTab === 'tasks' ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
             }`}
           >
-            <ListTodo className="inline-block h-4 w-4 mr-1 xs-375:mr-2" />
-            <span className="hidden xs-375:inline">Мои объявления ({tasks.length})</span>
-            <span className="xs-375:hidden">Объявления ({tasks.length})</span>
+            <ListTodo className="inline-block h-4 w-4 mr-2" />
+            Мои объявления ({tasks.length})
             {activeTab === 'tasks' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6FE7C8]" />
             )}
           </button>
           <button
             onClick={() => setActiveTab('mywork')}
-            className={`relative px-3 xs-375:px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
+            className={`relative px-6 py-3 font-medium transition-colors ${
               activeTab === 'mywork' ? 'text-[#6FE7C8]' : 'text-[#3F7F6E] hover:text-[#6FE7C8]'
             }`}
           >
-            <Briefcase className="inline-block h-4 w-4 mr-1 xs-375:mr-2" />
-            <span className="hidden xs-375:inline">Моя работа ({deals.length})</span>
-            <span className="xs-375:hidden">Работа ({deals.length})</span>
+            <Briefcase className="inline-block h-4 w-4 mr-2" />
+            Моя работа ({deals.length})
             {activeTab === 'mywork' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6FE7C8]" />
             )}
@@ -458,63 +482,29 @@ export default function MyDealsPage() {
             ) : (
               orders.map((order) => (
                 <Card key={order.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-3 xs-375:p-4 sm:p-6">
-                    <div className="mb-3">
-                      <div className="flex justify-between items-start gap-2 mb-2">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
                         <a
                           href={`#/order/${order.id}`}
-                          className="text-base xs-375:text-lg font-semibold hover:text-[#6FE7C8] transition-colors flex-1 min-w-0"
+                          className="text-lg font-semibold hover:text-[#6FE7C8] transition-colors"
                         >
                           {order.title}
                         </a>
-                        <div className="hidden sm:flex gap-2 flex-shrink-0">
-                          {!order.hasActiveDeal ? (
-                            <>
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={`#/order/${order.id}/edit`}>
-                                  <Edit className="h-4 w-4" />
-                                </a>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePauseResume(order.id, order.status, 'order')}
-                              >
-                                {order.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(order.id, 'order')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4" />
-                            </Button>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="secondary">{order.category}</Badge>
+                          {getStatusBadge(order.status)}
+                          {order.hasActiveDeal && (
+                            <Badge className="bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]">
+                              В работе
+                            </Badge>
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">{order.category}</Badge>
-                        {getStatusBadge(order.status)}
-                        {order.hasActiveDeal && (
-                          <Badge className="bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]">
-                            В работе
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="sm:hidden flex gap-2 mt-2">
+                      <div className="flex gap-2">
                         {!order.hasActiveDeal ? (
                           <>
-                            <Button variant="outline" size="sm" asChild className="flex-1">
+                            <Button variant="outline" size="sm" asChild>
                               <a href={`#/order/${order.id}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </a>
@@ -523,7 +513,6 @@ export default function MyDealsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handlePauseResume(order.id, order.status, 'order')}
-                              className="flex-1"
                             >
                               {order.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
                             </Button>
@@ -531,7 +520,6 @@ export default function MyDealsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDelete(order.id, 'order')}
-                              className="flex-1"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -540,30 +528,28 @@ export default function MyDealsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full"
+                            className="text-amber-600 border-amber-300 hover:bg-amber-50"
                             title="Начать спор"
                           >
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Начать спор
+                            <AlertTriangle className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
                     </div>
-                    <p className="text-[#3F7F6E] mb-4 line-clamp-2 text-sm sm:text-base">{order.description}</p>
-                    <div className="flex flex-col xs-375:flex-row xs-375:justify-between xs-375:items-center gap-2 xs-375:gap-4 text-sm xs-375:text-base mb-3">
-                      <div className="flex gap-4 xs-375:gap-5">
-                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
-                          <Eye className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
-                          <span className="font-medium">{order.views_count || 0}</span>
+                    <p className="text-[#3F7F6E] mb-4 line-clamp-2">{order.description}</p>
+                    <div className="flex justify-between items-center text-sm mb-3">
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-1 text-[#3F7F6E]">
+                          <Eye className="h-4 w-4" />
+                          <span>{order.views_count || 0} просмотров</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
-                          <MessageSquare className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
-                          <span className="font-medium">{proposals[order.id]?.length || 0}</span>
+                        <div className="flex items-center gap-1 text-[#3F7F6E]">
+                          <MessageSquare className="h-4 w-4" />
+                          <span>{proposals[order.id]?.length || 0} откликов</span>
                         </div>
                       </div>
-                      <div className="text-[#3F7F6E] flex items-center gap-1.5">
-                        <span className="hidden xs-375:inline">Бюджет:</span>
-                        <span className="font-semibold text-foreground text-base xs-375:text-lg">
+                      <div className="text-[#3F7F6E] flex items-center gap-1">
+                        Бюджет: <span className="font-medium text-foreground">
                           <PriceDisplay amount={order.price_min} maxAmount={order.price_max} fromCurrency={order.currency} showRange={true} />
                         </span>
                       </div>
@@ -599,53 +585,49 @@ export default function MyDealsPage() {
                             <p className="text-sm text-[#3F7F6E] text-center">Откликов пока нет</p>
                           ) : (
                             <>
-                              {proposals[order.id].map((proposal) => (
+                              {getPaginatedProposals(order.id).map((proposal) => (
                               <Card key={proposal.id}>
-                                <CardContent className="p-3 xs-375:p-4">
-                                  <div className="mb-2">
-                                    <div className="flex flex-col xs-414:flex-row xs-414:justify-between xs-414:items-start gap-2 mb-2">
-                                      <div className="flex flex-col gap-1 flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <div className="font-medium flex items-center gap-1.5 text-sm xs-375:text-base">
-                                            <span className="truncate">{proposal.profile?.name || 'Пользователь'}</span>
-                                            <StarRating
-                                              rating={proposal.profile?.avg_rating || 0}
-                                              reviewsCount={proposal.profile?.reviews_count || 0}
-                                              size="sm"
-                                              showCount={false}
-                                            />
-                                          </div>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="font-medium flex items-center gap-1.5">
+                                          <span>{proposal.profile?.name || 'Пользователь'}</span>
+                                          <StarRating
+                                            rating={proposal.profile?.avg_rating || 0}
+                                            reviewsCount={proposal.profile?.reviews_count || 0}
+                                            size="sm"
+                                            showCount={false}
+                                          />
                                         </div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <Badge variant="outline" className="text-xs">
-                                            <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
-                                          </Badge>
-                                          <Badge variant="outline" className="text-xs">{proposal.delivery_days} дней</Badge>
-                                        </div>
-                                        <ProfileBadges
-                                          avgRating={proposal.profile?.avg_rating}
-                                          reviewsCount={proposal.profile?.reviews_count}
-                                          fiveStarCount={proposal.profile?.five_star_count}
-                                          createdAt={proposal.profile?.created_at}
-                                          showStars={false}
-                                          compact={true}
-                                        />
+                                        <Badge variant="outline">
+                                          <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
+                                        </Badge>
+                                        <Badge variant="outline">{proposal.delivery_days} дней</Badge>
                                       </div>
-                                      <div className="flex items-center gap-2 xs-414:flex-col xs-414:items-end">
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => window.location.hash = '/proposals'}
-                                        >
-                                          <ExternalLink className="h-3 w-3" />
-                                        </Button>
-                                        <div className="text-xs text-[#3F7F6E] whitespace-nowrap">
-                                          {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
-                                        </div>
+                                      <ProfileBadges
+                                        avgRating={proposal.profile?.avg_rating}
+                                        reviewsCount={proposal.profile?.reviews_count}
+                                        fiveStarCount={proposal.profile?.five_star_count}
+                                        createdAt={proposal.profile?.created_at}
+                                        showStars={false}
+                                        compact={true}
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => window.location.hash = '/proposals'}
+                                      >
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                      <div className="text-xs text-[#3F7F6E]">
+                                        {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
                                       </div>
                                     </div>
                                   </div>
-                                  <p className="text-xs xs-375:text-sm text-[#3F7F6E]">{proposal.message}</p>
+                                  <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
                                   {proposalOptions[proposal.id] && proposalOptions[proposal.id].length > 0 && (
                                     <div className="mt-3 pt-3 border-t space-y-2">
                                       <div className="text-xs font-medium text-[#3F7F6E]">Опции:</div>
@@ -670,6 +652,29 @@ export default function MyDealsPage() {
                                 </CardContent>
                               </Card>
                               ))}
+                              {getTotalPages(order.id) > 1 && (
+                                <div className="flex items-center justify-center gap-2 pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(order.id, 'prev')}
+                                  disabled={(proposalPages[order.id] || 1) === 1}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm text-[#3F7F6E]">
+                                  Страница {proposalPages[order.id] || 1} из {getTotalPages(order.id)}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(order.id, 'next')}
+                                  disabled={(proposalPages[order.id] || 1) === getTotalPages(order.id)}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              )}
                             </>
                           )}
                         </motion.div>
@@ -703,63 +708,29 @@ export default function MyDealsPage() {
             ) : (
               tasks.map((task) => (
                 <Card key={task.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-3 xs-375:p-4 sm:p-6">
-                    <div className="mb-3">
-                      <div className="flex justify-between items-start gap-2 mb-2">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
                         <a
                           href={`#/task/${task.id}`}
-                          className="text-base xs-375:text-lg font-semibold hover:text-[#6FE7C8] transition-colors flex-1 min-w-0"
+                          className="text-lg font-semibold hover:text-[#6FE7C8] transition-colors"
                         >
                           {task.title}
                         </a>
-                        <div className="hidden sm:flex gap-2 flex-shrink-0">
-                          {!task.hasActiveDeal ? (
-                            <>
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={`#/task/${task.id}/edit`}>
-                                  <Edit className="h-4 w-4" />
-                                </a>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePauseResume(task.id, task.status, 'task')}
-                              >
-                                {task.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(task.id, 'task')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4" />
-                            </Button>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="secondary">{task.category}</Badge>
+                          {getStatusBadge(task.status)}
+                          {task.hasActiveDeal && (
+                            <Badge className="bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]">
+                              В работе
+                            </Badge>
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">{task.category}</Badge>
-                        {getStatusBadge(task.status)}
-                        {task.hasActiveDeal && (
-                          <Badge className="bg-[#6FE7C8] text-white hover:bg-[#5DD6B7]">
-                            В работе
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="sm:hidden flex gap-2 mt-2">
+                      <div className="flex gap-2">
                         {!task.hasActiveDeal ? (
                           <>
-                            <Button variant="outline" size="sm" asChild className="flex-1">
+                            <Button variant="outline" size="sm" asChild>
                               <a href={`#/task/${task.id}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </a>
@@ -768,7 +739,6 @@ export default function MyDealsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handlePauseResume(task.id, task.status, 'task')}
-                              className="flex-1"
                             >
                               {task.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
                             </Button>
@@ -776,7 +746,6 @@ export default function MyDealsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDelete(task.id, 'task')}
-                              className="flex-1"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -785,30 +754,28 @@ export default function MyDealsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full"
+                            className="text-amber-600 border-amber-300 hover:bg-amber-50"
                             title="Начать спор"
                           >
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Начать спор
+                            <AlertTriangle className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
                     </div>
-                    <p className="text-[#3F7F6E] mb-4 line-clamp-2 text-sm sm:text-base">{task.description}</p>
-                    <div className="flex flex-col xs-375:flex-row xs-375:justify-between xs-375:items-center gap-2 xs-375:gap-4 text-sm xs-375:text-base mb-3">
-                      <div className="flex gap-4 xs-375:gap-5">
-                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
-                          <Eye className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
-                          <span className="font-medium">{task.views_count || 0}</span>
+                    <p className="text-[#3F7F6E] mb-4 line-clamp-2">{task.description}</p>
+                    <div className="flex justify-between items-center text-sm mb-3">
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-1 text-[#3F7F6E]">
+                          <Eye className="h-4 w-4" />
+                          <span>{task.views_count || 0} просмотров</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
-                          <MessageSquare className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
-                          <span className="font-medium">{proposals[task.id]?.length || 0}</span>
+                        <div className="flex items-center gap-1 text-[#3F7F6E]">
+                          <MessageSquare className="h-4 w-4" />
+                          <span>{proposals[task.id]?.length || 0} заказов</span>
                         </div>
                       </div>
-                      <div className="text-[#3F7F6E] flex items-center gap-1.5">
-                        <span className="hidden xs-375:inline">Цена:</span>
-                        <span className="font-semibold text-foreground text-base xs-375:text-lg">
+                      <div className="text-[#3F7F6E] flex items-center gap-1">
+                        Цена: <span className="font-medium text-foreground">
                           <PriceDisplay amount={task.price} fromCurrency={task.currency} />
                         </span>
                       </div>
@@ -844,53 +811,49 @@ export default function MyDealsPage() {
                             <p className="text-sm text-[#3F7F6E] text-center">Заказов пока нет</p>
                           ) : (
                             <>
-                              {proposals[task.id].map((proposal) => (
+                              {getPaginatedProposals(task.id).map((proposal) => (
                               <Card key={proposal.id}>
-                                <CardContent className="p-3 xs-375:p-4">
-                                  <div className="mb-2">
-                                    <div className="flex flex-col xs-414:flex-row xs-414:justify-between xs-414:items-start gap-2 mb-2">
-                                      <div className="flex flex-col gap-1 flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <div className="font-medium flex items-center gap-1.5 text-sm xs-375:text-base">
-                                            <span className="truncate">{proposal.profile?.name || 'Пользователь'}</span>
-                                            <StarRating
-                                              rating={proposal.profile?.avg_rating || 0}
-                                              reviewsCount={proposal.profile?.reviews_count || 0}
-                                              size="sm"
-                                              showCount={false}
-                                            />
-                                          </div>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="font-medium flex items-center gap-1.5">
+                                          <span>{proposal.profile?.name || 'Пользователь'}</span>
+                                          <StarRating
+                                            rating={proposal.profile?.avg_rating || 0}
+                                            reviewsCount={proposal.profile?.reviews_count || 0}
+                                            size="sm"
+                                            showCount={false}
+                                          />
                                         </div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <Badge variant="outline" className="text-xs">
-                                            <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
-                                          </Badge>
-                                          <Badge variant="outline" className="text-xs">{proposal.delivery_days} дней</Badge>
-                                        </div>
-                                        <ProfileBadges
-                                          avgRating={proposal.profile?.avg_rating}
-                                          reviewsCount={proposal.profile?.reviews_count}
-                                          fiveStarCount={proposal.profile?.five_star_count}
-                                          createdAt={proposal.profile?.created_at}
-                                          showStars={false}
-                                          compact={true}
-                                        />
+                                        <Badge variant="outline">
+                                          <PriceDisplay amount={proposal.price} fromCurrency={proposal.currency} />
+                                        </Badge>
+                                        <Badge variant="outline">{proposal.delivery_days} дней</Badge>
                                       </div>
-                                      <div className="flex items-center gap-2 xs-414:flex-col xs-414:items-end">
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => window.location.hash = '/proposals'}
-                                        >
-                                          <ExternalLink className="h-3 w-3" />
-                                        </Button>
-                                        <div className="text-xs text-[#3F7F6E] whitespace-nowrap">
-                                          {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
-                                        </div>
+                                      <ProfileBadges
+                                        avgRating={proposal.profile?.avg_rating}
+                                        reviewsCount={proposal.profile?.reviews_count}
+                                        fiveStarCount={proposal.profile?.five_star_count}
+                                        createdAt={proposal.profile?.created_at}
+                                        showStars={false}
+                                        compact={true}
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => window.location.hash = '/proposals'}
+                                      >
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                      <div className="text-xs text-[#3F7F6E]">
+                                        {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
                                       </div>
                                     </div>
                                   </div>
-                                  <p className="text-xs xs-375:text-sm text-[#3F7F6E]">{proposal.message}</p>
+                                  <p className="text-sm text-[#3F7F6E]">{proposal.message}</p>
                                   {proposalOptions[proposal.id] && proposalOptions[proposal.id].length > 0 && (
                                     <div className="mt-3 pt-3 border-t space-y-2">
                                       <div className="text-xs font-medium text-[#3F7F6E]">Опции:</div>
@@ -915,6 +878,29 @@ export default function MyDealsPage() {
                                 </CardContent>
                               </Card>
                             ))}
+                            {getTotalPages(task.id) > 1 && (
+                              <div className="flex items-center justify-center gap-2 pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(task.id, 'prev')}
+                                  disabled={(proposalPages[task.id] || 1) === 1}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm text-[#3F7F6E]">
+                                  Страница {proposalPages[task.id] || 1} из {getTotalPages(task.id)}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => changePage(task.id, 'next')}
+                                  disabled={(proposalPages[task.id] || 1) === getTotalPages(task.id)}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              )}
                             </>
                           )}
                         </motion.div>
@@ -938,20 +924,20 @@ export default function MyDealsPage() {
               deals.map((deal) => (
                 <Card key={deal.id} className="hover:shadow-lg transition-shadow relative overflow-hidden">
                   {deal.isMyOrder && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-[#6FE7C8] to-[#4ECDB0] text-white px-4 xs-375:px-6 py-1 text-[10px] xs-375:text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-[#6FE7C8] to-[#4ECDB0] text-white px-6 py-1 text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
                       {deal.order_id ? 'Ваш заказ' : 'Ваше объявление'}
                     </div>
                   )}
                   {!deal.isMyOrder && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-500 to-blue-400 text-white px-4 xs-375:px-6 py-1 text-[10px] xs-375:text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-500 to-blue-400 text-white px-6 py-1 text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
                       {deal.order_id ? 'Принятый заказ' : 'Принятое объявление'}
                     </div>
                   )}
-                  <CardContent className="p-3 xs-375:p-4 sm:p-6 pt-8">
-                    <div className="sm:flex sm:justify-between sm:items-start sm:mb-3">
+                  <CardContent className="p-6 pt-8">
+                    <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h3 className="text-base xs-375:text-lg font-semibold mb-2">{deal.title}</h3>
-                        <div className="flex flex-wrap gap-2 mt-2 mb-3">
+                        <h3 className="text-lg font-semibold mb-2">{deal.title}</h3>
+                        <div className="flex gap-2 mt-2 mb-3">
                           <Badge variant="secondary">{deal.currency} {deal.price}</Badge>
                           <Badge variant="outline">{deal.delivery_days} дней</Badge>
                           <Badge className={
@@ -966,7 +952,7 @@ export default function MyDealsPage() {
                              deal.status}
                           </Badge>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 mb-3 pt-3 border-t">
+                        <div className="flex items-center gap-3 mb-3">
                           <div
                             className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
                             onClick={() => navigateToProfile(deal.client_id, user?.id)}
@@ -995,15 +981,13 @@ export default function MyDealsPage() {
                           </div>
                         </div>
                         {deal.description && (
-                          <div className="pt-3 border-t">
-                            <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
-                          </div>
+                          <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
                         )}
-                        <div className="text-xs text-[#3F7F6E] pt-2 border-t">
+                        <div className="text-xs text-[#3F7F6E]">
                           Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
                         </div>
                       </div>
-                      <div className="hidden sm:flex sm:gap-2">
+                      <div className="flex gap-2">
                         {deal.chat_id && (
                           <Button
                             variant="default"
@@ -1024,28 +1008,6 @@ export default function MyDealsPage() {
                           Начать спор
                         </Button>
                       </div>
-                    </div>
-                    <div className="sm:hidden flex flex-col gap-2 mt-3 pt-3 border-t -mx-3 xs-375:-mx-4 px-3 xs-375:px-4 bg-gray-50">
-                      {deal.chat_id && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
-                          className="w-full"
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Перейти
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full bg-white"
-                        title="Начать спор"
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        Начать спор
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>

@@ -91,7 +91,6 @@ export default function MessagesPage() {
   const { language } = useRegion();
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<Chat[]>([]);
@@ -120,7 +119,6 @@ export default function MessagesPage() {
     contentType: 'message',
   });
   const [crmPanelOpen, setCrmPanelOpen] = useState(false);
-  const [progressPanelOpen, setProgressPanelOpen] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [showTranslationSettings, setShowTranslationSettings] = useState(false);
@@ -1183,8 +1181,8 @@ export default function MessagesPage() {
   // ================================================
 
   return (
-    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="bg-background">
-      <section className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10 pb-16">
+    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
+      <section className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Сообщения</h1>
 
         {loading ? (
@@ -1211,7 +1209,7 @@ export default function MessagesPage() {
         ) : (
           <div className={`grid grid-cols-1 ${currentDeal ? 'lg:grid-cols-[320px_1fr_380px]' : 'lg:grid-cols-[320px_1fr]'} gap-6 h[calc(100vh-200px)] h-[calc(100vh-200px)] max-h-[800px] min-h-0`}>
             {/* Список чатов */}
-            <Card className={`overflow-hidden h-full min-h-0 flex flex-col ${showChatOnMobile && selectedChatId ? 'hidden lg:flex' : ''}`}>
+            <Card className="overflow-hidden h-full min-h-0 flex flex-col">
               <div className="p-4 border-b">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
@@ -1254,7 +1252,6 @@ export default function MessagesPage() {
                             } else if (hasMainChat) {
                               // Если сделок нет и есть общий чат - открываем его
                               setSelectedChatId(chat.id);
-                              setShowChatOnMobile(true);
                             }
                           }}
                           className={`p-4 cursor-pointer hover:bg-[#EFFFF8] ${
@@ -1409,10 +1406,7 @@ export default function MessagesPage() {
                                   key={deal.id}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (dealChat) {
-                                      setSelectedChatId(dealChat.id);
-                                      setShowChatOnMobile(true);
-                                    }
+                                    if (dealChat) setSelectedChatId(dealChat.id);
                                   }}
                                   className={`p-3 pl-16 cursor-pointer hover:bg-[#EFFFF8] ${
                                     selectedChatId === dealChat?.id ? 'bg-[#EFFFF8]' : ''
@@ -1444,17 +1438,10 @@ export default function MessagesPage() {
 
             {/* Окно чата */}
             {selectedChatId && currentProfile ? (
-              <Card className={`flex flex-col h-full min-h-0 overflow-hidden relative ${!showChatOnMobile ? 'hidden lg:flex' : ''}`}>
-                <div className="p-3 xs-375:p-4 border-b flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => setShowChatOnMobile(false)}
-                    className="lg:hidden flex-shrink-0 p-2 hover:bg-[#EFFFF8] rounded-lg transition"
-                    aria-label="Назад к чатам"
-                  >
-                    <ChevronDown className="h-5 w-5 rotate-90" />
-                  </button>
+              <Card className="flex flex-col h-full min-h-0 overflow-hidden relative">
+                <div className="p-4 border-b flex items-center justify-between">
                   <div
-                    className="flex items-center gap-2 xs-375:gap-3 hover:opacity-80 transition cursor-pointer flex-1 min-w-0"
+                    className="flex items-center gap-3 hover:opacity-80 transition cursor-pointer"
                     onClick={() => navigateToProfile(currentOtherUserId || '', user?.id)}
                   >
                     <div className="relative">
@@ -1475,9 +1462,9 @@ export default function MessagesPage() {
                       )}
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-sm xs-375:text-base truncate">{currentProfile.name}</div>
-                      <div className="text-xs text-[#3F7F6E] flex items-center gap-1 truncate">
+                    <div>
+                      <div className="font-semibold">{currentProfile.name}</div>
+                      <div className="text-xs text-[#3F7F6E] flex items-center gap-1">
                         {isOtherUserTyping ? (
                           <>
                             <span>Печатает</span>
@@ -1534,41 +1521,24 @@ export default function MessagesPage() {
                   </div>
                 </div>
 
-                {/* Floating Action Buttons */}
-                <div className="absolute left-4 top-20 flex flex-col gap-2 z-20">
-                  {/* CRM Button */}
-                  <button
-                    ref={crmButtonRef}
-                    onClick={() => setCrmPanelOpen(true)}
-                    className="w-12 h-12 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-xs font-semibold transition shadow-lg"
-                    title="CRM Чата"
-                  >
-                    CRM
-                  </button>
+                {/* Floating CRM Button */}
+                <button
+                  ref={crmButtonRef}
+                  onClick={() => setCrmPanelOpen(true)}
+                  className="absolute left-4 top-20 w-12 h-12 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-xs font-semibold transition shadow-lg z-20"
+                  title="CRM Чата"
+                >
+                  CRM
+                </button>
 
-                  {/* Floating Translation Button */}
-                  <button
-                    onClick={() => setShowTranslationSettings(true)}
-                    className="w-12 h-12 rounded-full bg-[#6FE7C8] hover:bg-[#5cd4b5] text-white flex items-center justify-center transition shadow-lg"
-                    title="Перевод"
-                  >
-                    <Languages className="h-5 w-5" />
-                  </button>
-
-                  {/* Progress Button - только для мобильных */}
-                  <button
-                    onClick={() => setProgressPanelOpen(true)}
-                    className={`lg:hidden w-12 h-12 rounded-full text-white flex items-center justify-center transition shadow-lg ${
-                      currentDeal
-                        ? 'bg-blue-600 hover:bg-blue-700'
-                        : 'bg-gray-400 hover:bg-gray-500 cursor-not-allowed opacity-60'
-                    }`}
-                    title={currentDeal ? "Текущий прогресс" : "Прогресс доступен только для сделок"}
-                    disabled={!currentDeal}
-                  >
-                    <Briefcase className="h-5 w-5" />
-                  </button>
-                </div>
+                {/* Floating Translation Button */}
+                <button
+                  onClick={() => setShowTranslationSettings(true)}
+                  className="absolute left-4 top-36 w-12 h-12 rounded-full bg-[#6FE7C8] hover:bg-[#5cd4b5] text-white flex items-center justify-center transition shadow-lg z-20"
+                  title="Перевод"
+                >
+                  <Languages className="h-5 w-5" />
+                </button>
 
                 {/* CRM Confirmation Notifications */}
                 {selectedChatId && (
@@ -1799,18 +1769,16 @@ export default function MessagesPage() {
               </Card>
             )}
 
-            {/* Deal Progress Panel - только на больших экранах */}
+            {/* Deal Progress Panel */}
             <AnimatePresence mode="wait">
               {currentDeal && user && (
-                <div className="hidden lg:block">
-                  <DealProgressPanel
-                    dealId={currentDeal.id}
-                    userId={user.id}
-                    isFreelancer={isFreelancer}
-                    chatId={selectedChatId || undefined}
-                    freelancerId={currentDeal.freelancer_id}
-                  />
-                </div>
+                <DealProgressPanel
+                  dealId={currentDeal.id}
+                  userId={user.id}
+                  isFreelancer={isFreelancer}
+                  chatId={selectedChatId || undefined}
+                  freelancerId={currentDeal.freelancer_id}
+                />
               )}
             </AnimatePresence>
           </div>
@@ -1889,38 +1857,6 @@ export default function MessagesPage() {
           setConfidenceThreshold={setConfidenceThreshold}
         />
       )}
-
-      {/* Deal Progress Panel для мобильных */}
-      <AnimatePresence>
-        {progressPanelOpen && currentDeal && user && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 w-full xs-414:w-96 bg-white shadow-2xl z-50 overflow-y-auto lg:hidden"
-          >
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
-              <h2 className="font-semibold text-lg">Текущий прогресс</h2>
-              <button
-                onClick={() => setProgressPanelOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-4">
-              <DealProgressPanel
-                dealId={currentDeal.id}
-                userId={user.id}
-                isFreelancer={isFreelancer}
-                chatId={selectedChatId || undefined}
-                freelancerId={currentDeal.freelancer_id}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Translation Settings Dialog */}
       {showTranslationSettings && (

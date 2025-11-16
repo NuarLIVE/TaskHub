@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, RefreshCw, Calendar, TrendingUp, Lock, Award, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
@@ -64,8 +63,7 @@ export default function RecommendationsPage() {
   useEffect(() => {
     if (hasSubscription !== null && profile) {
       if (hasSubscription) {
-        // Auto-generate recommendations on page entry
-        generateRecommendations();
+        loadRecommendations();
       } else {
         loadGeneralOrders();
       }
@@ -512,25 +510,8 @@ export default function RecommendationsPage() {
     );
   }
 
-  const pageVariants = {
-    initial: { opacity: 0, y: 16 },
-    in: { opacity: 1, y: 0 },
-    out: { opacity: 0, y: -16 }
-  };
-
-  const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
-
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="recommendations"
-        initial="initial"
-        animate="in"
-        exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
-        className="min-h-screen bg-gray-50"
-      >
+    <div className="min-h-screen bg-gray-50">
       {(skillsWarning || specialtyWarning) && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mt-4 rounded-lg">
           <div className="flex items-center gap-3">
@@ -750,7 +731,6 @@ export default function RecommendationsPage() {
           )}
         </DialogContent>
       </Dialog>
-      </motion.div>
-    </AnimatePresence>
+    </div>
   );
 }

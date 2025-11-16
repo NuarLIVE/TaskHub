@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Clock, CheckCircle, X, FileText, Loader2, User, Award, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,6 @@ import StarRating from '@/components/ui/StarRating';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
-import { optimizeImage } from '@/lib/image-optimization';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -567,17 +566,16 @@ export default function ProposalsPage() {
   };
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="proposals"
-        initial="initial"
-        animate="in"
-        exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
-        className="min-h-screen bg-background"
+    <motion.div
+      key="proposals"
+      initial="initial"
+      animate="in"
+      exit="out"
+      variants={pageVariants}
+      transition={pageTransition}
+      className="min-h-screen bg-background"
     >
-      <section className="mx-auto max-w-7xl px-3 xs-375:px-4 sm:px-6 lg:px-8 py-10">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Отклики</h1>
 
         <div className="flex gap-2 mb-6">
@@ -611,111 +609,87 @@ export default function ProposalsPage() {
                 key={proposal.id}
                 className={proposal.source === 'recommendation' ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-50 border-amber-200' : ''}
               >
-                <CardContent className="p-4 xs-375:p-6 relative">
+                <CardContent className="p-6 relative">
                   {proposal.source === 'recommendation' && (
-                    <div className="mb-4 group">
-                      <div className="flex items-center gap-1.5 xs-375:gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2.5 xs-375:px-3 py-1.5 rounded-full shadow-md text-xs xs-375:text-sm w-fit">
-                        <Award className="w-3.5 h-3.5 xs-375:w-4 xs-375:h-4 flex-shrink-0" />
-                        <span className="font-semibold">AI рекомендация</span>
-                        <Info className="w-3.5 h-3.5 xs-375:w-4 xs-375:h-4 flex-shrink-0" />
+                    <div className="absolute top-4 right-4 group">
+                      <div className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-3 py-1.5 rounded-full shadow-md">
+                        <Award className="w-4 h-4" />
+                        <span className="text-xs font-semibold">AI рекомендация</span>
+                        <Info className="w-4 h-4" />
                       </div>
-                      <div className="hidden sm:block absolute top-full left-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
-                        <p>{activeTab === 'sent' ? 'Платформа посчитала вас наиболее подходящим исполнителем для задачи.' : 'Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.'}</p>
-                        <div className="absolute bottom-full left-6 mb-[-4px]">
+                      <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
+                        <p>Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.</p>
+                        <div className="absolute bottom-full right-6 mb-[-4px]">
                           <div className="w-2 h-2 bg-gray-900 rotate-45"></div>
                         </div>
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-col gap-3">
-                    {/* Секция с аватаром и именем */}
-                    <div className="flex items-start gap-3">
-                      {activeTab === 'received' && (
-                        <div
-                          className="hover:opacity-80 transition cursor-pointer flex-shrink-0"
-                          onClick={() => navigateToProfile(proposal.user_id, user?.id)}
-                        >
-                          {profiles[proposal.user_id]?.avatar_url ? (
-                            <img
-                              src={optimizeImage(profiles[proposal.user_id].avatar_url, 40, 85)}
-                              alt=""
-                              className="h-10 w-10 rounded-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                              <User className="h-5 w-5 text-[#3F7F6E]" />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm xs-375:text-base mb-1 flex items-center gap-1.5 flex-wrap">
-                          {activeTab === 'sent' ? (
-                            getProposalTitle(proposal)
-                          ) : (
-                            <>
-                              <span>{profiles[proposal.user_id]?.name || 'Пользователь'}</span>
-                              <StarRating
-                                rating={profiles[proposal.user_id]?.avg_rating || 0}
-                                reviewsCount={profiles[proposal.user_id]?.reviews_count || 0}
-                                size="sm"
-                                showCount={false}
-                              />
-                            </>
-                          )}
-                        </div>
-                        {activeTab === 'sent' && getItemOwnerId(proposal) && (
-                          <div className="text-xs xs-375:text-sm text-[#3F7F6E] mb-1">
-                            Заказчик: {profiles[getItemOwnerId(proposal)]?.name || 'Пользователь'}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {activeTab === 'received' && (
+                          <div
+                            className="hover:opacity-80 transition cursor-pointer"
+                            onClick={() => navigateToProfile(proposal.user_id, user?.id)}
+                          >
+                            {profiles[proposal.user_id]?.avatar_url ? (
+                              <img src={profiles[proposal.user_id].avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <User className="h-5 w-5 text-[#3F7F6E]" />
+                              </div>
+                            )}
                           </div>
                         )}
-                        {activeTab === 'received' && (
-                          <ProfileBadges
-                            avgRating={profiles[proposal.user_id]?.avg_rating}
-                            reviewsCount={profiles[proposal.user_id]?.reviews_count}
-                            fiveStarCount={profiles[proposal.user_id]?.five_star_count}
-                            createdAt={profiles[proposal.user_id]?.created_at}
-                            showStars={false}
-                            compact={true}
-                          />
-                        )}
+                        <div>
+                          <div className="font-semibold flex items-center gap-1.5">
+                            {activeTab === 'sent' ? (
+                              getProposalTitle(proposal)
+                            ) : (
+                              <>
+                                <span>{profiles[proposal.user_id]?.name || 'Пользователь'}</span>
+                                <StarRating
+                                  rating={profiles[proposal.user_id]?.avg_rating || 0}
+                                  reviewsCount={profiles[proposal.user_id]?.reviews_count || 0}
+                                  size="sm"
+                                  showCount={false}
+                                />
+                                <span> — {getProposalTitle(proposal)}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="text-sm text-[#3F7F6E]">
+                            {activeTab === 'sent' && getItemOwnerId(proposal) && `Заказчик: ${profiles[getItemOwnerId(proposal)]?.name || 'Пользователь'}`}
+                          </div>
+                          {activeTab === 'received' && (
+                            <ProfileBadges
+                              avgRating={profiles[proposal.user_id]?.avg_rating}
+                              reviewsCount={profiles[proposal.user_id]?.reviews_count}
+                              fiveStarCount={profiles[proposal.user_id]?.five_star_count}
+                              createdAt={profiles[proposal.user_id]?.created_at}
+                              showStars={false}
+                              compact={true}
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-[#3F7F6E]">
+                        <span>Цена: {proposal.currency} {proposal.price}</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
+                        </span>
                       </div>
                     </div>
-
-                    {/* Название заказа/задачи на отдельной строке */}
-                    {activeTab === 'received' && (
-                      <div className="font-medium text-sm">
-                        {getProposalTitle(proposal)}
-                      </div>
-                    )}
-
-                    {/* Разделитель */}
-                    <div className="border-t"></div>
-
-                    {/* Информация о цене и дате */}
-                    <div className="flex flex-wrap items-center gap-2 xs-375:gap-3 text-xs xs-375:text-sm text-[#3F7F6E]">
-                      <span className="font-medium">Цена: {proposal.currency} {proposal.price}</span>
-                      <span className="text-gray-300">•</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(proposal.created_at).toLocaleDateString('ru-RU')}
-                      </span>
-                    </div>
-
-                    {/* Разделитель перед кнопками */}
-                    <div className="border-t"></div>
-
-                    {/* Кнопки действий */}
-                    <div className="flex flex-col gap-2">
-                      {/* Первая строка: Статус и Принять */}
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(proposal.status)}
-                        {activeTab === 'received' && proposal.status === 'pending' && (
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(proposal.status)}
+                      {activeTab === 'received' && proposal.status === 'pending' && (
+                        <>
                           <Button
                             size="sm"
                             onClick={() => handleAccept(proposal)}
-                            className="px-3 xs-375:px-4"
+                            className="px-4"
                             disabled={acceptingProposal === proposal.id}
                           >
                             {acceptingProposal === proposal.id ? (
@@ -725,40 +699,18 @@ export default function ProposalsPage() {
                             )}
                             {acceptingProposal === proposal.id ? 'Принимаю...' : 'Принять'}
                           </Button>
-                        )}
-                      </div>
-
-                      {/* Вторая строка: Отклонить и Подробнее */}
-                      {activeTab === 'received' && proposal.status === 'pending' ? (
-                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleReject(proposal.id)}
                             disabled={acceptingProposal === proposal.id}
-                            className="px-3 xs-375:px-4"
                           >
                             <X className="h-4 w-4 mr-1" />
                             Отклонить
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => showDetails(proposal)}
-                          >
-                            Подробнее
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => showDetails(proposal)}
-                          className="w-full"
-                        >
-                          Подробнее
-                        </Button>
+                        </>
                       )}
+                      <Button size="sm" variant="ghost" onClick={() => showDetails(proposal)}>Подробнее</Button>
                     </div>
                   </div>
                 </CardContent>
@@ -787,12 +739,7 @@ export default function ProposalsPage() {
                     onClick={() => navigateToProfile(selectedProposal.user_id, user?.id)}
                   >
                     {profiles[selectedProposal.user_id]?.avatar_url ? (
-                      <img
-                        src={optimizeImage(profiles[selectedProposal.user_id].avatar_url, 48, 85)}
-                        alt=""
-                        className="h-12 w-12 rounded-full object-cover"
-                        loading="lazy"
-                      />
+                      <img src={profiles[selectedProposal.user_id].avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
                     ) : (
                       <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center">
                         <User className="h-6 w-6 text-[#3F7F6E]" />
@@ -956,7 +903,6 @@ export default function ProposalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 }

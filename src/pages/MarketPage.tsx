@@ -16,7 +16,6 @@ import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { navigateToProfile } from '@/lib/navigation';
-import { optimizeImage } from '@/lib/image-optimization';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -26,7 +25,7 @@ const pageVariants = {
 
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
-const ITEMS_PER_PAGE = 21;
+const ITEMS_PER_PAGE = 20;
 
 export default function MarketPage() {
   const { user } = useAuth();
@@ -129,9 +128,6 @@ export default function MarketPage() {
     setLoading(true);
 
     try {
-      // Close expired orders first
-      await getSupabase().rpc('close_expired_orders');
-
       let ordersQuery = getSupabase()
         .from('orders')
         .select('*')
@@ -423,7 +419,7 @@ export default function MarketPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
                   <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по названию или тегам" className="pl-9 h-11" />
                 </div>
-                <div className="grid grid-cols-1 xs-414:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   <CategoryFilter
                     selectedCategories={selectedCategories}
                     onCategoriesChange={setSelectedCategories}
@@ -506,29 +502,24 @@ export default function MarketPage() {
                       </div>
                       <div className="text-sm text-[#3F7F6E] line-clamp-2">{item.description}</div>
                     </CardContent>
-                    <div className="flex flex-col xs-414:flex-row items-start xs-414:items-center justify-between gap-3 xs-414:gap-0 px-6 py-4 border-t">
+                    <div className="flex items-center justify-between px-6 py-4 border-t">
                       <div
-                        className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer w-full xs-414:w-auto"
+                        className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigateToProfile(item.user_id, user?.id);
                         }}
                       >
                         {profiles[item.user_id]?.avatar_url ? (
-                          <img
-                            src={optimizeImage(profiles[item.user_id].avatar_url, 28, 85)}
-                            alt={profiles[item.user_id].name}
-                            className="h-7 w-7 rounded-full object-cover flex-shrink-0"
-                            loading="lazy"
-                          />
+                          <img src={profiles[item.user_id].avatar_url} alt={profiles[item.user_id].name} className="h-7 w-7 rounded-full object-cover" />
                         ) : (
-                          <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium flex-shrink-0">
+                          <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium">
                             {profiles[item.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
                           </div>
                         )}
-                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-medium truncate">{profiles[item.user_id]?.name || 'Пользователь'}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                             <StarRating
                               rating={profiles[item.user_id]?.avg_rating || 0}
                               reviewsCount={profiles[item.user_id]?.reviews_count || 0}
@@ -673,12 +664,7 @@ export default function MarketPage() {
                   <div className="flex items-center justify-between pt-3 border-t">
                     <div className="flex items-center gap-3">
                       {profiles[previewItem.user_id]?.avatar_url ? (
-                        <img
-                          src={optimizeImage(profiles[previewItem.user_id].avatar_url, 40, 85)}
-                          alt={profiles[previewItem.user_id].name}
-                          className="h-10 w-10 rounded-full object-cover"
-                          loading="lazy"
-                        />
+                        <img src={profiles[previewItem.user_id].avatar_url} alt={profiles[previewItem.user_id].name} className="h-10 w-10 rounded-full object-cover" />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
                           {profiles[previewItem.user_id]?.name?.charAt(0).toUpperCase() || 'U'}

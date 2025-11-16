@@ -43,7 +43,6 @@ export default function TaskCreatePage() {
   const [showBoostInfo, setShowBoostInfo] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
@@ -209,7 +208,7 @@ export default function TaskCreatePage() {
       console.error('Moderation error:', err);
     }
 
-    const tagsArray = tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10);
+    const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
 
     const { data: { user: authUser } } = await getSupabase().auth.getUser();
     if (!authUser) {
@@ -236,7 +235,7 @@ export default function TaskCreatePage() {
         price: Number(price),
         currency: String(fd.get('currency')),
         delivery_days: Number(fd.get('delivery_days')),
-        tags: tagsArray,
+        tags,
         features: selectedFeatures,
         status: 'active',
         is_boosted: useBoost,
@@ -272,7 +271,6 @@ export default function TaskCreatePage() {
                     required
                     className="h-11"
                     value={title}
-                    maxLength={50}
                     onChange={(e) => {
                       setTitle(e.target.value);
                       checkContent(`${e.target.value} ${description}`);
@@ -380,24 +378,14 @@ export default function TaskCreatePage() {
                     placeholder="Опишите опыт, стек, процесс и критерии качества"
                     className="rounded-md border px-3 py-2 bg-background"
                     value={description}
-                    maxLength={700}
                     onChange={(e) => {
                       setDescription(e.target.value);
                       checkContent(`${title} ${e.target.value}`);
                     }}
                   />
                 </Field>
-                <Field label={`Теги (через запятую, макс. 10)`}>
-                  <Input
-                    name="tags"
-                    placeholder="React, Tailwind, SSR"
-                    className="h-11"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                  />
-                  <span className="text-xs text-[#3F7F6E] mt-1">
-                    {tags.split(',').filter(t => t.trim()).length}/10 тегов
-                  </span>
+                <Field label="Теги (через запятую)">
+                  <Input name="tags" placeholder="React, Tailwind, SSR" className="h-11" />
                 </Field>
                 {priceError && (
                   <p className="text-sm text-red-500 -mt-2">{priceError}</p>
