@@ -681,7 +681,7 @@ export default function ProposalsPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-[#3F7F6E]">
+                      <div className="flex flex-wrap items-center gap-3 xs-375:gap-4 text-sm text-[#3F7F6E]">
                         <span>Цена: {proposal.currency} {proposal.price}</span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -689,7 +689,7 @@ export default function ProposalsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className={`flex items-center gap-3 ${proposal.source === 'recommendation' ? 'mt-8' : ''}`}>
+                    <div className={`flex flex-wrap items-center gap-2 xs-375:gap-3 ${proposal.source === 'recommendation' ? 'mt-8' : ''}`}>
                       {getStatusBadge(proposal.status)}
                       {activeTab === 'received' && proposal.status === 'pending' && (
                         <>

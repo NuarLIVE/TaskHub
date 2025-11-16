@@ -41,6 +41,7 @@ export default function OrderCreatePage() {
   const [priceError, setPriceError] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
   const [categories, setCategories] = useState<any[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
@@ -159,7 +160,7 @@ export default function OrderCreatePage() {
       console.error('Moderation error:', err);
     }
 
-    const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean);
+    const tagsArray = tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10);
 
     const { data: { user: authUser } } = await getSupabase().auth.getUser();
     if (!authUser) {
@@ -189,7 +190,7 @@ export default function OrderCreatePage() {
         currency: String(fd.get('currency')),
         engagement: String(fd.get('engagement')),
         deadline: fd.get('deadline') ? String(fd.get('deadline')) : null,
-        tags,
+        tags: tagsArray,
         use_escrow: false,
         status: 'open'
       })
@@ -223,6 +224,7 @@ export default function OrderCreatePage() {
                     required
                     className="h-11"
                     value={title}
+                    maxLength={50}
                     onChange={(e) => {
                       setTitle(e.target.value);
                       checkContent(`${e.target.value} ${description}`);
@@ -334,14 +336,24 @@ export default function OrderCreatePage() {
                     placeholder="Опишите задачи, критерии приёмки, ссылки на референсы"
                     className="rounded-md border px-3 py-2 bg-background"
                     value={description}
+                    maxLength={700}
                     onChange={(e) => {
                       setDescription(e.target.value);
                       checkContent(`${title} ${e.target.value}`);
                     }}
                   />
                 </Field>
-                <Field label="Теги (через запятую)">
-                  <Input name="tags" placeholder="React, Tailwind, API" className="h-11" />
+                <Field label={`Теги (через запятую, макс. 10)`}>
+                  <Input
+                    name="tags"
+                    placeholder="React, Tailwind, API"
+                    className="h-11"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                  />
+                  <span className="text-xs text-[#3F7F6E] mt-1">
+                    {tags.split(',').filter(t => t.trim()).length}/10 тегов
+                  </span>
                 </Field>
                 <div>
                   <label className="text-sm font-medium mb-2 block">Вложение (необязательно)</label>
