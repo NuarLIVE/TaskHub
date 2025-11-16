@@ -5,14 +5,6 @@ import ru from '@/locales/ru.json';
 const translations: Record<string, any> = {
   en,
   ru,
-  es: en, // Spanish - fallback to English for now
-  de: en, // German - fallback to English for now
-  fr: en, // French - fallback to English for now
-  zh: en, // Chinese - fallback to English for now
-  ja: en, // Japanese - fallback to English for now
-  ko: en, // Korean - fallback to English for now
-  pt: en, // Portuguese - fallback to English for now
-  ar: en, // Arabic - fallback to English for now
 };
 
 export function useTranslation() {

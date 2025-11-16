@@ -34,27 +34,11 @@ const RegionContext = createContext<RegionContextType | undefined>(undefined);
 const SUPPORTED_LANGUAGES = {
   en: 'English',
   ru: 'Русский',
-  es: 'Español',
-  de: 'Deutsch',
-  fr: 'Français',
-  zh: '中文',
-  ja: '日本語',
-  ko: '한국어',
-  pt: 'Português',
-  ar: 'العربية',
 };
 
 const LANGUAGE_TO_CURRENCY: Record<string, string> = {
   en: 'USD',
   ru: 'RUB',
-  de: 'EUR',
-  fr: 'EUR',
-  es: 'EUR',
-  zh: 'CNY',
-  ja: 'JPY',
-  ko: 'KRW',
-  pt: 'BRL',
-  ar: 'AED',
 };
 
 export function RegionProvider({ children }: { children: ReactNode }) {

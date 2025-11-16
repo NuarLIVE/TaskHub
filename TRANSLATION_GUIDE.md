@@ -2,17 +2,9 @@
 
 ## 📋 Overview
 
-TaskHub now has a complete translation system supporting 10 languages:
+TaskHub has a complete translation system supporting 2 languages:
 - 🇬🇧 English (en)
 - 🇷🇺 Русский (ru)
-- 🇪🇸 Español (es)
-- 🇩🇪 Deutsch (de)
-- 🇫🇷 Français (fr)
-- 🇨🇳 中文 (zh)
-- 🇯🇵 日本語 (ja)
-- 🇰🇷 한국어 (ko)
-- 🇧🇷 Português (pt)
-- 🇸🇦 العربية (ar)
 
 ## 🏗️ Structure
 
@@ -20,8 +12,7 @@ TaskHub now has a complete translation system supporting 10 languages:
 ```
 src/locales/
 ├── en.json  (English - Full translations)
-├── ru.json  (Russian - Full translations)
-└── [other languages fallback to English]
+└── ru.json  (Russian - Full translations)
 ```
 
 ### Hook Usage
@@ -95,7 +86,6 @@ t('order.status.open') // "Open" or "Открыт"
 ### ✓ Translation Files
 - **en.json**: Complete English translations (~400+ keys)
 - **ru.json**: Complete Russian translations (~400+ keys)
-- **Other languages**: Fallback to English (ready for translation)
 
 ## 🚀 Adding New Translations
 
@@ -108,7 +98,7 @@ t('order.status.open') // "Open" or "Открыт"
 }
 ```
 
-### Step 2: Add translation to ru.json (and other languages)
+### Step 2: Add translation to ru.json
 ```json
 {
   "mySection": {
@@ -215,12 +205,6 @@ const { t } = useTranslation();
 The system automatically suggests currency based on language:
 - English → USD
 - Русский → RUB
-- Deutsch/Français/Español → EUR
-- 中文 → CNY
-- 日本語 → JPY
-- 한국어 → KRW
-- Português → BRL
-- العربية → AED
 
 ## 🔧 Technical Details
 
@@ -234,27 +218,16 @@ The system automatically suggests currency based on language:
 - No network requests for translations
 - Minimal overhead (<5KB per language file gzipped)
 
-## 📝 TODO: Expand Translations
+## 📝 Adding New Languages
 
-To complete translations for all languages:
+To add support for additional languages in the future:
 
-1. **Spanish (es.json)**: Copy en.json and translate all values
-2. **German (de.json)**: Copy en.json and translate all values
-3. **French (fr.json)**: Copy en.json and translate all values
-4. **Chinese (zh.json)**: Copy en.json and translate all values
-5. **Japanese (ja.json)**: Copy en.json and translate all values
-6. **Korean (ko.json)**: Copy en.json and translate all values
-7. **Portuguese (pt.json)**: Copy en.json and translate all values
-8. **Arabic (ar.json)**: Copy en.json and translate all values
-
-### Translation Template
-```bash
-# Copy English as template
-cp src/locales/en.json src/locales/[lang].json
-
-# Translate all values (keep keys as-is)
-# Use professional translation service or native speaker
-```
+1. Create new translation file in `src/locales/[lang].json`
+2. Copy structure from `en.json` or `ru.json`
+3. Translate all values (keep keys exactly as-is)
+4. Add language to `SUPPORTED_LANGUAGES` in `RegionContext.tsx`
+5. Add language mapping in `LANGUAGE_TO_CURRENCY`
+6. Import and add to `translations` object in `useTranslation.ts`
 
 ## 🎨 Best Practices
 

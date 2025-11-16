@@ -105,10 +105,6 @@ UI updates instantly!
 - Выход
 - Регистрация
 
-**Other Languages (8):**
-- Currently fallback to English
-- Ready for translation
-- Same instant switching will work
 
 ### Debugging
 
@@ -161,15 +157,14 @@ That's it! Component will automatically re-render when language changes.
 ### Verified Working
 
 - ✅ NavBar instant translation
-- ✅ All 10 languages supported
-- ✅ Fallback to English for untranslated languages
+- ✅ English and Russian fully supported
 - ✅ No page reload needed
 - ✅ Reactive hooks architecture
-- ✅ Build successful (11.15s)
+- ✅ Build successful
 
 ### Notes
 
 - Language preference is saved in localStorage (via RegionContext)
 - On page reload, last selected language is restored
-- Currency also changes automatically with language
+- Currency changes automatically with language (USD for English, RUB for Russian)
 - All future pages/components using `t()` will auto-translate
