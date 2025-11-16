@@ -42,6 +42,7 @@ export default function RecommendationsPage() {
   const [generalOrders, setGeneralOrders] = useState<Order[]>([]);
   const [skillsWarning, setSkillsWarning] = useState('');
   const [specialtyWarning, setSpecialtyWarning] = useState('');
+  const [showingFallbackOrders, setShowingFallbackOrders] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -153,11 +154,69 @@ export default function RecommendationsPage() {
 
       if (error) throw error;
 
-      setRecommendations(data || []);
+      if (!data || data.length === 0) {
+        setShowingFallbackOrders(true);
+        await loadFallbackOrders();
+      } else {
+        setShowingFallbackOrders(false);
+        setRecommendations(data || []);
+      }
     } catch (err) {
       console.error('Error loading recommendations:', err);
+      setShowingFallbackOrders(true);
+      await loadFallbackOrders();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFallbackOrders = async () => {
+    if (!user || !profile) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, title, description, budget, created_at, status')
+        .eq('status', 'open')
+        .neq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      let filteredOrders = data || [];
+      const skills = profile?.skills || [];
+
+      if (skills.length > 0) {
+        const skillsLower = skills.map((s: string) => s.toLowerCase());
+
+        const matchedOrders = filteredOrders.filter(order => {
+          const titleLower = order.title.toLowerCase();
+          const descLower = (order.description || '').toLowerCase();
+
+          return skillsLower.some((skill: string) =>
+            titleLower.includes(skill) || descLower.includes(skill)
+          );
+        });
+
+        if (matchedOrders.length > 0) {
+          filteredOrders = matchedOrders;
+        }
+      }
+
+      const shuffled = filteredOrders.sort(() => Math.random() - 0.5).slice(0, 20);
+
+      const formattedOrders = shuffled.map(order => ({
+        id: crypto.randomUUID(),
+        order_id: order.id,
+        match_score: 50,
+        match_reasons: [],
+        order: order
+      }));
+
+      setRecommendations(formattedOrders);
+    } catch (err) {
+      console.error('Error loading fallback orders:', err);
     }
   };
 
@@ -226,14 +285,13 @@ export default function RecommendationsPage() {
       <>
         {(skillsWarning || specialtyWarning) && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 mx-4 mt-4 rounded-lg">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <AlertCircle className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  {skillsWarning && <div>{skillsWarning}</div>}
-                  {specialtyWarning && <div className="mt-1">{specialtyWarning}</div>}
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-yellow-700 break-words">
+                  {skillsWarning && <span>{skillsWarning}</span>}
+                  {skillsWarning && specialtyWarning && <span className="mx-1">•</span>}
+                  {specialtyWarning && <span>{specialtyWarning}</span>}
                 </p>
               </div>
             </div>
@@ -388,14 +446,13 @@ export default function RecommendationsPage() {
     <div className="min-h-screen bg-gray-50">
       {(skillsWarning || specialtyWarning) && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mt-4 rounded-lg">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-yellow-400" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                {skillsWarning && <div>{skillsWarning}</div>}
-                {specialtyWarning && <div className="mt-1">{specialtyWarning}</div>}
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-yellow-700 break-words">
+                {skillsWarning && <span>{skillsWarning}</span>}
+                {skillsWarning && specialtyWarning && <span className="mx-1">•</span>}
+                {specialtyWarning && <span>{specialtyWarning}</span>}
               </p>
             </div>
           </div>
@@ -407,7 +464,12 @@ export default function RecommendationsPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold mb-2">Рекомендации заказов</h1>
-              <p className="text-gray-600">AI подобрал для вас {recommendations.length} подходящих заказов</p>
+              <p className="text-gray-600">
+                {showingFallbackOrders
+                  ? `Кажется для вас нет ничего подходящего, но возможно эти объявления вам подойдут`
+                  : `AI подобрал для вас ${recommendations.length} подходящих заказов`
+                }
+              </p>
             </div>
 
             <div className="flex items-center gap-4">
@@ -484,16 +546,18 @@ export default function RecommendationsPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {rec.match_reasons.map((reason, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-[#3F7F6E]/10 text-[#3F7F6E] px-3 py-1 rounded-full text-xs font-medium"
-                    >
-                      {reason.value}
-                    </div>
-                  ))}
-                </div>
+                {rec.match_reasons && rec.match_reasons.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {rec.match_reasons.map((reason, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#3F7F6E]/10 text-[#3F7F6E] px-3 py-1 rounded-full text-xs font-medium"
+                      >
+                        {reason.value}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </a>
             ))}
           </div>
