@@ -264,8 +264,7 @@ export default function NavBar() {
         <div className="flex items-center gap-2 xs-375:gap-3">
           <Sparkles className="h-4 w-4 xs-375:h-5 xs-375:w-5 text-[#6FE7C8]" />
           <a href="#/" className="font-bold text-sm xs-375:text-base tracking-tight hover:text-[#6FE7C8] transition">
-            <span className="hidden xs-390:inline">FreelanceHub</span>
-            <span className="inline xs-390:hidden">FH</span>
+            TaskHub
           </a>
           <Badge className="ml-1 xs-375:ml-2 text-xs" variant="secondary">beta</Badge>
         </div>

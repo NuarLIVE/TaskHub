@@ -506,9 +506,9 @@ export default function MarketPage() {
                       </div>
                       <div className="text-sm text-[#3F7F6E] line-clamp-2">{item.description}</div>
                     </CardContent>
-                    <div className="flex items-center justify-between px-6 py-4 border-t">
+                    <div className="flex flex-col xs-414:flex-row items-start xs-414:items-center justify-between gap-3 xs-414:gap-0 px-6 py-4 border-t">
                       <div
-                        className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer"
+                        className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer w-full xs-414:w-auto"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigateToProfile(item.user_id, user?.id);
@@ -518,17 +518,17 @@ export default function MarketPage() {
                           <img
                             src={optimizeImage(profiles[item.user_id].avatar_url, 28, 85)}
                             alt={profiles[item.user_id].name}
-                            className="h-7 w-7 rounded-full object-cover"
+                            className="h-7 w-7 rounded-full object-cover flex-shrink-0"
                             loading="lazy"
                           />
                         ) : (
-                          <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium">
+                          <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium flex-shrink-0">
                             {profiles[item.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
                           </div>
                         )}
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-medium">{profiles[item.user_id]?.name || 'Пользователь'}</span>
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-medium truncate">{profiles[item.user_id]?.name || 'Пользователь'}</span>
                             <StarRating
                               rating={profiles[item.user_id]?.avg_rating || 0}
                               reviewsCount={profiles[item.user_id]?.reviews_count || 0}
