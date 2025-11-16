@@ -83,13 +83,36 @@ Deno.serve(async (req: Request) => {
     const totalDeals = userDeals?.length || 0;
     const avgRating = profile.rating || 0;
 
-    const avgCompletionTime = userDeals && userDeals.length > 0
-      ? userDeals.reduce((sum, deal) => {
-          const start = new Date(deal.created_at).getTime();
-          const end = new Date(deal.updated_at).getTime();
-          return sum + (end - start) / (1000 * 60 * 60 * 24);
-        }, 0) / userDeals.length
-      : 7;
+    const specialty = (profile.specialty || profile.category || "").toLowerCase();
+    const skills = Array.isArray(profile.skills) ? profile.skills.map((s: string) => s.toLowerCase()) : [];
+
+    const categoryKeywords: Record<string, string[]> = {
+      "unity": ["unity", "игр", "game", "геймдев", "gamedev", "3d", "vr", "ar", "шутер", "мобильн"],
+      "godot": ["godot", "игр", "game", "2d", "платформер"],
+      "дизайн": ["дизайн", "design", "ui", "ux", "figma", "photoshop", "иллюстрац", "логотип", "брендинг", "ландшафт", "интерьер"],
+      "веб": ["веб", "web", "сайт", "лендинг", "landing", "react", "vue", "angular", "frontend", "backend"],
+      "мобильн": ["мобильн", "mobile", "android", "ios", "flutter", "react native"],
+      "разработк": ["разработк", "программирован", "backend", "frontend", "fullstack", "api", "сервер"],
+      "маркетинг": ["маркетинг", "marketing", "smm", "seo", "реклам", "продвижени"],
+      "копирайтинг": ["копирайтинг", "контент", "статьи", "тексты", "редактур"],
+      "видео": ["видео", "монтаж", "editing", "after effects", "premiere"],
+      "3d": ["3d", "моделирование", "blender", "maya", "cinema 4d", "рендер"],
+    };
+
+    const findMatchingCategories = (text: string): string[] => {
+      const textLower = text.toLowerCase();
+      const matches: string[] = [];
+
+      for (const [category, keywords] of Object.entries(categoryKeywords)) {
+        if (keywords.some(keyword => textLower.includes(keyword))) {
+          matches.push(category);
+        }
+      }
+
+      return matches;
+    };
+
+    const userCategories = findMatchingCategories(specialty + " " + skills.join(" "));
 
     const recommendations = [];
 
@@ -97,18 +120,28 @@ Deno.serve(async (req: Request) => {
       let score = 0;
       const reasons = [];
 
-      if (profile.skills && order.title) {
-        const skillsArray = Array.isArray(profile.skills) ? profile.skills : [];
+      const orderText = `${order.title} ${order.description || ""}`;
+      const orderCategories = findMatchingCategories(orderText);
+
+      if (orderCategories.length > 0 && userCategories.length > 0) {
+        const categoryMatches = orderCategories.filter(cat => userCategories.includes(cat));
+        if (categoryMatches.length > 0) {
+          score += 35;
+          reasons.push({ type: "specialty", value: `Соответствует вашей специальности: ${categoryMatches.join(", ")}` });
+        }
+      }
+
+      if (skills.length > 0) {
         const titleLower = order.title.toLowerCase();
         const descLower = (order.description || "").toLowerCase();
-        
-        const matchingSkills = skillsArray.filter((skill: string) =>
-          titleLower.includes(skill.toLowerCase()) ||
-          descLower.includes(skill.toLowerCase())
+
+        const matchingSkills = skills.filter((skill: string) =>
+          titleLower.includes(skill) ||
+          descLower.includes(skill)
         );
 
         if (matchingSkills.length > 0) {
-          score += 30;
+          score += 25;
           reasons.push({ type: "skills", value: `Совпадают навыки: ${matchingSkills.join(", ")}` });
         }
       }
@@ -116,42 +149,29 @@ Deno.serve(async (req: Request) => {
       if (order.budget && avgAmount > 0) {
         const budgetDiff = Math.abs(order.budget - avgAmount) / avgAmount;
         if (budgetDiff < 0.3) {
-          score += 25;
+          score += 20;
           reasons.push({ type: "budget", value: "Бюджет соответствует вашей средней сумме работы" });
         } else if (budgetDiff < 0.5) {
-          score += 15;
+          score += 10;
           reasons.push({ type: "budget", value: "Бюджет близок к вашей средней сумме" });
         }
       }
 
       if (totalDeals > 5) {
-        score += 15;
+        score += 10;
         reasons.push({ type: "experience", value: `У вас ${totalDeals} завершенных сделок` });
       } else if (totalDeals > 2) {
-        score += 10;
+        score += 5;
       }
 
       if (avgRating >= 4.5) {
-        score += 15;
+        score += 10;
         reasons.push({ type: "rating", value: `Высокий рейтинг ${avgRating.toFixed(1)}` });
       } else if (avgRating >= 4.0) {
-        score += 10;
+        score += 5;
       }
 
-      if (order.category_id && profile.category) {
-        const { data: orderCategory } = await supabase
-          .from("categories")
-          .select("name")
-          .eq("id", order.category_id)
-          .single();
-
-        if (orderCategory && orderCategory.name === profile.category) {
-          score += 20;
-          reasons.push({ type: "category", value: "Ваша основная специализация" });
-        }
-      }
-
-      if (score >= 40) {
+      if (score >= 30) {
         recommendations.push({
           user_id: user.id,
           order_id: order.id,
