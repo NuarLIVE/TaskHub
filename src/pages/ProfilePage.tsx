@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [helpfulVotes, setHelpfulVotes] = useState<Set<string>>(new Set());
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [previewType, setPreviewType] = useState<'order' | 'task' | 'portfolio'>('order');
@@ -74,17 +75,26 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      loadUserProfile();
-      loadStatistics();
-      if (tab === 'market') {
-        loadUserMarketItems();
-      } else if (tab === 'portfolio') {
-        loadPortfolioProjects();
-      } else if (tab === 'reviews') {
-        loadReviews();
-      }
+      loadInitialData();
     }
   }, [user, tab]);
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    try {
+      await loadUserProfile();
+      await loadStatistics();
+      if (tab === 'market') {
+        await loadUserMarketItems();
+      } else if (tab === 'portfolio') {
+        await loadPortfolioProjects();
+      } else if (tab === 'reviews') {
+        await loadReviews();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -554,6 +564,17 @@ export default function ProfilePage() {
       console.error('Failed to copy:', error);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-4" />
+          <p className="text-gray-600">Загрузка профиля...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">
