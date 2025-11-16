@@ -63,7 +63,8 @@ export default function RecommendationsPage() {
   useEffect(() => {
     if (hasSubscription !== null && profile) {
       if (hasSubscription) {
-        loadRecommendations();
+        // Auto-generate recommendations on page entry
+        generateRecommendations();
       } else {
         loadGeneralOrders();
       }

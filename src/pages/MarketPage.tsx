@@ -25,7 +25,7 @@ const pageVariants = {
 
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 21;
 
 export default function MarketPage() {
   const { user } = useAuth();
@@ -128,6 +128,9 @@ export default function MarketPage() {
     setLoading(true);
 
     try {
+      // Close expired orders first
+      await getSupabase().rpc('close_expired_orders');
+
       let ordersQuery = getSupabase()
         .from('orders')
         .select('*')
