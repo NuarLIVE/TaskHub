@@ -3,25 +3,27 @@ import { useRegion } from '../contexts/RegionContext';
 
 interface PriceDisplayProps {
   amount: number;
-  fromCurrency: string;
+  fromCurrency?: string;
+  currency?: string;
   className?: string;
   showRange?: boolean;
   maxAmount?: number;
   discount?: number;
 }
 
-export default function PriceDisplay({ amount, fromCurrency, className = '', showRange = false, maxAmount, discount }: PriceDisplayProps) {
+export default function PriceDisplay({ amount, fromCurrency, currency, className = '', showRange = false, maxAmount, discount }: PriceDisplayProps) {
   const { formatPriceWithOriginal } = useRegion();
+  const actualCurrency = fromCurrency || currency || 'USD';
 
   if (showRange && maxAmount !== undefined) {
-    const minPrice = formatPriceWithOriginal(amount, fromCurrency);
-    const maxPrice = formatPriceWithOriginal(maxAmount, fromCurrency);
+    const minPrice = formatPriceWithOriginal(amount, actualCurrency);
+    const maxPrice = formatPriceWithOriginal(maxAmount, actualCurrency);
 
     if (discount && discount > 0) {
       const discountedMin = amount * (1 - discount / 100);
       const discountedMax = maxAmount * (1 - discount / 100);
-      const discountedMinPrice = formatPriceWithOriginal(discountedMin, fromCurrency);
-      const discountedMaxPrice = formatPriceWithOriginal(discountedMax, fromCurrency);
+      const discountedMinPrice = formatPriceWithOriginal(discountedMin, actualCurrency);
+      const discountedMaxPrice = formatPriceWithOriginal(discountedMax, actualCurrency);
 
       return (
         <div className={`inline-flex items-center gap-2 ${className}`}>
@@ -72,11 +74,11 @@ export default function PriceDisplay({ amount, fromCurrency, className = '', sho
     );
   }
 
-  const priceData = formatPriceWithOriginal(amount, fromCurrency);
+  const priceData = formatPriceWithOriginal(amount, actualCurrency);
 
   if (discount && discount > 0) {
     const discountedAmount = amount * (1 - discount / 100);
-    const discountedPrice = formatPriceWithOriginal(discountedAmount, fromCurrency);
+    const discountedPrice = formatPriceWithOriginal(discountedAmount, actualCurrency);
 
     return (
       <div className={`inline-flex items-center gap-2 ${className}`}>

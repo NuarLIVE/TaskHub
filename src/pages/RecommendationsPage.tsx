@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Calendar, TrendingUp, Lock, Award, AlertCircle } from 'lucide-react';
+import { Sparkles, RefreshCw, Calendar, TrendingUp, Lock, Award, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import PriceDisplay from '@/components/PriceDisplay';
 import SubscriptionPurchaseDialog from '@/components/SubscriptionPurchaseDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface Recommendation {
   id: string;
@@ -47,6 +49,8 @@ export default function RecommendationsPage() {
   const [skillsWarning, setSkillsWarning] = useState('');
   const [specialtyWarning, setSpecialtyWarning] = useState('');
   const [showingFallbackOrders, setShowingFallbackOrders] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -225,13 +229,31 @@ export default function RecommendationsPage() {
 
       const shuffled = filteredOrders.sort(() => Math.random() - 0.5).slice(0, 20);
 
-      const formattedOrders = shuffled.map(order => ({
-        id: crypto.randomUUID(),
-        order_id: order.id,
-        match_score: 50,
-        match_reasons: [],
-        order: order
-      }));
+      const formattedOrders = shuffled.map(order => {
+        const titleLower = order.title.toLowerCase();
+        const descLower = (order.description || '').toLowerCase();
+        const tagsLower = (order.tags || []).map((t: string) => t.toLowerCase()).join(' ');
+        const searchText = `${titleLower} ${descLower} ${tagsLower}`;
+
+        let matchScore = 40;
+        const matchingSkills = skillsLower.filter((skill: string) => searchText.includes(skill));
+        const matchesSpecialty = specialtyLower && searchText.includes(specialtyLower);
+
+        if (matchingSkills.length > 0) {
+          matchScore += Math.min(40, matchingSkills.length * 10);
+        }
+        if (matchesSpecialty) {
+          matchScore += 20;
+        }
+
+        return {
+          id: crypto.randomUUID(),
+          order_id: order.id,
+          match_score: Math.min(100, matchScore),
+          match_reasons: [],
+          order: order
+        };
+      });
 
       setRecommendations(formattedOrders);
     } catch (err) {
@@ -497,7 +519,7 @@ export default function RecommendationsPage() {
               <h1 className="text-2xl font-bold mb-2">Рекомендации заказов</h1>
               <p className="text-gray-600">
                 {showingFallbackOrders
-                  ? `Кажется для вас нет ничего подходящего, но возможно эти объявления вам подойдут`
+                  ? `Мы нашли для вас следующие объявления`
                   : `AI подобрал для вас ${recommendations.length} подходящих заказов`
                 }
               </p>
@@ -552,9 +574,12 @@ export default function RecommendationsPage() {
         ) : (
           <div className="grid gap-4">
             {recommendations.map((rec) => (
-              <a
+              <div
                 key={rec.id}
-                href={`#/orders/${rec.order.id}`}
+                onClick={() => {
+                  setPreviewItem(rec.order);
+                  setPreviewOpen(true);
+                }}
                 className="block bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-4">
@@ -592,11 +617,66 @@ export default function RecommendationsPage() {
                     ))}
                   </div>
                 )}
-              </a>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          {previewItem && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{previewItem.title}</DialogTitle>
+                <DialogDescription className="flex items-center gap-2 mt-2 flex-wrap">
+                  <Badge variant="secondary">{previewItem.category || 'Разработка'}</Badge>
+                  {previewItem.subcategory && <Badge variant="outline">{previewItem.subcategory}</Badge>}
+                  {previewItem.engagement && <Badge variant="outline">{previewItem.engagement}</Badge>}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div>
+                  <div className="text-sm font-medium mb-2">Описание</div>
+                  <p className="text-sm text-[#3F7F6E]">{previewItem.description}</p>
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-2">Теги</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(previewItem.tags || []).map((t: string) => (
+                      <Badge key={t} variant="outline">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <div>
+                    <div className="text-sm text-gray-500">Бюджет</div>
+                    <div className="text-2xl font-bold text-[#3F7F6E]">
+                      <PriceDisplay amount={previewItem.price_min} currency={previewItem.currency} />
+                      {previewItem.price_max > previewItem.price_min && (
+                        <span> - <PriceDisplay amount={previewItem.price_max} currency={previewItem.currency} /></span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+                  Закрыть
+                </Button>
+                <Button
+                  onClick={() => {
+                    window.location.hash = `/proposals/create?orderId=${previewItem.id}`;
+                  }}
+                  className="bg-[#3F7F6E] hover:bg-[#2F6F5E]"
+                >
+                  Откликнуться
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
