@@ -185,60 +185,90 @@ export default function AdminFinance() {
           <CardHeader className="pb-4 border-b">
             <CardTitle>Последние транзакции</CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-200 text-left text-sm text-gray-600">
-                    <th className="pb-4 pt-2 font-semibold">Дата</th>
-                    <th className="pb-4 pt-2 font-semibold">Пользователь</th>
-                    <th className="pb-4 pt-2 font-semibold">Тип</th>
-                    <th className="pb-4 pt-2 font-semibold text-right">Сумма</th>
-                    <th className="pb-4 pt-2 font-semibold">Описание</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {transactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-gray-500">
-                        Нет транзакций
-                      </td>
-                    </tr>
-                  ) : (
-                    transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="py-4 text-sm text-gray-600">
-                          {formatDate(tx.created_at)}
-                        </td>
-                        <td className="py-4 text-sm">
+          <CardContent className="p-3 sm:p-6">
+            {transactions.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                Нет транзакций
+              </div>
+            ) : (
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b-2 border-gray-200 text-left text-sm text-gray-600">
+                        <th className="pb-4 pt-2 font-semibold">Дата</th>
+                        <th className="pb-4 pt-2 font-semibold">Пользователь</th>
+                        <th className="pb-4 pt-2 font-semibold">Тип</th>
+                        <th className="pb-4 pt-2 font-semibold text-right">Сумма</th>
+                        <th className="pb-4 pt-2 font-semibold">Описание</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {transactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-4 text-sm text-gray-600">
+                            {formatDate(tx.created_at)}
+                          </td>
+                          <td className="py-4 text-sm">
+                            {tx.profile ? (
+                              <div>
+                                <p className="font-medium text-gray-900">{tx.profile.name}</p>
+                                <p className="text-xs text-gray-500">{tx.profile.email}</p>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">—</span>
+                            )}
+                          </td>
+                          <td className="py-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.entry_type)} bg-gray-50`}>
+                              {getTypeLabel(tx.entry_type)}
+                            </span>
+                          </td>
+                          <td className="py-4 text-right">
+                            <span className={`font-semibold text-base ${Number(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {Number(tx.amount) >= 0 ? '+' : ''}${(Number(tx.amount) / 100).toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="py-4 text-sm text-gray-600 max-w-xs truncate">
+                            {tx.description || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="md:hidden space-y-3">
+                  {transactions.map((tx) => (
+                    <div key={tx.id} className="p-4 border border-gray-200 rounded-lg bg-white hover:border-[#6FE7C8]/50 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
                           {tx.profile ? (
                             <div>
-                              <p className="font-medium text-gray-900">{tx.profile.name}</p>
-                              <p className="text-xs text-gray-500">{tx.profile.email}</p>
+                              <p className="font-medium text-gray-900 text-sm">{tx.profile.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{tx.profile.email}</p>
                             </div>
                           ) : (
-                            <span className="text-gray-500">—</span>
+                            <span className="text-gray-500 text-sm">—</span>
                           )}
-                        </td>
-                        <td className="py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getTypeColor(tx.entry_type)} bg-gray-50`}>
-                            {getTypeLabel(tx.entry_type)}
-                          </span>
-                        </td>
-                        <td className="py-4 text-right">
-                          <span className={`font-semibold text-base ${Number(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {Number(tx.amount) >= 0 ? '+' : ''}${(Number(tx.amount) / 100).toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="py-4 text-sm text-gray-600 max-w-xs truncate">
-                          {tx.description || '—'}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                        <span className={`font-semibold text-base ml-2 ${Number(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {Number(tx.amount) >= 0 ? '+' : ''}${(Number(tx.amount) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                        <span>{formatDate(tx.created_at)}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTypeColor(tx.entry_type)} bg-gray-50`}>
+                          {getTypeLabel(tx.entry_type)}
+                        </span>
+                      </div>
+                      {tx.description && (
+                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">{tx.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
