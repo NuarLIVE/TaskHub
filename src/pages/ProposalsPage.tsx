@@ -577,7 +577,7 @@ export default function ProposalsPage() {
         transition={pageTransition}
         className="min-h-screen bg-background"
     >
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+      <section className="mx-auto max-w-7xl px-3 xs-375:px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Отклики</h1>
 
         <div className="flex gap-2 mb-6">
@@ -613,15 +613,15 @@ export default function ProposalsPage() {
               >
                 <CardContent className="p-4 xs-375:p-6 relative">
                   {proposal.source === 'recommendation' && (
-                    <div className="mb-3 sm:mb-0 sm:absolute sm:top-4 sm:right-4 group">
+                    <div className="mb-4 group">
                       <div className="flex items-center gap-1.5 xs-375:gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2.5 xs-375:px-3 py-1.5 rounded-full shadow-md text-xs xs-375:text-sm w-fit">
                         <Award className="w-3.5 h-3.5 xs-375:w-4 xs-375:h-4 flex-shrink-0" />
                         <span className="font-semibold">AI рекомендация</span>
                         <Info className="w-3.5 h-3.5 xs-375:w-4 xs-375:h-4 flex-shrink-0" />
                       </div>
-                      <div className="hidden sm:block absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
+                      <div className="hidden sm:block absolute top-full left-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
                         <p>{activeTab === 'sent' ? 'Платформа посчитала вас наиболее подходящим исполнителем для задачи.' : 'Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.'}</p>
-                        <div className="absolute bottom-full right-6 mb-[-4px]">
+                        <div className="absolute bottom-full left-6 mb-[-4px]">
                           <div className="w-2 h-2 bg-gray-900 rotate-45"></div>
                         </div>
                       </div>
@@ -730,13 +730,13 @@ export default function ProposalsPage() {
 
                       {/* Вторая строка: Отклонить и Подробнее */}
                       {activeTab === 'received' && proposal.status === 'pending' ? (
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleReject(proposal.id)}
                             disabled={acceptingProposal === proposal.id}
-                            className="flex-1 px-3 xs-375:px-4"
+                            className="px-3 xs-375:px-4"
                           >
                             <X className="h-4 w-4 mr-1" />
                             Отклонить
@@ -745,7 +745,6 @@ export default function ProposalsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => showDetails(proposal)}
-                            className="flex-1"
                           >
                             Подробнее
                           </Button>
