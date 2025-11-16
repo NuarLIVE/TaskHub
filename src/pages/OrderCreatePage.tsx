@@ -107,6 +107,18 @@ export default function OrderCreatePage() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    const supabase = getSupabase();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_muted')
+      .eq('id', user?.id)
+      .single();
+
+    if (profile?.is_muted) {
+      alert('Вы не можете создавать заказы, так как ваш аккаунт замьючен');
+      return;
+    }
+
     if (!isAuthenticated) {
       alert('Войдите в систему для создания заказа');
       window.location.hash = '#/login';

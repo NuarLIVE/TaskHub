@@ -156,6 +156,18 @@ export default function TaskCreatePage() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    const supabase = getSupabase();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_muted')
+      .eq('id', user?.id)
+      .single();
+
+    if (profile?.is_muted) {
+      alert('Вы не можете создавать задания, так как ваш аккаунт замьючен');
+      return;
+    }
+
     if (!isAuthenticated) {
       alert('Войдите в систему для создания объявления');
       window.location.hash = '#/login';

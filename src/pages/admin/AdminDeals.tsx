@@ -174,13 +174,14 @@ export default function AdminDeals() {
 
         <Card className="border-[#6FE7C8]/20 shadow-md">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <CardTitle>Все сделки</CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant={filter === 'all' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilter('all')}
+                  className="bg-opacity-90 hover:bg-opacity-100 min-w-[80px]"
                 >
                   Все
                 </Button>
@@ -188,6 +189,7 @@ export default function AdminDeals() {
                   variant={filter === 'active' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilter('active')}
+                  className="bg-opacity-90 hover:bg-opacity-100 min-w-[100px]"
                 >
                   Активные
                 </Button>
@@ -195,6 +197,7 @@ export default function AdminDeals() {
                   variant={filter === 'completed' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilter('completed')}
+                  className="bg-opacity-90 hover:bg-opacity-100 min-w-[120px]"
                 >
                   Завершенные
                 </Button>

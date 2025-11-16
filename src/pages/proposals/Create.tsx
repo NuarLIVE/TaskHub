@@ -227,6 +227,17 @@ export default function ProposalsCreate() {
       return;
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_muted')
+      .eq('id', user?.id)
+      .single();
+
+    if (profile?.is_muted) {
+      alert('Вы не можете отправлять отклики, так как ваш аккаунт замьючен');
+      return;
+    }
+
     if (type === 'order' && proposalLimitData) {
       const monthlyRemaining = Math.max(0, 90 - proposalLimitData.used);
       const totalAvailable = monthlyRemaining + proposalLimitData.purchased;

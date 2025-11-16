@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Users, Shield, Ban, CheckCircle } from 'lucide-react';
+import { Search, Users, Shield, Ban, CheckCircle, VolumeX, Volume2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 const pageVariants = { initial: { opacity: 0, y: 16 }, in: { opacity: 1, y: 0 }, out: { opacity: 0, y: -16 } };
 const pageTransition = { type: 'spring' as const, stiffness: 140, damping: 20, mass: 0.9 };
 
 export default function AdminUsers() {
+  const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'ADMIN' | 'FREELANCER' | 'CLIENT'>('all');
@@ -65,6 +67,48 @@ export default function AdminUsers() {
       CLIENT: 'Заказчик'
     };
     return labels[role] || role;
+  };
+
+  const handleMuteUser = async (userId: string, currentMuteStatus: boolean) => {
+    if (!user) return;
+
+    const newStatus = !currentMuteStatus;
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_muted: newStatus,
+        muted_at: newStatus ? new Date().toISOString() : null,
+        muted_by: newStatus ? user.id : null,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      alert('Ошибка при изменении статуса мьюта');
+      return;
+    }
+
+    await loadUsers();
+  };
+
+  const handleBanUser = async (userId: string, currentBanStatus: boolean) => {
+    if (!user) return;
+
+    const newStatus = !currentBanStatus;
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: newStatus,
+        banned_at: newStatus ? new Date().toISOString() : null,
+        banned_by: newStatus ? user.id : null,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      alert('Ошибка при изменении статуса бана');
+      return;
+    }
+
+    await loadUsers();
   };
 
   return (
@@ -142,55 +186,83 @@ export default function AdminUsers() {
           ) : (
             filteredUsers.map((user) => (
               <Card key={user.id} className="border-[#6FE7C8]/20 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#6FE7C8] to-[#3F7F6E] flex items-center justify-center text-white font-semibold">
+                <CardContent className="p-3 sm:p-4 md:p-6">
+                  <div className="flex flex-col sm:flex-row items-start gap-3">
+                    <div className="flex items-start gap-3 flex-1 w-full">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-[#6FE7C8] to-[#3F7F6E] flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">{user.name}</h3>
-                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getRoleBadge(user.role)}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{user.name}</h3>
+                          <span className={`px-1.5 py-0.5 text-[10px] sm:text-xs font-medium rounded-full ${getRoleBadge(user.role)}`}>
                             {getRoleLabel(user.role)}
                           </span>
                           {user.is_online && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                              <span className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></span>
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-green-100 text-green-800">
+                              <span className="h-1.5 w-1.5 rounded-full bg-green-600 animate-pulse"></span>
                               Онлайн
                             </span>
                           )}
-                        </div>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                        {user.bio && (
-                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{user.bio}</p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <span>Регистрация: {formatDate(user.created_at)}</span>
-                          {user.last_seen && (
-                            <span>Последняя активность: {formatDate(user.last_seen)}</span>
+                          {user.is_muted && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                              <VolumeX className="h-3 w-3" />
+                              Замьючен
+                            </span>
                           )}
-                          {user.rating && (
-                            <span className="flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3 text-[#3F7F6E]" />
-                              Рейтинг: {user.rating}/5
+                          {user.is_banned && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-red-100 text-red-800">
+                              <Ban className="h-3 w-3" />
+                              Забанен
                             </span>
                           )}
                         </div>
-                        {user.balance !== undefined && user.balance !== null && (
-                          <p className="text-sm font-medium text-[#3F7F6E] mt-2">
-                            Баланс: ${Number(user.balance).toFixed(2)}
-                          </p>
+                        <p className="text-xs sm:text-sm text-gray-600 truncate">{user.email}</p>
+                        {user.bio && (
+                          <p className="text-xs sm:text-sm text-gray-500 mt-1 line-clamp-1 sm:line-clamp-2">{user.bio}</p>
                         )}
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-[10px] sm:text-xs text-gray-500">
+                          <span className="truncate">Рег: {formatDate(user.created_at)}</span>
+                          {user.rating && (
+                            <span className="flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3 text-[#3F7F6E]" />
+                              {user.rating}/5
+                            </span>
+                          )}
+                          {user.balance !== undefined && user.balance !== null && (
+                            <span className="font-medium text-[#3F7F6E]">
+                              ${Number(user.balance).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => window.location.hash = `#/users/${user.id}`}
+                        className="text-xs flex-1 sm:flex-initial min-w-[70px]"
                       >
                         Профиль
+                      </Button>
+                      <Button
+                        variant={user.is_muted ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleMuteUser(user.id, user.is_muted)}
+                        className={`text-xs flex-1 sm:flex-initial min-w-[60px] ${user.is_muted ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+                        title={user.is_muted ? 'Размьютить' : 'Замьютить'}
+                      >
+                        {user.is_muted ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
+                      </Button>
+                      <Button
+                        variant={user.is_banned ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleBanUser(user.id, user.is_banned)}
+                        className={`text-xs flex-1 sm:flex-initial min-w-[60px] ${user.is_banned ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                        title={user.is_banned ? 'Разбанить' : 'Забанить'}
+                      >
+                        <Ban className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>

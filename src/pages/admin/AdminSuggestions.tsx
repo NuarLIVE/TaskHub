@@ -119,34 +119,44 @@ export default function AdminSuggestions() {
           <p className="text-[#3F7F6E] mt-2">Управление идеями и обратной связью от пользователей</p>
         </div>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <Button
             variant={filter === 'all' ? 'default' : 'outline'}
             onClick={() => setFilter('all')}
+            size="sm"
+            className="text-xs sm:text-sm px-2 sm:px-4"
           >
             Все
           </Button>
           <Button
             variant={filter === 'new' ? 'default' : 'outline'}
             onClick={() => setFilter('new')}
+            size="sm"
+            className="text-xs sm:text-sm px-2 sm:px-4"
           >
             Новые
           </Button>
           <Button
             variant={filter === 'under_review' ? 'default' : 'outline'}
             onClick={() => setFilter('under_review')}
+            size="sm"
+            className="text-xs sm:text-sm px-2 sm:px-4"
           >
             На рассмотрении
           </Button>
           <Button
             variant={filter === 'planned' ? 'default' : 'outline'}
             onClick={() => setFilter('planned')}
+            size="sm"
+            className="text-xs sm:text-sm px-2 sm:px-4"
           >
             Запланированные
           </Button>
           <Button
             variant={filter === 'implemented' ? 'default' : 'outline'}
             onClick={() => setFilter('implemented')}
+            size="sm"
+            className="text-xs sm:text-sm px-2 sm:px-4"
           >
             Реализованные
           </Button>
