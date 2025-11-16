@@ -952,7 +952,7 @@ export default function MyDealsPage() {
                              deal.status}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-3 mb-3">
+                        <div className="flex flex-wrap items-center gap-3 mb-3 pt-3 border-t">
                           <div
                             className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
                             onClick={() => navigateToProfile(deal.client_id, user?.id)}
@@ -981,9 +981,11 @@ export default function MyDealsPage() {
                           </div>
                         </div>
                         {deal.description && (
-                          <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
+                          <div className="pt-3 border-t">
+                            <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
+                          </div>
                         )}
-                        <div className="text-xs text-[#3F7F6E]">
+                        <div className="text-xs text-[#3F7F6E] pt-2 border-t">
                           Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
                         </div>
                       </div>

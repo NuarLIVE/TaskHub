@@ -423,7 +423,7 @@ export default function MarketPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3F7F6E]" />
                   <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск по названию или тегам" className="pl-9 h-11" />
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 xs-414:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <CategoryFilter
                     selectedCategories={selectedCategories}
                     onCategoriesChange={setSelectedCategories}
