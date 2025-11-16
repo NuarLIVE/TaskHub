@@ -948,81 +948,104 @@ export default function MyDealsPage() {
                     </div>
                   )}
                   <CardContent className="p-3 xs-375:p-4 sm:p-6 pt-8">
-                    <div className="mb-3">
-                      <h3 className="text-base xs-375:text-lg font-semibold mb-2 pr-2">{deal.title}</h3>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge variant="secondary" className="text-xs xs-375:text-sm">{deal.currency} {deal.price}</Badge>
-                        <Badge variant="outline" className="text-xs xs-375:text-sm">{deal.delivery_days} дней</Badge>
-                        <Badge className={`text-xs xs-375:text-sm ${
-                          deal.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          deal.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          deal.status === 'disputed' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {deal.status === 'in_progress' ? 'В работе' :
-                           deal.status === 'completed' ? 'Завершено' :
-                           deal.status === 'disputed' ? 'Спор' :
-                           deal.status}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-col xs-414:flex-row xs-414:flex-wrap items-start xs-414:items-center gap-2 xs-414:gap-3 mb-3 pt-3 border-t">
-                        <div
-                          className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
-                          onClick={() => navigateToProfile(deal.client_id, user?.id)}
-                        >
-                          {deal.client?.avatar_url ? (
-                            <img src={deal.client.avatar_url} alt="" className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs xs-375:text-sm font-medium">{deal.client?.name?.charAt(0)}</span>
-                            </div>
-                          )}
-                          <span className="text-xs xs-375:text-sm font-medium">Заказчик: {deal.client?.name || 'Пользователь'}</span>
+                    <div className="sm:flex sm:justify-between sm:items-start sm:mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-base xs-375:text-lg font-semibold mb-2">{deal.title}</h3>
+                        <div className="flex flex-wrap gap-2 mt-2 mb-3">
+                          <Badge variant="secondary">{deal.currency} {deal.price}</Badge>
+                          <Badge variant="outline">{deal.delivery_days} дней</Badge>
+                          <Badge className={
+                            deal.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                            deal.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            deal.status === 'disputed' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }>
+                            {deal.status === 'in_progress' ? 'В работе' :
+                             deal.status === 'completed' ? 'Завершено' :
+                             deal.status === 'disputed' ? 'Спор' :
+                             deal.status}
+                          </Badge>
                         </div>
-                        <div
-                          className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
-                          onClick={() => navigateToProfile(deal.freelancer_id, user?.id)}
-                        >
-                          {deal.freelancer?.avatar_url ? (
-                            <img src={deal.freelancer.avatar_url} alt="" className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs xs-375:text-sm font-medium">{deal.freelancer?.name?.charAt(0)}</span>
-                            </div>
-                          )}
-                          <span className="text-xs xs-375:text-sm font-medium">Исполнитель: {deal.freelancer?.name || 'Пользователь'}</span>
+                        <div className="flex flex-wrap items-center gap-3 mb-3 pt-3 border-t">
+                          <div
+                            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
+                            onClick={() => navigateToProfile(deal.client_id, user?.id)}
+                          >
+                            {deal.client?.avatar_url ? (
+                              <img src={deal.client.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">{deal.client?.name?.charAt(0)}</span>
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">Заказчик: {deal.client?.name || 'Пользователь'}</span>
+                          </div>
+                          <div
+                            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
+                            onClick={() => navigateToProfile(deal.freelancer_id, user?.id)}
+                          >
+                            {deal.freelancer?.avatar_url ? (
+                              <img src={deal.freelancer.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center">
+                                <span className="text-sm font-medium">{deal.freelancer?.name?.charAt(0)}</span>
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">Исполнитель: {deal.freelancer?.name || 'Пользователь'}</span>
+                          </div>
+                        </div>
+                        {deal.description && (
+                          <div className="pt-3 border-t">
+                            <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
+                          </div>
+                        )}
+                        <div className="text-xs text-[#3F7F6E] pt-2 border-t">
+                          Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
                         </div>
                       </div>
-                      {deal.description && (
-                        <div className="pt-3 border-t">
-                          <p className="text-xs xs-375:text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
-                        </div>
-                      )}
-                      <div className="text-[10px] xs-375:text-xs text-[#3F7F6E] pt-2 border-t">
-                        Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
-                      </div>
-                      <div className="flex flex-col xs-375:flex-row gap-2 mt-3 pt-3 border-t">
+                      <div className="hidden sm:flex sm:gap-2">
                         {deal.chat_id && (
                           <Button
                             variant="default"
                             size="sm"
                             onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
-                            className="w-full xs-375:w-auto text-xs xs-375:text-sm"
                           >
-                            <MessageSquare className="h-3 w-3 xs-375:h-4 xs-375:w-4 mr-1 xs-375:mr-2" />
+                            <MessageSquare className="h-4 w-4 mr-2" />
                             Перейти
                           </Button>
                         )}
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full xs-375:w-auto text-xs xs-375:text-sm"
+                          className="text-amber-600 border-amber-300 hover:bg-amber-50"
                           title="Начать спор"
                         >
-                          <AlertTriangle className="h-3 w-3 xs-375:h-4 xs-375:w-4 mr-1 xs-375:mr-2" />
+                          <AlertTriangle className="h-4 w-4 mr-2" />
                           Начать спор
                         </Button>
                       </div>
+                    </div>
+                    <div className="sm:hidden flex flex-col gap-2 mt-3 pt-3 border-t -mx-3 xs-375:-mx-4 px-3 xs-375:px-4 bg-gray-50">
+                      {deal.chat_id && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
+                          className="w-full"
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Перейти
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full bg-white"
+                        title="Начать спор"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Начать спор
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
