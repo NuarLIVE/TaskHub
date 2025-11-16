@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, Package, ListTodo, Eye, MessageSquare, Edit, Trash2, Pause, Play, ChevronDown, ChevronUp, Loader2, Briefcase, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +72,6 @@ export default function MyDealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
-  const [proposalPages, setProposalPages] = useState<Record<string, number>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -82,7 +81,6 @@ export default function MyDealsPage() {
     }
   }, [user]);
 
-  const PROPOSALS_PER_PAGE = 5;
 
   useEffect(() => {
     loadDeals();
@@ -330,31 +328,6 @@ export default function MyDealsPage() {
     }
   };
 
-  const changePage = (itemId: string, direction: 'next' | 'prev') => {
-    setProposalPages(prev => {
-      const currentPage = prev[itemId] || 1;
-      const totalPages = Math.ceil((proposals[itemId]?.length || 0) / PROPOSALS_PER_PAGE);
-
-      if (direction === 'next' && currentPage < totalPages) {
-        return { ...prev, [itemId]: currentPage + 1 };
-      } else if (direction === 'prev' && currentPage > 1) {
-        return { ...prev, [itemId]: currentPage - 1 };
-      }
-      return prev;
-    });
-  };
-
-  const getPaginatedProposals = (itemId: string) => {
-    const allProposals = proposals[itemId] || [];
-    const currentPage = proposalPages[itemId] || 1;
-    const startIdx = (currentPage - 1) * PROPOSALS_PER_PAGE;
-    const endIdx = startIdx + PROPOSALS_PER_PAGE;
-    return allProposals.slice(startIdx, endIdx);
-  };
-
-  const getTotalPages = (itemId: string) => {
-    return Math.ceil((proposals[itemId]?.length || 0) / PROPOSALS_PER_PAGE);
-  };
 
   const handlePauseResume = async (itemId: string, currentStatus: string, type: 'order' | 'task') => {
     const isPausing = currentStatus === 'open' || currentStatus === 'active';
@@ -577,20 +550,20 @@ export default function MyDealsPage() {
                       </div>
                     </div>
                     <p className="text-[#3F7F6E] mb-4 line-clamp-2 text-sm sm:text-base">{order.description}</p>
-                    <div className="flex flex-col xs-375:flex-row xs-375:justify-between xs-375:items-center gap-2 xs-375:gap-4 text-xs xs-375:text-sm mb-3">
-                      <div className="flex gap-3 xs-375:gap-4">
-                        <div className="flex items-center gap-1 text-[#3F7F6E]">
-                          <Eye className="h-3 w-3 xs-375:h-4 xs-375:w-4" />
-                          <span>{order.views_count || 0}</span>
+                    <div className="flex flex-col xs-375:flex-row xs-375:justify-between xs-375:items-center gap-2 xs-375:gap-4 text-sm xs-375:text-base mb-3">
+                      <div className="flex gap-4 xs-375:gap-5">
+                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
+                          <Eye className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
+                          <span className="font-medium">{order.views_count || 0}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-[#3F7F6E]">
-                          <MessageSquare className="h-3 w-3 xs-375:h-4 xs-375:w-4" />
-                          <span>{proposals[order.id]?.length || 0}</span>
+                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
+                          <MessageSquare className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
+                          <span className="font-medium">{proposals[order.id]?.length || 0}</span>
                         </div>
                       </div>
-                      <div className="text-[#3F7F6E] flex items-center gap-1">
+                      <div className="text-[#3F7F6E] flex items-center gap-1.5">
                         <span className="hidden xs-375:inline">Бюджет:</span>
-                        <span className="font-medium text-foreground">
+                        <span className="font-semibold text-foreground text-base xs-375:text-lg">
                           <PriceDisplay amount={order.price_min} maxAmount={order.price_max} fromCurrency={order.currency} showRange={true} />
                         </span>
                       </div>
@@ -626,7 +599,7 @@ export default function MyDealsPage() {
                             <p className="text-sm text-[#3F7F6E] text-center">Откликов пока нет</p>
                           ) : (
                             <>
-                              {getPaginatedProposals(order.id).map((proposal) => (
+                              {proposals[order.id].map((proposal) => (
                               <Card key={proposal.id}>
                                 <CardContent className="p-3 xs-375:p-4">
                                   <div className="mb-2">
@@ -697,29 +670,6 @@ export default function MyDealsPage() {
                                 </CardContent>
                               </Card>
                               ))}
-                              {getTotalPages(order.id) > 1 && (
-                                <div className="flex items-center justify-center gap-2 pt-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => changePage(order.id, 'prev')}
-                                  disabled={(proposalPages[order.id] || 1) === 1}
-                                >
-                                  <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-sm text-[#3F7F6E]">
-                                  Страница {proposalPages[order.id] || 1} из {getTotalPages(order.id)}
-                                </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => changePage(order.id, 'next')}
-                                  disabled={(proposalPages[order.id] || 1) === getTotalPages(order.id)}
-                                >
-                                  <ChevronRight className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              )}
                             </>
                           )}
                         </motion.div>
@@ -845,20 +795,20 @@ export default function MyDealsPage() {
                       </div>
                     </div>
                     <p className="text-[#3F7F6E] mb-4 line-clamp-2 text-sm sm:text-base">{task.description}</p>
-                    <div className="flex flex-col xs-375:flex-row xs-375:justify-between xs-375:items-center gap-2 xs-375:gap-4 text-xs xs-375:text-sm mb-3">
-                      <div className="flex gap-3 xs-375:gap-4">
-                        <div className="flex items-center gap-1 text-[#3F7F6E]">
-                          <Eye className="h-3 w-3 xs-375:h-4 xs-375:w-4" />
-                          <span>{task.views_count || 0}</span>
+                    <div className="flex flex-col xs-375:flex-row xs-375:justify-between xs-375:items-center gap-2 xs-375:gap-4 text-sm xs-375:text-base mb-3">
+                      <div className="flex gap-4 xs-375:gap-5">
+                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
+                          <Eye className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
+                          <span className="font-medium">{task.views_count || 0}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-[#3F7F6E]">
-                          <MessageSquare className="h-3 w-3 xs-375:h-4 xs-375:w-4" />
-                          <span>{proposals[task.id]?.length || 0}</span>
+                        <div className="flex items-center gap-1.5 text-[#3F7F6E]">
+                          <MessageSquare className="h-4 w-4 xs-375:h-5 xs-375:w-5" />
+                          <span className="font-medium">{proposals[task.id]?.length || 0}</span>
                         </div>
                       </div>
-                      <div className="text-[#3F7F6E] flex items-center gap-1">
+                      <div className="text-[#3F7F6E] flex items-center gap-1.5">
                         <span className="hidden xs-375:inline">Цена:</span>
-                        <span className="font-medium text-foreground">
+                        <span className="font-semibold text-foreground text-base xs-375:text-lg">
                           <PriceDisplay amount={task.price} fromCurrency={task.currency} />
                         </span>
                       </div>
@@ -894,7 +844,7 @@ export default function MyDealsPage() {
                             <p className="text-sm text-[#3F7F6E] text-center">Заказов пока нет</p>
                           ) : (
                             <>
-                              {getPaginatedProposals(task.id).map((proposal) => (
+                              {proposals[task.id].map((proposal) => (
                               <Card key={proposal.id}>
                                 <CardContent className="p-3 xs-375:p-4">
                                   <div className="mb-2">
@@ -965,29 +915,6 @@ export default function MyDealsPage() {
                                 </CardContent>
                               </Card>
                             ))}
-                            {getTotalPages(task.id) > 1 && (
-                              <div className="flex items-center justify-center gap-2 pt-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => changePage(task.id, 'prev')}
-                                  disabled={(proposalPages[task.id] || 1) === 1}
-                                >
-                                  <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-sm text-[#3F7F6E]">
-                                  Страница {proposalPages[task.id] || 1} из {getTotalPages(task.id)}
-                                </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => changePage(task.id, 'next')}
-                                  disabled={(proposalPages[task.id] || 1) === getTotalPages(task.id)}
-                                >
-                                  <ChevronRight className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              )}
                             </>
                           )}
                         </motion.div>
@@ -1011,89 +938,88 @@ export default function MyDealsPage() {
               deals.map((deal) => (
                 <Card key={deal.id} className="hover:shadow-lg transition-shadow relative overflow-hidden">
                   {deal.isMyOrder && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-[#6FE7C8] to-[#4ECDB0] text-white px-6 py-1 text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-[#6FE7C8] to-[#4ECDB0] text-white px-4 xs-375:px-6 py-1 text-[10px] xs-375:text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
                       {deal.order_id ? 'Ваш заказ' : 'Ваше объявление'}
                     </div>
                   )}
                   {!deal.isMyOrder && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-500 to-blue-400 text-white px-6 py-1 text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-500 to-blue-400 text-white px-4 xs-375:px-6 py-1 text-[10px] xs-375:text-xs font-semibold shadow-md" style={{ clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)' }}>
                       {deal.order_id ? 'Принятый заказ' : 'Принятое объявление'}
                     </div>
                   )}
-                  <CardContent className="p-6 pt-8">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-2">{deal.title}</h3>
-                        <div className="flex gap-2 mt-2 mb-3">
-                          <Badge variant="secondary">{deal.currency} {deal.price}</Badge>
-                          <Badge variant="outline">{deal.delivery_days} дней</Badge>
-                          <Badge className={
-                            deal.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                            deal.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            deal.status === 'disputed' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }>
-                            {deal.status === 'in_progress' ? 'В работе' :
-                             deal.status === 'completed' ? 'Завершено' :
-                             deal.status === 'disputed' ? 'Спор' :
-                             deal.status}
-                          </Badge>
+                  <CardContent className="p-3 xs-375:p-4 sm:p-6 pt-8">
+                    <div className="mb-3">
+                      <h3 className="text-base xs-375:text-lg font-semibold mb-2 pr-2">{deal.title}</h3>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Badge variant="secondary" className="text-xs xs-375:text-sm">{deal.currency} {deal.price}</Badge>
+                        <Badge variant="outline" className="text-xs xs-375:text-sm">{deal.delivery_days} дней</Badge>
+                        <Badge className={`text-xs xs-375:text-sm ${
+                          deal.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          deal.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          deal.status === 'disputed' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {deal.status === 'in_progress' ? 'В работе' :
+                           deal.status === 'completed' ? 'Завершено' :
+                           deal.status === 'disputed' ? 'Спор' :
+                           deal.status}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col xs-414:flex-row xs-414:flex-wrap items-start xs-414:items-center gap-2 xs-414:gap-3 mb-3 pt-3 border-t">
+                        <div
+                          className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
+                          onClick={() => navigateToProfile(deal.client_id, user?.id)}
+                        >
+                          {deal.client?.avatar_url ? (
+                            <img src={deal.client.avatar_url} alt="" className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs xs-375:text-sm font-medium">{deal.client?.name?.charAt(0)}</span>
+                            </div>
+                          )}
+                          <span className="text-xs xs-375:text-sm font-medium">Заказчик: {deal.client?.name || 'Пользователь'}</span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 mb-3 pt-3 border-t">
-                          <div
-                            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
-                            onClick={() => navigateToProfile(deal.client_id, user?.id)}
-                          >
-                            {deal.client?.avatar_url ? (
-                              <img src={deal.client.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                                <span className="text-sm font-medium">{deal.client?.name?.charAt(0)}</span>
-                              </div>
-                            )}
-                            <span className="text-sm font-medium">Заказчик: {deal.client?.name || 'Пользователь'}</span>
-                          </div>
-                          <div
-                            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
-                            onClick={() => navigateToProfile(deal.freelancer_id, user?.id)}
-                          >
-                            {deal.freelancer?.avatar_url ? (
-                              <img src={deal.freelancer.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center">
-                                <span className="text-sm font-medium">{deal.freelancer?.name?.charAt(0)}</span>
-                              </div>
-                            )}
-                            <span className="text-sm font-medium">Исполнитель: {deal.freelancer?.name || 'Пользователь'}</span>
-                          </div>
-                        </div>
-                        {deal.description && (
-                          <div className="pt-3 border-t">
-                            <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
-                          </div>
-                        )}
-                        <div className="text-xs text-[#3F7F6E] pt-2 border-t">
-                          Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
+                        <div
+                          className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
+                          onClick={() => navigateToProfile(deal.freelancer_id, user?.id)}
+                        >
+                          {deal.freelancer?.avatar_url ? (
+                            <img src={deal.freelancer.avatar_url} alt="" className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="h-7 w-7 xs-375:h-8 xs-375:w-8 rounded-full bg-[#EFFFF8] flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs xs-375:text-sm font-medium">{deal.freelancer?.name?.charAt(0)}</span>
+                            </div>
+                          )}
+                          <span className="text-xs xs-375:text-sm font-medium">Исполнитель: {deal.freelancer?.name || 'Пользователь'}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      {deal.description && (
+                        <div className="pt-3 border-t">
+                          <p className="text-xs xs-375:text-sm text-[#3F7F6E] mb-3 line-clamp-2">{deal.description}</p>
+                        </div>
+                      )}
+                      <div className="text-[10px] xs-375:text-xs text-[#3F7F6E] pt-2 border-t">
+                        Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
+                      </div>
+                      <div className="flex flex-col xs-375:flex-row gap-2 mt-3 pt-3 border-t">
                         {deal.chat_id && (
                           <Button
                             variant="default"
                             size="sm"
                             onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
+                            className="w-full xs-375:w-auto text-xs xs-375:text-sm"
                           >
-                            <MessageSquare className="h-4 w-4 mr-2" />
+                            <MessageSquare className="h-3 w-3 xs-375:h-4 xs-375:w-4 mr-1 xs-375:mr-2" />
                             Перейти
                           </Button>
                         )}
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                          className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full xs-375:w-auto text-xs xs-375:text-sm"
                           title="Начать спор"
                         >
-                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          <AlertTriangle className="h-3 w-3 xs-375:h-4 xs-375:w-4 mr-1 xs-375:mr-2" />
                           Начать спор
                         </Button>
                       </div>
