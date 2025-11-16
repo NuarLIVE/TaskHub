@@ -759,15 +759,16 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
 
-              <AnimatePresence mode="wait">
-                {tab === 'portfolio' && (
-                  <motion.div
-                    key="portfolio"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  >
+              <div className="relative">
+                <AnimatePresence initial={false} mode="wait">
+                  {tab === 'portfolio' && (
+                    <motion.div
+                      key="portfolio"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
                 <>
                   <div className="flex items-center justify-between mb-2 lg:mb-4">
                     <h2 className="text-xl lg:text-2xl font-bold">Портфолио</h2>
@@ -825,14 +826,14 @@ export default function ProfilePage() {
                   </motion.div>
                 )}
 
-                {tab === 'market' && (
-                  <motion.div
-                    key="market"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  >
+                  {tab === 'market' && (
+                    <motion.div
+                      key="market"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
                 <>
                   <div>
                     <h2 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4">Мои заказы</h2>
@@ -974,14 +975,14 @@ export default function ProfilePage() {
                   </motion.div>
                 )}
 
-                {tab === 'about' && (
-                  <motion.div
-                    key="about"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  >
+                  {tab === 'about' && (
+                    <motion.div
+                      key="about"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
                 <div className="grid gap-4 lg:gap-6">
                   <Card>
                     <CardHeader className="p-4 lg:p-6">
@@ -1117,14 +1118,14 @@ export default function ProfilePage() {
                   </motion.div>
                 )}
 
-                {tab === 'reviews' && (
-                  <motion.div
-                    key="reviews"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  >
+                  {tab === 'reviews' && (
+                    <motion.div
+                      key="reviews"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
                 <div className="grid gap-6">
                   <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
                   {reviews.length === 0 ? (
@@ -1184,14 +1185,14 @@ export default function ProfilePage() {
                   </motion.div>
                 )}
 
-                {tab === 'edit' && (
-                  <motion.div
-                    key="edit"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  >
+                  {tab === 'edit' && (
+                    <motion.div
+                      key="edit"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
                 <Card>
                   <CardContent className="p-6">
                     <form className="grid gap-4" onSubmit={onEditSubmit}>
@@ -1388,9 +1389,10 @@ export default function ProfilePage() {
                     </form>
                   </CardContent>
                 </Card>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </section>
