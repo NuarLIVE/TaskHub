@@ -115,11 +115,12 @@ export default function RecommendationsPage() {
         .eq('status', 'open')
         .neq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(15);
+        .limit(20);
 
       if (error) throw error;
 
-      setGeneralOrders(data || []);
+      const shuffled = (data || []).sort(() => Math.random() - 0.5).slice(0, 20);
+      setGeneralOrders(shuffled);
     } catch (err) {
       console.error('Error loading general orders:', err);
     }
@@ -224,7 +225,7 @@ export default function RecommendationsPage() {
     return (
       <>
         {(skillsWarning || specialtyWarning) && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 mx-4 mt-4">
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 mx-4 mt-4 rounded-lg">
             <div className="flex">
               <div className="flex-shrink-0">
                 <AlertCircle className="h-5 w-5 text-yellow-400" />
@@ -245,7 +246,7 @@ export default function RecommendationsPage() {
               <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
                 <h1 className="text-2xl font-bold mb-2">Общие рекомендации</h1>
                 <p className="text-gray-600">
-                  У вас не указана специальность, но возможно что-то из этого вам подойдет
+                  Кажется для вас нет ничего подходящего, но возможно эти объявления вам подойдут
                 </p>
               </div>
 
@@ -386,7 +387,7 @@ export default function RecommendationsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {(skillsWarning || specialtyWarning) && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mt-4">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mx-4 mt-4 rounded-lg">
           <div className="flex">
             <div className="flex-shrink-0">
               <AlertCircle className="h-5 w-5 text-yellow-400" />
@@ -420,8 +421,8 @@ export default function RecommendationsPage() {
                 </div>
                 <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
                   <div
-                    className="bg-[#3F7F6E] h-full transition-all"
-                    style={{ width: `${Math.min(100, (daysRemaining / 365) * 100)}%` }}
+                    className="bg-[#3F7F6E] h-full transition-all rounded-full"
+                    style={{ width: `${Math.min(100, (daysRemaining / 30) * 100)}%` }}
                   />
                 </div>
               </div>
