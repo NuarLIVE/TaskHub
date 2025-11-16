@@ -587,40 +587,40 @@ export default function ProfilePage() {
         transition={pageTransition}
         className="min-h-screen bg-background"
       >
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
-            <div className="grid gap-6 sticky top-24 self-start">
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-6 items-start">
+            <div className="grid gap-4 lg:gap-6 lg:sticky lg:top-24 lg:self-start">
               <Card>
-                <CardContent className="p-6 grid gap-4">
-                  <div className="flex items-center gap-3 xs-375:gap-4">
+                <CardContent className="p-4 lg:p-6 grid gap-3 lg:gap-4">
+                  <div className="flex items-center gap-3">
                     <div className="relative flex-shrink-0">
-                      <img src={profile.avatar} alt="avatar" className="h-14 w-14 xs-375:h-16 xs-375:w-16 rounded-2xl object-cover" />
+                      <img src={profile.avatar} alt="avatar" className="h-12 w-12 lg:h-16 lg:w-16 rounded-2xl object-cover" />
                       {profile.learningCompleted && (
                         <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1.5 shadow-lg" title="Прошел обучение">
-                          <GraduationCap className="h-3.5 w-3.5 text-white" />
+                          <GraduationCap className="h-3 w-3 lg:h-3.5 lg:w-3.5 text-white" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-sm xs-375:text-base truncate">{profile.name} • {profile.headline}</div>
-                      <div className="text-xs xs-375:text-sm text-[#3F7F6E] truncate">{profile.role}</div>
+                      <div className="font-semibold text-sm lg:text-base truncate">{profile.name} • {profile.headline}</div>
+                      <div className="text-xs lg:text-sm text-[#3F7F6E] truncate">{profile.role}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 xs-414:grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl border p-2">
-                      <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
-                      <div className="font-semibold flex items-center justify-center gap-1">
-                        <Star className="h-4 w-4" />
+                      <div className="text-[10px] lg:text-xs text-[#3F7F6E]">Рейтинг</div>
+                      <div className="font-semibold text-xs lg:text-sm flex items-center justify-center gap-1">
+                        <Star className="h-3 w-3 lg:h-4 lg:w-4" />
                         {statistics.rating > 0 ? statistics.rating.toFixed(1) : 'N/A'}
                       </div>
                     </div>
                     <div className="rounded-xl border p-2">
-                      <div className="text-xs text-[#3F7F6E]">Проекты</div>
-                      <div className="font-semibold">{statistics.completedProjects}</div>
+                      <div className="text-[10px] lg:text-xs text-[#3F7F6E]">Проекты</div>
+                      <div className="font-semibold text-xs lg:text-sm">{statistics.completedProjects}</div>
                     </div>
                     <div className="rounded-xl border p-2">
-                      <div className="text-xs text-[#3F7F6E]">Онлайн</div>
-                      <div className="font-semibold text-emerald-600">
+                      <div className="text-[10px] lg:text-xs text-[#3F7F6E]">Онлайн</div>
+                      <div className="font-semibold text-xs lg:text-sm text-emerald-600">
                         {(() => {
                           if (!profile.lastSeen) return 'давно';
                           const now = Date.now();
@@ -636,18 +636,19 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Button asChild><a href="#/task/new">Создать Task</a></Button>
-                    <Button asChild variant="secondary"><a href="#/order/new">Создать заказ</a></Button>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button asChild size="sm" className="h-9 text-sm"><a href="#/task/new">Создать Task</a></Button>
+                    <Button asChild variant="secondary" size="sm" className="h-9 text-sm"><a href="#/order/new">Создать заказ</a></Button>
                   </div>
-                  <div className="flex items-center justify-between text-sm text-[#3F7F6E]">
+                  <div className="flex items-center justify-between text-xs lg:text-sm text-[#3F7F6E]">
                     <div className="relative">
                       <button
                         className="flex items-center gap-1 underline hover:text-[#2F6F5E] transition-colors"
                         onClick={handleShareProfile}
                       >
-                        <Share2 className="h-4 w-4" />
-                        Поделиться профилем
+                        <Share2 className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
+                        <span className="hidden xs-375:inline">Поделиться</span>
+                        <span className="xs-375:hidden">Поделиться</span>
                       </button>
                       <AnimatePresence>
                         {showCopied && (
@@ -668,7 +669,7 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-[#EFFFF8] to-white border-[#6FE7C8]/30">
+              <Card className="bg-gradient-to-br from-[#EFFFF8] to-white border-[#6FE7C8]/30 hidden lg:block">
                 <CardContent className="p-6 grid gap-4">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="h-8 w-8 rounded-lg bg-[#6FE7C8] flex items-center justify-center">
@@ -732,27 +733,38 @@ export default function ProfilePage() {
               </Card>
             </div>
 
-            <div className="grid gap-6">
+            <div className="grid gap-4 lg:gap-6">
               <Card>
-                <CardContent className="p-6 flex flex-wrap items-center gap-3">
-                  {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
-                    <Button key={t.id} variant={tab === t.id ? 'default' : 'ghost'} onClick={() => setTab(t.id)} className="h-9 px-4">{t.label}</Button>
-                  ))}
-                  <Button asChild variant="outline" className="border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#3F7F6E]/5 h-9 px-4">
-                    <a href="#/recommendations" className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      Рекомендации заказов
-                    </a>
-                  </Button>
+                <CardContent className="p-3 lg:p-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
+                      <Button
+                        key={t.id}
+                        variant={tab === t.id ? 'default' : 'ghost'}
+                        onClick={() => setTab(t.id)}
+                        className="h-8 lg:h-9 px-3 lg:px-4 text-xs lg:text-sm flex-1 lg:flex-none min-w-0"
+                      >
+                        {t.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <Button asChild variant="outline" className="border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#3F7F6E]/5 h-8 lg:h-9 px-3 lg:px-4 text-xs lg:text-sm w-full lg:w-auto">
+                      <a href="#/recommendations" className="flex items-center justify-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
+                        Рекомендации заказов
+                      </a>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
               {tab === 'portfolio' && (
                 <>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl font-bold">Портфолио</h2>
-                    <Button asChild>
-                      <a href="#/me/portfolio/add">+ Добавить проект</a>
+                  <div className="flex items-center justify-between mb-2 lg:mb-4">
+                    <h2 className="text-xl lg:text-2xl font-bold">Портфолио</h2>
+                    <Button asChild size="sm" className="h-8 lg:h-9 text-xs lg:text-sm">
+                      <a href="#/me/portfolio/add">+ Добавить</a>
                     </Button>
                   </div>
                   {portfolioProjects.length === 0 ? (
@@ -801,53 +813,53 @@ export default function ProfilePage() {
               {tab === 'market' && (
                 <>
                   <div>
-                    <h2 className="text-2xl font-bold mb-4">Мои заказы</h2>
+                    <h2 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4">Мои заказы</h2>
                     {loadingMarket ? (
                       <Card>
-                        <CardContent className="p-12 text-center">
-                          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
-                          <p className="text-[#3F7F6E]">Загрузка...</p>
+                        <CardContent className="p-8 lg:p-12 text-center">
+                          <Loader2 className="h-6 w-6 lg:h-8 lg:w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                          <p className="text-sm lg:text-base text-[#3F7F6E]">Загрузка...</p>
                         </CardContent>
                       </Card>
                     ) : userOrders.length === 0 ? (
                       <Card>
-                        <CardContent className="p-6 text-center text-[#3F7F6E]">
+                        <CardContent className="p-6 text-center text-sm lg:text-base text-[#3F7F6E]">
                           Вы ещё не создали ни одного заказа
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-1 gap-3 lg:gap-4">
                         {userOrders.map((order) => (
                           <Card key={order.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(order, 'order')}>
-                            <CardContent className="p-6">
-                              <div className="flex items-start justify-between gap-6">
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-lg mb-2">{order.title}</h4>
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <Badge variant="secondary">{order.category}</Badge>
-                                    <Badge variant="outline">{order.status}</Badge>
+                            <CardContent className="p-4 lg:p-6">
+                              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 lg:gap-6">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-base lg:text-lg mb-2">{order.title}</h4>
+                                  <div className="flex items-center gap-2 mb-2 lg:mb-3">
+                                    <Badge variant="secondary" className="text-xs">{order.category}</Badge>
+                                    <Badge variant="outline" className="text-xs">{order.status}</Badge>
                                   </div>
-                                  <div className="flex flex-wrap gap-2 mb-3">
+                                  <div className="flex flex-wrap gap-1.5 lg:gap-2 mb-2 lg:mb-3">
                                     {(order.tags || []).map((t: string) => (
                                       <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
                                     ))}
                                   </div>
-                                  <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{order.description}</p>
-                                  <div className="font-semibold text-[#6FE7C8]">
+                                  <p className="text-xs lg:text-sm text-[#3F7F6E] mb-2 lg:mb-3 line-clamp-2">{order.description}</p>
+                                  <div className="font-semibold text-sm lg:text-base text-[#6FE7C8]">
                                     {order.currency} {order.price_min}–{order.price_max}
                                   </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
+                                <div className="flex lg:flex-col items-center lg:items-end gap-3 lg:gap-2 text-xs lg:text-sm text-[#3F7F6E] lg:min-w-[140px]">
                                   <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-4 w-4" />
+                                    <Calendar className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                                     <span>{new Date(order.created_at).toLocaleDateString('ru-RU')}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                                     <span>{order.views_count || 0}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    <Heart className="h-4 w-4" />
+                                    <Heart className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                                     <span>{order.likes_count || 0}</span>
                                   </div>
                                 </div>
@@ -860,58 +872,58 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <h2 className="text-2xl font-bold mb-4">Мои объявления</h2>
+                    <h2 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4">Мои объявления</h2>
                     {loadingMarket ? (
                       <Card>
-                        <CardContent className="p-12 text-center">
-                          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
-                          <p className="text-[#3F7F6E]">Загрузка...</p>
+                        <CardContent className="p-8 lg:p-12 text-center">
+                          <Loader2 className="h-6 w-6 lg:h-8 lg:w-8 animate-spin text-[#6FE7C8] mx-auto mb-3" />
+                          <p className="text-sm lg:text-base text-[#3F7F6E]">Загрузка...</p>
                         </CardContent>
                       </Card>
                     ) : userTasks.length === 0 ? (
                       <Card>
-                        <CardContent className="p-6 text-center text-[#3F7F6E]">
+                        <CardContent className="p-6 text-center text-sm lg:text-base text-[#3F7F6E]">
                           Вы ещё не создали ни одного объявления
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-1 gap-3 lg:gap-4">
                         {userTasks.map((task) => (
                           <Card key={task.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(task, 'task')}>
-                            <CardContent className="p-6">
-                              <div className="flex items-start justify-between gap-6">
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-lg mb-2">{task.title}</h4>
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <Badge variant="secondary">{task.category}</Badge>
-                                    <Badge variant="outline">{task.status}</Badge>
+                            <CardContent className="p-4 lg:p-6">
+                              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 lg:gap-6">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-base lg:text-lg mb-2">{task.title}</h4>
+                                  <div className="flex items-center gap-2 mb-2 lg:mb-3 flex-wrap">
+                                    <Badge variant="secondary" className="text-xs">{task.category}</Badge>
+                                    <Badge variant="outline" className="text-xs">{task.status}</Badge>
                                     {task.delivery_days && (
-                                      <Badge variant="outline" className="flex items-center gap-1">
+                                      <Badge variant="outline" className="flex items-center gap-1 text-xs">
                                         <Clock className="h-3 w-3" /> {task.delivery_days}д
                                       </Badge>
                                     )}
                                   </div>
-                                  <div className="flex flex-wrap gap-2 mb-3">
+                                  <div className="flex flex-wrap gap-1.5 lg:gap-2 mb-2 lg:mb-3">
                                     {(task.tags || []).map((t: string) => (
                                       <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
                                     ))}
                                   </div>
-                                  <p className="text-sm text-[#3F7F6E] mb-3 line-clamp-2">{task.description}</p>
-                                  <div className="font-semibold text-[#6FE7C8]">
+                                  <p className="text-xs lg:text-sm text-[#3F7F6E] mb-2 lg:mb-3 line-clamp-2">{task.description}</p>
+                                  <div className="font-semibold text-sm lg:text-base text-[#6FE7C8]">
                                     {task.currency} {task.price}
                                   </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2 text-sm text-[#3F7F6E] min-w-[140px]">
+                                <div className="flex lg:flex-col items-center lg:items-end gap-3 lg:gap-2 text-xs lg:text-sm text-[#3F7F6E] lg:min-w-[140px]">
                                   <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-4 w-4" />
+                                    <Calendar className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                                     <span>{new Date(task.created_at).toLocaleDateString('ru-RU')}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                                     <span>{task.views_count || 0}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    <Heart className="h-4 w-4" />
+                                    <Heart className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                                     <span>{task.likes_count || 0}</span>
                                   </div>
                                 </div>
@@ -926,59 +938,59 @@ export default function ProfilePage() {
               )}
 
               {tab === 'about' && (
-                <div className="grid gap-6">
+                <div className="grid gap-4 lg:gap-6">
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-2xl">О фрилансере</CardTitle>
+                    <CardHeader className="p-4 lg:p-6">
+                      <CardTitle className="text-xl lg:text-2xl">О фрилансере</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 pt-0 grid gap-6">
+                    <CardContent className="p-4 lg:p-6 pt-0 grid gap-4 lg:gap-6">
                       <div>
-                        <h3 className="font-semibold text-lg mb-2">{profile.headline}</h3>
-                        <p className="text-[#3F7F6E] leading-relaxed mb-4">{profile.about}</p>
+                        <h3 className="font-semibold text-base lg:text-lg mb-2">{profile.headline}</h3>
+                        <p className="text-sm lg:text-base text-[#3F7F6E] leading-relaxed mb-3 lg:mb-4">{profile.about}</p>
                         {profile.bio && (
-                          <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-[#EFFFF8] to-white border">
-                            <h4 className="font-medium mb-2 text-sm text-[#3F7F6E]">Подробнее обо мне</h4>
-                            <p className="text-sm leading-relaxed">{profile.bio}</p>
+                          <div className="mt-3 lg:mt-4 p-3 lg:p-4 rounded-xl bg-gradient-to-br from-[#EFFFF8] to-white border">
+                            <h4 className="font-medium mb-2 text-xs lg:text-sm text-[#3F7F6E]">Подробнее обо мне</h4>
+                            <p className="text-xs lg:text-sm leading-relaxed">{profile.bio}</p>
                           </div>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 xs-414:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                          <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
-                          <div className="font-semibold">{profile.role}</div>
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
+                        <div className="rounded-xl border p-3 lg:p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-xs lg:text-sm text-[#3F7F6E] mb-1">Специальность</div>
+                          <div className="font-semibold text-xs lg:text-base truncate">{profile.role}</div>
                         </div>
-                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                          <div className="text-sm text-[#3F7F6E] mb-1">Опыт работы</div>
-                          <div className="font-semibold">
+                        <div className="rounded-xl border p-3 lg:p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-xs lg:text-sm text-[#3F7F6E] mb-1">Опыт работы</div>
+                          <div className="font-semibold text-xs lg:text-base">
                             {profile.experienceYears ? `${profile.experienceYears} ${profile.experienceYears === 1 ? 'год' : profile.experienceYears < 5 ? 'года' : 'лет'}` : 'Не указано'}
                           </div>
                         </div>
-                        <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
-                          <div className="text-sm text-[#3F7F6E] mb-1">Возраст</div>
-                          <div className="font-semibold">
+                        <div className="rounded-xl border p-3 lg:p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
+                          <div className="text-xs lg:text-sm text-[#3F7F6E] mb-1">Возраст</div>
+                          <div className="font-semibold text-xs lg:text-base">
                             {profile.age ? `${profile.age} ${profile.age === 1 ? 'год' : profile.age < 5 || profile.age > 20 ? (profile.age % 10 === 1 && profile.age !== 11 ? 'год' : profile.age % 10 >= 2 && profile.age % 10 <= 4 && (profile.age < 10 || profile.age > 20) ? 'года' : 'лет') : 'лет'}` : 'Не указано'}
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <Star className="h-5 w-5 text-[#6FE7C8]" />
+                      <div className="rounded-xl border p-4 lg:p-6">
+                        <h4 className="font-semibold text-sm lg:text-base mb-3 flex items-center gap-2">
+                          <Star className="h-4 w-4 lg:h-5 lg:w-5 text-[#6FE7C8]" />
                           Рейтинг и статистика
                         </h4>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                           <div>
-                            <div className="text-sm text-[#3F7F6E]">Общий рейтинг</div>
+                            <div className="text-xs lg:text-sm text-[#3F7F6E]">Общий рейтинг</div>
                             <div className="flex items-center gap-2 mt-1">
-                              <div className="text-2xl font-bold text-[#6FE7C8]">
+                              <div className="text-xl lg:text-2xl font-bold text-[#6FE7C8]">
                                 {statistics.rating > 0 ? statistics.rating.toFixed(1) : 'N/A'}
                               </div>
                               <div className="flex">
                                 {[1,2,3,4,5].map(i => (
                                   <Star
                                     key={i}
-                                    className={`h-4 w-4 ${
+                                    className={`h-3 w-3 lg:h-4 lg:w-4 ${
                                       i <= Math.floor(statistics.rating)
                                         ? 'fill-[#6FE7C8] text-[#6FE7C8]'
                                         : 'text-gray-300'
@@ -989,34 +1001,34 @@ export default function ProfilePage() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-sm text-[#3F7F6E]">Завершено проектов</div>
-                            <div className="text-2xl font-bold mt-1">{statistics.completedProjects}</div>
+                            <div className="text-xs lg:text-sm text-[#3F7F6E]">Завершено проектов</div>
+                            <div className="text-xl lg:text-2xl font-bold mt-1">{statistics.completedProjects}</div>
                           </div>
                           <div>
-                            <div className="text-sm text-[#3F7F6E]">Среднее время отклика</div>
-                            <div className="text-2xl font-bold mt-1 text-emerald-600">{statistics.avgResponseTime}</div>
+                            <div className="text-xs lg:text-sm text-[#3F7F6E]">Среднее время отклика</div>
+                            <div className="text-xl lg:text-2xl font-bold mt-1 text-emerald-600">{statistics.avgResponseTime}</div>
                           </div>
                           <div>
-                            <div className="text-sm text-[#3F7F6E]">Повторных заказов</div>
-                            <div className="text-2xl font-bold mt-1">{statistics.repeatOrders}</div>
+                            <div className="text-xs lg:text-sm text-[#3F7F6E]">Повторных заказов</div>
+                            <div className="text-xl lg:text-2xl font-bold mt-1">{statistics.repeatOrders}</div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-3">Стоимость работ</h4>
+                      <div className="rounded-xl border p-4 lg:p-6">
+                        <h4 className="font-semibold text-sm lg:text-base mb-3">Стоимость работ</h4>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold text-[#6FE7C8]">${profile.rateMin}–${profile.rateMax}</span>
-                          <span className="text-[#3F7F6E]">/ час</span>
+                          <span className="text-2xl lg:text-3xl font-bold text-[#6FE7C8]">${profile.rateMin}–${profile.rateMax}</span>
+                          <span className="text-xs lg:text-base text-[#3F7F6E]">/ час</span>
                         </div>
-                        <p className="text-sm text-[#3F7F6E] mt-2">Итоговая стоимость зависит от сложности и объёма проекта</p>
+                        <p className="text-xs lg:text-sm text-[#3F7F6E] mt-2">Итоговая стоимость зависит от сложности и объёма проекта</p>
                       </div>
 
-                      <div className="rounded-xl border p-6">
-                        <h4 className="font-semibold mb-4">Навыки и технологии</h4>
-                        <div className="flex flex-wrap gap-2">
+                      <div className="rounded-xl border p-4 lg:p-6">
+                        <h4 className="font-semibold text-sm lg:text-base mb-3 lg:mb-4">Навыки и технологии</h4>
+                        <div className="flex flex-wrap gap-1.5 lg:gap-2">
                           {profile.skills.map((s) => (
-                            <Badge key={s} variant="secondary" className="px-3 py-1.5 text-sm">
+                            <Badge key={s} variant="secondary" className="px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm">
                               {s}
                             </Badge>
                           ))}
