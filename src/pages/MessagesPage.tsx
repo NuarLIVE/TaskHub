@@ -1183,8 +1183,8 @@ export default function MessagesPage() {
   // ================================================
 
   return (
-    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="min-h-screen bg-background">
-      <section className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10">
+    <motion.div initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition} className="bg-background">
+      <section className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-10 pb-16">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Сообщения</h1>
 
         {loading ? (
@@ -1546,16 +1546,19 @@ export default function MessagesPage() {
                     CRM
                   </button>
 
-                  {/* Progress Button - только если есть сделка */}
-                  {currentDeal && (
-                    <button
-                      onClick={() => setProgressPanelOpen(true)}
-                      className="w-12 h-12 xs-414:w-14 xs-414:h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition shadow-lg"
-                      title="Текущий прогресс"
-                    >
-                      <Briefcase className="h-5 w-5" />
-                    </button>
-                  )}
+                  {/* Progress Button - всегда видима */}
+                  <button
+                    onClick={() => setProgressPanelOpen(true)}
+                    className={`w-12 h-12 xs-414:w-14 xs-414:h-12 rounded-full text-white flex items-center justify-center transition shadow-lg ${
+                      currentDeal
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-gray-400 hover:bg-gray-500 cursor-not-allowed opacity-60'
+                    }`}
+                    title={currentDeal ? "Текущий прогресс" : "Прогресс доступен только для сделок"}
+                    disabled={!currentDeal}
+                  >
+                    <Briefcase className="h-5 w-5" />
+                  </button>
                 </div>
 
                 {/* Floating Translation Button */}
