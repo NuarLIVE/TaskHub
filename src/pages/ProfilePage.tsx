@@ -763,10 +763,10 @@ export default function ProfilePage() {
                 {tab === 'portfolio' && (
                   <motion.div
                     key="portfolio"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   >
                 <>
                   <div className="flex items-center justify-between mb-2 lg:mb-4">
@@ -786,12 +786,17 @@ export default function ProfilePage() {
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {portfolioProjects.map((project) => (
-                        <Card
+                      {portfolioProjects.map((project, index) => (
+                        <motion.div
                           key={project.id}
-                          className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                          onClick={() => handlePortfolioProjectClick(project)}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 30 }}
                         >
+                          <Card
+                            className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                            onClick={() => handlePortfolioProjectClick(project)}
+                          >
                           {project.image_url ? (
                             <img src={project.image_url} alt={project.title} className="aspect-[16/10] object-cover" />
                           ) : (
@@ -812,6 +817,7 @@ export default function ProfilePage() {
                             </div>
                           </CardContent>
                         </Card>
+                        </motion.div>
                       ))}
                     </div>
                   )}
@@ -822,10 +828,10 @@ export default function ProfilePage() {
                 {tab === 'market' && (
                   <motion.div
                     key="market"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   >
                 <>
                   <div>
@@ -845,8 +851,14 @@ export default function ProfilePage() {
                       </Card>
                     ) : (
                       <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                        {userOrders.map((order) => (
-                          <Card key={order.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(order, 'order')}>
+                        {userOrders.map((order, index) => (
+                          <motion.div
+                            key={order.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 30 }}
+                          >
+                            <Card className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all duration-300 hover:scale-[1.01]" onClick={() => openPreview(order, 'order')}>
                             <CardContent className="p-4 lg:p-6">
                               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 lg:gap-6">
                                 <div className="flex-1 min-w-0">
@@ -882,6 +894,7 @@ export default function ProfilePage() {
                               </div>
                             </CardContent>
                           </Card>
+                          </motion.div>
                         ))}
                       </div>
                     )}
@@ -904,8 +917,14 @@ export default function ProfilePage() {
                       </Card>
                     ) : (
                       <div className="grid grid-cols-1 gap-3 lg:gap-4">
-                        {userTasks.map((task) => (
-                          <Card key={task.id} className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all" onClick={() => openPreview(task, 'task')}>
+                        {userTasks.map((task, index) => (
+                          <motion.div
+                            key={task.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 30 }}
+                          >
+                            <Card className="cursor-pointer hover:shadow-lg hover:border-[#6FE7C8]/50 transition-all duration-300 hover:scale-[1.01]" onClick={() => openPreview(task, 'task')}>
                             <CardContent className="p-4 lg:p-6">
                               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 lg:gap-6">
                                 <div className="flex-1 min-w-0">
@@ -946,6 +965,7 @@ export default function ProfilePage() {
                               </div>
                             </CardContent>
                           </Card>
+                          </motion.div>
                         ))}
                       </div>
                     )}
@@ -957,10 +977,10 @@ export default function ProfilePage() {
                 {tab === 'about' && (
                   <motion.div
                     key="about"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   >
                 <div className="grid gap-4 lg:gap-6">
                   <Card>
@@ -1100,10 +1120,10 @@ export default function ProfilePage() {
                 {tab === 'reviews' && (
                   <motion.div
                     key="reviews"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   >
                 <div className="grid gap-6">
                   <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
@@ -1119,11 +1139,17 @@ export default function ProfilePage() {
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {reviews.map((review) => {
+                      {reviews.map((review, index) => {
                         const reviewerName = review.reviewer_profile?.name || review.reviewer_profile?.email || 'Заказчик';
 
                         return (
-                          <Card key={review.id} className="hover:shadow-md transition-shadow">
+                          <motion.div
+                            key={review.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 30 }}
+                          >
+                          <Card className="hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
                             <CardContent className="p-6 grid gap-3">
                               <div className="flex items-center gap-3">
                                 <div className="flex-1">
@@ -1149,6 +1175,7 @@ export default function ProfilePage() {
                               </p>
                             </CardContent>
                           </Card>
+                          </motion.div>
                         );
                       })}
                     </div>
@@ -1160,10 +1187,10 @@ export default function ProfilePage() {
                 {tab === 'edit' && (
                   <motion.div
                     key="edit"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   >
                 <Card>
                   <CardContent className="p-6">
