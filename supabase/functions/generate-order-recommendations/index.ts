@@ -54,15 +54,17 @@ Deno.serve(async (req: Request) => {
 
     const { data: openOrders } = await supabase
       .from("orders")
-      .select("id, title, description, budget, category_id, subcategory_id, created_at, user_id")
+      .select("id, title, description, price_min, price_max, tags, category, subcategory, created_at, user_id")
       .eq("status", "open")
       .neq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100);
 
+    console.log("Found open orders:", openOrders?.length || 0);
+
     if (!openOrders || openOrders.length === 0) {
       return new Response(
-        JSON.stringify({ recommendations: [] }),
+        JSON.stringify({ recommendations: [], count: 0 }),
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -86,8 +88,12 @@ Deno.serve(async (req: Request) => {
     const specialty = (profile.specialty || profile.category || "").toLowerCase();
     const skills = Array.isArray(profile.skills) ? profile.skills.map((s: string) => s.toLowerCase()) : [];
 
+    console.log("User profile:", { specialty, skills, avgAmount, totalDeals, avgRating });
+
     const categoryKeywords: Record<string, string[]> = {
-      "unity": ["unity", "игр", "game", "геймдев", "gamedev", "3d", "vr", "ar", "шутер", "мобильн"],
+      "unity": ["unity", "юнити", "игр", "game", "геймдев", "gamedev", "3d", "vr", "ar", "шутер", "мобильн"],
+      "c#": ["c#", "csharp", "си шарп", "unity", ".net", "asp"],
+      "c++": ["c++", "cpp", "си плюс", "unreal"],
       "godot": ["godot", "игр", "game", "2d", "платформер"],
       "дизайн": ["дизайн", "design", "ui", "ux", "figma", "photoshop", "иллюстрац", "логотип", "брендинг", "ландшафт", "интерьер"],
       "веб": ["веб", "web", "сайт", "лендинг", "landing", "react", "vue", "angular", "frontend", "backend"],
@@ -97,6 +103,8 @@ Deno.serve(async (req: Request) => {
       "копирайтинг": ["копирайтинг", "контент", "статьи", "тексты", "редактур"],
       "видео": ["видео", "монтаж", "editing", "after effects", "premiere"],
       "3d": ["3d", "моделирование", "blender", "maya", "cinema 4d", "рендер"],
+      "игры": ["игр", "game", "геймдев", "gamedev", "unity", "unreal", "godot"],
+      "программирование": ["программ", "код", "разработк", "develop"],
     };
 
     const findMatchingCategories = (text: string): string[] => {
@@ -120,7 +128,8 @@ Deno.serve(async (req: Request) => {
       let score = 0;
       const reasons = [];
 
-      const orderText = `${order.title} ${order.description || ""}`;
+      const orderTags = Array.isArray(order.tags) ? order.tags.join(" ") : "";
+      const orderText = `${order.title} ${order.description || ""} ${orderTags}`;
       const orderCategories = findMatchingCategories(orderText);
 
       if (orderCategories.length > 0 && userCategories.length > 0) {
@@ -134,10 +143,12 @@ Deno.serve(async (req: Request) => {
       if (skills.length > 0) {
         const titleLower = order.title.toLowerCase();
         const descLower = (order.description || "").toLowerCase();
+        const tagsLower = orderTags.toLowerCase();
 
         const matchingSkills = skills.filter((skill: string) =>
           titleLower.includes(skill) ||
-          descLower.includes(skill)
+          descLower.includes(skill) ||
+          tagsLower.includes(skill)
         );
 
         if (matchingSkills.length > 0) {
@@ -146,8 +157,9 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (order.budget && avgAmount > 0) {
-        const budgetDiff = Math.abs(order.budget - avgAmount) / avgAmount;
+      const orderBudget = order.price_max || order.price_min || 0;
+      if (orderBudget > 0 && avgAmount > 0) {
+        const budgetDiff = Math.abs(orderBudget - avgAmount) / avgAmount;
         if (budgetDiff < 0.3) {
           score += 20;
           reasons.push({ type: "budget", value: "Бюджет соответствует вашей средней сумме работы" });
@@ -184,6 +196,8 @@ Deno.serve(async (req: Request) => {
 
     recommendations.sort((a, b) => b.match_score - a.match_score);
     const topRecommendations = recommendations.slice(0, 20);
+
+    console.log("Generated recommendations:", topRecommendations.length);
 
     await supabase
       .from("order_recommendations")

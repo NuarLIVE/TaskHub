@@ -15,7 +15,9 @@ interface Recommendation {
     id: string;
     title: string;
     description: string;
-    budget: number;
+    price_min: number;
+    price_max: number;
+    tags: string[];
     created_at: string;
     status: string;
   };
@@ -25,7 +27,9 @@ interface Order {
   id: string;
   title: string;
   description: string;
-  budget: number;
+  price_min: number;
+  price_max: number;
+  tags: string[];
   created_at: string;
   status: string;
 }
@@ -112,7 +116,7 @@ export default function RecommendationsPage() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, title, description, budget, created_at, status')
+        .select('id, title, description, price_min, price_max, tags, created_at, status')
         .eq('status', 'open')
         .neq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -143,7 +147,9 @@ export default function RecommendationsPage() {
             id,
             title,
             description,
-            budget,
+            price_min,
+            price_max,
+            tags,
             created_at,
             status
           )
@@ -179,7 +185,7 @@ export default function RecommendationsPage() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, title, description, budget, created_at, status')
+        .select('id, title, description, price_min, price_max, tags, created_at, status')
         .eq('status', 'open')
         .neq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -189,18 +195,28 @@ export default function RecommendationsPage() {
 
       let filteredOrders = data || [];
       const skills = profile?.skills || [];
+      const specialty = profile?.specialty || '';
 
-      if (skills.length > 0) {
+      console.log('Profile data:', { skills, specialty });
+      console.log('Total orders fetched:', filteredOrders.length);
+
+      if (skills.length > 0 || specialty.length > 0) {
         const skillsLower = skills.map((s: string) => s.toLowerCase());
+        const specialtyLower = specialty.toLowerCase();
 
         const matchedOrders = filteredOrders.filter(order => {
           const titleLower = order.title.toLowerCase();
           const descLower = (order.description || '').toLowerCase();
+          const tagsLower = (order.tags || []).map((t: string) => t.toLowerCase()).join(' ');
+          const searchText = `${titleLower} ${descLower} ${tagsLower}`;
 
-          return skillsLower.some((skill: string) =>
-            titleLower.includes(skill) || descLower.includes(skill)
-          );
+          const skillMatch = skillsLower.some((skill: string) => searchText.includes(skill));
+          const specialtyMatch = specialtyLower && searchText.includes(specialtyLower);
+
+          return skillMatch || specialtyMatch;
         });
+
+        console.log('Matched orders:', matchedOrders.length);
 
         if (matchedOrders.length > 0) {
           filteredOrders = matchedOrders;
@@ -332,7 +348,10 @@ export default function RecommendationsPage() {
                       {order.description}
                     </p>
                     <div className="text-xl font-bold text-[#3F7F6E]">
-                      <PriceDisplay amount={order.budget} />
+                      <PriceDisplay amount={order.price_min} />
+                      {order.price_max > order.price_min && (
+                        <span className="text-gray-500"> - <PriceDisplay amount={order.price_max} /></span>
+                      )}
                     </div>
                   </a>
                 ))}
@@ -553,7 +572,10 @@ export default function RecommendationsPage() {
                       </span>
                     </div>
                     <div className="text-xl font-bold text-[#3F7F6E]">
-                      <PriceDisplay amount={rec.order.budget} />
+                      <PriceDisplay amount={rec.order.price_min} />
+                      {rec.order.price_max > rec.order.price_min && (
+                        <span className="text-gray-500"> - <PriceDisplay amount={rec.order.price_max} /></span>
+                      )}
                     </div>
                   </div>
                 </div>
