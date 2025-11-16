@@ -272,7 +272,7 @@ function HowItWorks() {
   return (
     <section id="how" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-8">Как это работает</h2>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs-414:grid-cols-2 md:grid-cols-4 gap-4">
         {steps.map((s) => (
           <Card key={s.title}>
             <CardHeader className="pb-2">
@@ -326,7 +326,7 @@ function WhyTaskHub() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-8 text-center">Почему TaskHub?</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs-414:grid-cols-2 lg:grid-cols-4 gap-4">
         {features.map((f, idx) => (
           <motion.div
             key={f.title}

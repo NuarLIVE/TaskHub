@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [helpfulVotes, setHelpfulVotes] = useState<Set<string>>(new Set());
   const [loadingMarket, setLoadingMarket] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [previewType, setPreviewType] = useState<'order' | 'task' | 'portfolio'>('order');
@@ -74,17 +75,26 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      loadUserProfile();
-      loadStatistics();
-      if (tab === 'market') {
-        loadUserMarketItems();
-      } else if (tab === 'portfolio') {
-        loadPortfolioProjects();
-      } else if (tab === 'reviews') {
-        loadReviews();
-      }
+      loadInitialData();
     }
   }, [user, tab]);
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    try {
+      await loadUserProfile();
+      await loadStatistics();
+      if (tab === 'market') {
+        await loadUserMarketItems();
+      } else if (tab === 'portfolio') {
+        await loadPortfolioProjects();
+      } else if (tab === 'reviews') {
+        await loadReviews();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -555,6 +565,17 @@ export default function ProfilePage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#6FE7C8] mx-auto mb-4" />
+          <p className="text-gray-600">Загрузка профиля...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -571,21 +592,21 @@ export default function ProfilePage() {
             <div className="grid gap-6 sticky top-24 self-start">
               <Card>
                 <CardContent className="p-6 grid gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <img src={profile.avatar} alt="avatar" className="h-16 w-16 rounded-2xl object-cover" />
+                  <div className="flex items-center gap-3 xs-375:gap-4">
+                    <div className="relative flex-shrink-0">
+                      <img src={profile.avatar} alt="avatar" className="h-14 w-14 xs-375:h-16 xs-375:w-16 rounded-2xl object-cover" />
                       {profile.learningCompleted && (
                         <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1.5 shadow-lg" title="Прошел обучение">
                           <GraduationCap className="h-3.5 w-3.5 text-white" />
                         </div>
                       )}
                     </div>
-                    <div>
-                      <div className="font-semibold">{profile.name} • {profile.headline}</div>
-                      <div className="text-sm text-[#3F7F6E]">{profile.role}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm xs-375:text-base truncate">{profile.name} • {profile.headline}</div>
+                      <div className="text-xs xs-375:text-sm text-[#3F7F6E] truncate">{profile.role}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-2 xs-414:grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl border p-2">
                       <div className="text-xs text-[#3F7F6E]">Рейтинг</div>
                       <div className="font-semibold flex items-center justify-center gap-1">
@@ -922,7 +943,7 @@ export default function ProfilePage() {
                         )}
                       </div>
 
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 xs-414:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="rounded-xl border p-4 bg-gradient-to-br from-[#EFFFF8] to-white">
                           <div className="text-sm text-[#3F7F6E] mb-1">Специальность</div>
                           <div className="font-semibold">{profile.role}</div>
@@ -1247,7 +1268,7 @@ export default function ProfilePage() {
                         )}
                         <input type="hidden" name="skills" value={editSkills.join(', ')} />
                       </div>
-                      <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 xs-414:grid-cols-2 sm:grid-cols-3 gap-4">
                         <label className="grid gap-1">
                           <span className="text-sm font-medium">Ставка min ($)</span>
                           <Input type="number" name="rateMin" defaultValue={profile.rateMin} className="h-11" min="0" max="1000" />

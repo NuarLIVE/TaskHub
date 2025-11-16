@@ -118,7 +118,7 @@ export default function Footer() {
         <div className="pt-8 border-t border-[#6FE7C8]/20 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#3F7F6E]">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[#6FE7C8]" />
-            <span>FreelanceHub © {new Date().getFullYear()}</span>
+            <span>TaskHub © {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-4">
             <a href="#/terms" className="hover:text-foreground transition">Условия</a>
