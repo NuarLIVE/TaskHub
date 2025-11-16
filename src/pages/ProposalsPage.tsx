@@ -625,7 +625,7 @@ export default function ProposalsPage() {
                       </div>
                     </div>
                   )}
-                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${proposal.source === 'recommendation' ? 'mt-8' : ''}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         {activeTab === 'received' && (
@@ -682,7 +682,7 @@ export default function ProposalsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className={`flex items-center gap-3 ${proposal.source === 'recommendation' ? 'mt-2' : ''}`}>
+                    <div className={`flex items-center gap-3 ${proposal.source === 'recommendation' ? 'mt-8' : ''}`}>
                       {getStatusBadge(proposal.status)}
                       {activeTab === 'received' && proposal.status === 'pending' && (
                         <>
