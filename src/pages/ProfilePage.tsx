@@ -736,19 +736,19 @@ export default function ProfilePage() {
             <div className="grid gap-4 lg:gap-6">
               <Card>
                 <CardContent className="p-3 lg:p-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
-                      <Button
-                        key={t.id}
-                        variant={tab === t.id ? 'default' : 'ghost'}
-                        onClick={() => setTab(t.id)}
-                        className="h-8 lg:h-9 px-3 lg:px-4 text-xs lg:text-sm flex-1 lg:flex-none min-w-0"
-                      >
-                        {t.label}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="mt-2">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 lg:flex-1">
+                      {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
+                        <Button
+                          key={t.id}
+                          variant={tab === t.id ? 'default' : 'ghost'}
+                          onClick={() => setTab(t.id)}
+                          className="h-8 lg:h-9 px-3 lg:px-4 text-xs lg:text-sm flex-1 lg:flex-none min-w-0"
+                        >
+                          {t.label}
+                        </Button>
+                      ))}
+                    </div>
                     <Button asChild variant="outline" className="border-[#3F7F6E] text-[#3F7F6E] hover:bg-[#3F7F6E]/5 h-8 lg:h-9 px-3 lg:px-4 text-xs lg:text-sm w-full lg:w-auto">
                       <a href="#/recommendations" className="flex items-center justify-center gap-2">
                         <Sparkles className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
@@ -759,7 +759,15 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
 
-              {tab === 'portfolio' && (
+              <AnimatePresence mode="wait">
+                {tab === 'portfolio' && (
+                  <motion.div
+                    key="portfolio"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
                 <>
                   <div className="flex items-center justify-between mb-2 lg:mb-4">
                     <h2 className="text-xl lg:text-2xl font-bold">Портфолио</h2>
@@ -808,9 +816,17 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </>
-              )}
+                  </motion.div>
+                )}
 
-              {tab === 'market' && (
+                {tab === 'market' && (
+                  <motion.div
+                    key="market"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
                 <>
                   <div>
                     <h2 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4">Мои заказы</h2>
@@ -935,9 +951,17 @@ export default function ProfilePage() {
                     )}
                   </div>
                 </>
-              )}
+                  </motion.div>
+                )}
 
-              {tab === 'about' && (
+                {tab === 'about' && (
+                  <motion.div
+                    key="about"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
                 <div className="grid gap-4 lg:gap-6">
                   <Card>
                     <CardHeader className="p-4 lg:p-6">
@@ -1070,9 +1094,17 @@ export default function ProfilePage() {
                     </CardContent>
                   </Card>
                 </div>
-              )}
+                  </motion.div>
+                )}
 
-              {tab === 'reviews' && (
+                {tab === 'reviews' && (
+                  <motion.div
+                    key="reviews"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
                 <div className="grid gap-6">
                   <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
                   {reviews.length === 0 ? (
@@ -1122,9 +1154,17 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
-              )}
+                  </motion.div>
+                )}
 
-              {tab === 'edit' && (
+                {tab === 'edit' && (
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
                 <Card>
                   <CardContent className="p-6">
                     <form className="grid gap-4" onSubmit={onEditSubmit}>
@@ -1321,7 +1361,9 @@ export default function ProfilePage() {
                     </form>
                   </CardContent>
                 </Card>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </section>
