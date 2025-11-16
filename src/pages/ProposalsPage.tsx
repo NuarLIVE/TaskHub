@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, CheckCircle, X, FileText, Loader2, User } from 'lucide-react';
+import { Clock, CheckCircle, X, FileText, Loader2, User, Award, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -605,8 +605,26 @@ export default function ProposalsPage() {
         ) : (
           <div className="grid gap-4">
             {proposals.map((proposal) => (
-              <Card key={proposal.id}>
-                <CardContent className="p-6">
+              <Card
+                key={proposal.id}
+                className={proposal.source === 'recommendation' ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-50 border-amber-200' : ''}
+              >
+                <CardContent className="p-6 relative">
+                  {proposal.source === 'recommendation' && (
+                    <div className="absolute top-4 right-4 group">
+                      <div className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-3 py-1.5 rounded-full shadow-md">
+                        <Award className="w-4 h-4" />
+                        <span className="text-xs font-semibold">AI рекомендация</span>
+                        <Info className="w-4 h-4" />
+                      </div>
+                      <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
+                        <p>Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.</p>
+                        <div className="absolute bottom-full right-6 mb-[-4px]">
+                          <div className="w-2 h-2 bg-gray-900 rotate-45"></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">

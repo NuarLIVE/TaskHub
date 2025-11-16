@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Calendar, TrendingUp, Lock, Award, AlertCircle, Clock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Sparkles, RefreshCw, Calendar, TrendingUp, Lock, Award, AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +51,8 @@ export default function RecommendationsPage() {
   const [showingFallbackOrders, setShowingFallbackOrders] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     if (user) {
@@ -307,6 +309,19 @@ export default function RecommendationsPage() {
   const handleSubscriptionSuccess = () => {
     loadProfile();
     setShowPurchaseDialog(false);
+  };
+
+  const paginatedRecommendations = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return recommendations.slice(startIndex, endIndex);
+  }, [recommendations, currentPage]);
+
+  const totalPages = Math.ceil(recommendations.length / ITEMS_PER_PAGE);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (!user) {
@@ -572,8 +587,9 @@ export default function RecommendationsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {recommendations.map((rec) => (
+          <>
+            <div className="grid gap-4">
+              {paginatedRecommendations.map((rec) => (
               <div
                 key={rec.id}
                 onClick={() => {
@@ -619,7 +635,45 @@ export default function RecommendationsPage() {
                 )}
               </div>
             ))}
-          </div>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="h-10 w-10 p-0"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex gap-2">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? 'default' : 'outline'}
+                      onClick={() => goToPage(page)}
+                      className={`h-10 w-10 p-0 ${
+                        currentPage === page
+                          ? 'bg-[#3F7F6E] text-white hover:bg-[#2F6F5E]'
+                          : ''
+                      }`}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-10 w-10 p-0"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -666,7 +720,7 @@ export default function RecommendationsPage() {
                 </Button>
                 <Button
                   onClick={() => {
-                    window.location.hash = `/proposals/create?orderId=${previewItem.id}`;
+                    window.location.hash = `/proposals/create?orderId=${previewItem.id}&fromRecommendation=true`;
                   }}
                   className="bg-[#3F7F6E] hover:bg-[#2F6F5E]"
                 >

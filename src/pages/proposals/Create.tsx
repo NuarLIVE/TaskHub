@@ -37,7 +37,8 @@ export default function ProposalsCreate() {
 
   const params = new URLSearchParams(window.location.hash.split('?')[1]);
   const type = params.get('type') || 'order';
-  const id = params.get('id') || '1';
+  const id = params.get('id') || params.get('orderId') || params.get('taskId') || '1';
+  const fromRecommendation = params.get('fromRecommendation') === 'true';
 
   useEffect(() => {
     if (!user) {
@@ -296,7 +297,8 @@ export default function ProposalsCreate() {
         price: Number(price),
         currency,
         delivery_days: Number(days),
-        status: 'pending'
+        status: 'pending',
+        source: fromRecommendation ? 'recommendation' : 'manual'
       };
 
       if (type === 'order') {
