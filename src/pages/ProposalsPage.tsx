@@ -707,10 +707,11 @@ export default function ProposalsPage() {
                     <div className="border-t"></div>
 
                     {/* Кнопки действий */}
-                    <div className="flex items-center gap-2 xs-375:gap-3">
-                      {getStatusBadge(proposal.status)}
-                      {activeTab === 'received' && proposal.status === 'pending' && (
-                        <>
+                    <div className="flex flex-col gap-2">
+                      {/* Первая строка: Статус и Принять */}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(proposal.status)}
+                        {activeTab === 'received' && proposal.status === 'pending' && (
                           <Button
                             size="sm"
                             onClick={() => handleAccept(proposal)}
@@ -724,26 +725,41 @@ export default function ProposalsPage() {
                             )}
                             {acceptingProposal === proposal.id ? 'Принимаю...' : 'Принять'}
                           </Button>
+                        )}
+                      </div>
+
+                      {/* Вторая строка: Отклонить и Подробнее */}
+                      {activeTab === 'received' && proposal.status === 'pending' ? (
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleReject(proposal.id)}
                             disabled={acceptingProposal === proposal.id}
-                            className="px-3 xs-375:px-4"
+                            className="flex-1 px-3 xs-375:px-4"
                           >
                             <X className="h-4 w-4 mr-1" />
                             Отклонить
                           </Button>
-                        </>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => showDetails(proposal)}
+                            className="flex-1"
+                          >
+                            Подробнее
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => showDetails(proposal)}
+                          className="w-full"
+                        >
+                          Подробнее
+                        </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => showDetails(proposal)}
-                        className="ml-auto"
-                      >
-                        Подробнее
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
