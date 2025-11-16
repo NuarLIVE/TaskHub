@@ -611,15 +611,15 @@ export default function ProposalsPage() {
                 key={proposal.id}
                 className={proposal.source === 'recommendation' ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-50 border-amber-200' : ''}
               >
-                <CardContent className="p-6 relative">
+                <CardContent className="p-4 xs-375:p-6 relative">
                   {proposal.source === 'recommendation' && (
-                    <div className="absolute top-4 right-4 group">
-                      <div className="flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-3 py-1.5 rounded-full shadow-md">
-                        <Award className="w-4 h-4" />
-                        <span className="text-xs font-semibold">AI рекомендация</span>
-                        <Info className="w-4 h-4" />
+                    <div className="mb-3 sm:mb-0 sm:absolute sm:top-4 sm:right-4 group">
+                      <div className="flex items-center gap-1.5 xs-375:gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2.5 xs-375:px-3 py-1.5 rounded-full shadow-md text-xs xs-375:text-sm w-fit">
+                        <Award className="w-3.5 h-3.5 xs-375:w-4 xs-375:h-4 flex-shrink-0" />
+                        <span className="font-semibold">AI рекомендация</span>
+                        <Info className="w-3.5 h-3.5 xs-375:w-4 xs-375:h-4 flex-shrink-0" />
                       </div>
-                      <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
+                      <div className="hidden sm:block absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl">
                         <p>{activeTab === 'sent' ? 'Платформа посчитала вас наиболее подходящим исполнителем для задачи.' : 'Платформа посчитала данного исполнителя наиболее подходящим для вашей задачи.'}</p>
                         <div className="absolute bottom-full right-6 mb-[-4px]">
                           <div className="w-2 h-2 bg-gray-900 rotate-45"></div>
@@ -689,14 +689,16 @@ export default function ProposalsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className={`flex flex-wrap items-center gap-2 xs-375:gap-3 ${proposal.source === 'recommendation' ? 'mt-8' : ''}`}>
-                      {getStatusBadge(proposal.status)}
+                    <div className={`flex flex-col xs-414:flex-row flex-wrap items-stretch xs-414:items-center gap-2 xs-414:gap-3 w-full xs-414:w-auto ${proposal.source === 'recommendation' ? 'sm:mt-8' : ''}`}>
+                      <div className="flex items-center justify-center xs-414:justify-start">
+                        {getStatusBadge(proposal.status)}
+                      </div>
                       {activeTab === 'received' && proposal.status === 'pending' && (
-                        <>
+                        <div className="flex gap-2 w-full xs-414:w-auto">
                           <Button
                             size="sm"
                             onClick={() => handleAccept(proposal)}
-                            className="px-4"
+                            className="px-4 flex-1 xs-414:flex-none"
                             disabled={acceptingProposal === proposal.id}
                           >
                             {acceptingProposal === proposal.id ? (
@@ -711,13 +713,21 @@ export default function ProposalsPage() {
                             variant="outline"
                             onClick={() => handleReject(proposal.id)}
                             disabled={acceptingProposal === proposal.id}
+                            className="flex-1 xs-414:flex-none"
                           >
                             <X className="h-4 w-4 mr-1" />
                             Отклонить
                           </Button>
-                        </>
+                        </div>
                       )}
-                      <Button size="sm" variant="ghost" onClick={() => showDetails(proposal)}>Подробнее</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => showDetails(proposal)}
+                        className="w-full xs-414:w-auto"
+                      >
+                        Подробнее
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
