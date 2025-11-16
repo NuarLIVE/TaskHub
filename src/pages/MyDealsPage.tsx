@@ -948,10 +948,33 @@ export default function MyDealsPage() {
                     </div>
                   )}
                   <CardContent className="p-3 xs-375:p-4 sm:p-6 pt-8">
-                    <div className="sm:flex sm:justify-between sm:items-start sm:mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-base xs-375:text-lg font-semibold mb-2">{deal.title}</h3>
-                        <div className="flex flex-wrap gap-2 mt-2 mb-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-2">
+                          <h3 className="text-base xs-375:text-lg font-semibold">{deal.title}</h3>
+                          <div className="hidden sm:flex sm:gap-2 flex-shrink-0 sm:items-center">
+                            {deal.chat_id && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Перейти
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                              title="Начать спор"
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-2" />
+                              Начать спор
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mb-3">
                           <Badge variant="secondary">{deal.currency} {deal.price}</Badge>
                           <Badge variant="outline">{deal.delivery_days} дней</Badge>
                           <Badge className={
@@ -1002,27 +1025,6 @@ export default function MyDealsPage() {
                         <div className="text-xs text-[#3F7F6E] pt-2 border-t">
                           Создано: {new Date(deal.created_at).toLocaleDateString('ru-RU')}
                         </div>
-                      </div>
-                      <div className="hidden sm:flex sm:gap-2">
-                        {deal.chat_id && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => window.location.hash = `/messages?chat=${deal.chat_id}`}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Перейти
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                          title="Начать спор"
-                        >
-                          <AlertTriangle className="h-4 w-4 mr-2" />
-                          Начать спор
-                        </Button>
                       </div>
                     </div>
                     <div className="sm:hidden flex flex-col gap-2 mt-3 pt-3 border-t -mx-3 xs-375:-mx-4 px-3 xs-375:px-4 bg-gray-50">
