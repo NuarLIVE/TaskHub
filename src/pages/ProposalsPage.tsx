@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle, X, FileText, Loader2, User, Award, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import StarRating from '@/components/ui/StarRating';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
+import { optimizeImage } from '@/lib/image-optimization';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -566,14 +567,15 @@ export default function ProposalsPage() {
   };
 
   return (
-    <motion.div
-      key="proposals"
-      initial="initial"
-      animate="in"
-      exit="out"
-      variants={pageVariants}
-      transition={pageTransition}
-      className="min-h-screen bg-background"
+    <AnimatePresence mode="wait">
+      <motion.div
+        key="proposals"
+        initial="initial"
+        animate="in"
+        exit="out"
+        variants={pageVariants}
+        transition={pageTransition}
+        className="min-h-screen bg-background"
     >
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Отклики</h1>
@@ -634,7 +636,12 @@ export default function ProposalsPage() {
                             onClick={() => navigateToProfile(proposal.user_id, user?.id)}
                           >
                             {profiles[proposal.user_id]?.avatar_url ? (
-                              <img src={profiles[proposal.user_id].avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                              <img
+                                src={optimizeImage(profiles[proposal.user_id].avatar_url, 40, 85)}
+                                alt=""
+                                className="h-10 w-10 rounded-full object-cover"
+                                loading="lazy"
+                              />
                             ) : (
                               <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center">
                                 <User className="h-5 w-5 text-[#3F7F6E]" />
@@ -739,7 +746,12 @@ export default function ProposalsPage() {
                     onClick={() => navigateToProfile(selectedProposal.user_id, user?.id)}
                   >
                     {profiles[selectedProposal.user_id]?.avatar_url ? (
-                      <img src={profiles[selectedProposal.user_id].avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
+                      <img
+                        src={optimizeImage(profiles[selectedProposal.user_id].avatar_url, 48, 85)}
+                        alt=""
+                        className="h-12 w-12 rounded-full object-cover"
+                        loading="lazy"
+                      />
                     ) : (
                       <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center">
                         <User className="h-6 w-6 text-[#3F7F6E]" />
@@ -903,6 +915,7 @@ export default function ProposalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

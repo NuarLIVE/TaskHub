@@ -16,6 +16,7 @@ import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { navigateToProfile } from '@/lib/navigation';
+import { optimizeImage } from '@/lib/image-optimization';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -514,7 +515,12 @@ export default function MarketPage() {
                         }}
                       >
                         {profiles[item.user_id]?.avatar_url ? (
-                          <img src={profiles[item.user_id].avatar_url} alt={profiles[item.user_id].name} className="h-7 w-7 rounded-full object-cover" />
+                          <img
+                            src={optimizeImage(profiles[item.user_id].avatar_url, 28, 85)}
+                            alt={profiles[item.user_id].name}
+                            className="h-7 w-7 rounded-full object-cover"
+                            loading="lazy"
+                          />
                         ) : (
                           <div className="h-7 w-7 rounded-full bg-[#EFFFF8] flex items-center justify-center text-sm font-medium">
                             {profiles[item.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
@@ -667,7 +673,12 @@ export default function MarketPage() {
                   <div className="flex items-center justify-between pt-3 border-t">
                     <div className="flex items-center gap-3">
                       {profiles[previewItem.user_id]?.avatar_url ? (
-                        <img src={profiles[previewItem.user_id].avatar_url} alt={profiles[previewItem.user_id].name} className="h-10 w-10 rounded-full object-cover" />
+                        <img
+                          src={optimizeImage(profiles[previewItem.user_id].avatar_url, 40, 85)}
+                          alt={profiles[previewItem.user_id].name}
+                          className="h-10 w-10 rounded-full object-cover"
+                          loading="lazy"
+                        />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-[#EFFFF8] flex items-center justify-center font-medium">
                           {profiles[previewItem.user_id]?.name?.charAt(0).toUpperCase() || 'U'}
