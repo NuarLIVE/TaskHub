@@ -1535,21 +1535,30 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Floating Action Buttons */}
-                <div className="absolute left-4 top-20 flex flex-col xs-414:flex-row gap-2 xs-414:gap-3 z-20">
+                <div className="absolute left-4 top-20 flex flex-col gap-2 z-20">
                   {/* CRM Button */}
                   <button
                     ref={crmButtonRef}
                     onClick={() => setCrmPanelOpen(true)}
-                    className="w-12 h-12 xs-414:w-14 xs-414:h-12 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-xs font-semibold transition shadow-lg"
+                    className="w-12 h-12 rounded-full bg-[#3F7F6E] hover:bg-[#2d5f52] text-white flex items-center justify-center text-xs font-semibold transition shadow-lg"
                     title="CRM Чата"
                   >
                     CRM
                   </button>
 
-                  {/* Progress Button - всегда видима */}
+                  {/* Floating Translation Button */}
+                  <button
+                    onClick={() => setShowTranslationSettings(true)}
+                    className="w-12 h-12 rounded-full bg-[#6FE7C8] hover:bg-[#5cd4b5] text-white flex items-center justify-center transition shadow-lg"
+                    title="Перевод"
+                  >
+                    <Languages className="h-5 w-5" />
+                  </button>
+
+                  {/* Progress Button - только для мобильных */}
                   <button
                     onClick={() => setProgressPanelOpen(true)}
-                    className={`w-12 h-12 xs-414:w-14 xs-414:h-12 rounded-full text-white flex items-center justify-center transition shadow-lg ${
+                    className={`lg:hidden w-12 h-12 rounded-full text-white flex items-center justify-center transition shadow-lg ${
                       currentDeal
                         ? 'bg-blue-600 hover:bg-blue-700'
                         : 'bg-gray-400 hover:bg-gray-500 cursor-not-allowed opacity-60'
@@ -1560,15 +1569,6 @@ export default function MessagesPage() {
                     <Briefcase className="h-5 w-5" />
                   </button>
                 </div>
-
-                {/* Floating Translation Button */}
-                <button
-                  onClick={() => setShowTranslationSettings(true)}
-                  className="absolute left-4 top-36 xs-414:top-[104px] w-12 h-12 rounded-full bg-[#6FE7C8] hover:bg-[#5cd4b5] text-white flex items-center justify-center transition shadow-lg z-20"
-                  title="Перевод"
-                >
-                  <Languages className="h-5 w-5" />
-                </button>
 
                 {/* CRM Confirmation Notifications */}
                 {selectedChatId && (
