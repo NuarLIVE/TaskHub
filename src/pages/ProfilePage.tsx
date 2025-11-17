@@ -721,7 +721,7 @@ export default function ProfilePage() {
                 <CardContent className="p-3 lg:p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center gap-2">
                     <div className="flex flex-wrap items-center gap-2 lg:flex-1">
-                      {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }].map(t => (
+                      {[{ id: 'portfolio', label: 'Портфолио' }, { id: 'market', label: 'Биржа' }, { id: 'about', label: 'О себе' }, { id: 'reviews', label: 'Отзывы' }, { id: 'settings', label: 'Настройки' }].map(t => (
                         <Button
                           key={t.id}
                           variant={tab === t.id ? 'default' : 'ghost'}
@@ -1372,6 +1372,30 @@ export default function ProfilePage() {
                     </form>
                   </CardContent>
                 </Card>
+                    </motion.div>
+                  )}
+
+                  {tab === 'settings' && (
+                    <motion.div
+                      key="settings"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    >
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Настройки безопасности</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-center py-8">
+                            <p className="text-[#3F7F6E] mb-4">Управление паролем и email</p>
+                            <Button asChild>
+                              <a href="#/settings/security">Перейти к настройкам</a>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </motion.div>
                   )}
                 </AnimatePresence>

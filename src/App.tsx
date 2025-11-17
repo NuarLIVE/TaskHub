@@ -11,6 +11,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import NotFound from './pages/NotFound';
+import OAuthCallback from './pages/OAuthCallback';
 
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const OrderCreatePage = lazy(() => import('./pages/OrderCreatePage'));
@@ -42,6 +43,7 @@ const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage')
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
 const LearningPage = lazy(() => import('./pages/LearningPage'));
 const RecommendationsPage = lazy(() => import('./pages/RecommendationsPage'));
+const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -69,15 +71,17 @@ function AppContent() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1) || '/';
+      // Check full hash including params
+      const fullHash = window.location.hash;
 
       // Handle OAuth callback with access_token in hash
-      if (hash.includes('access_token=')) {
-        console.log('OAuth callback detected, redirecting to home...');
-        window.location.hash = '/';
+      if (fullHash.includes('access_token=')) {
+        console.log('OAuth callback detected, showing callback page...');
+        setRoute('/oauth-callback');
         return;
       }
 
+      const hash = fullHash.slice(1) || '/';
       const routeWithoutQuery = hash.split('?')[0];
       setRoute(routeWithoutQuery);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -90,7 +94,9 @@ function AppContent() {
 
   let Page;
 
-  if (route === '/') {
+  if (route === '/oauth-callback') {
+    Page = OAuthCallback;
+  } else if (route === '/') {
     Page = HomePage;
   } else if (route === '/auth/login' || route === '/login') {
     Page = LoginPage;
@@ -159,7 +165,7 @@ function AppContent() {
   } else if (route === '/settings/profile') {
     Page = SettingsProfilePage;
   } else if (route === '/settings/security') {
-    Page = SettingsSecurityPage;
+    Page = SecuritySettingsPage;
   } else if (route === '/settings/notifications') {
     Page = NotificationSettingsPage;
   } else if (route === '/settings/payments' || route === '/payment-methods') {
@@ -210,7 +216,7 @@ function AppContent() {
     Page = NotFound;
   }
 
-  const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding' || route === '/profile-completion';
+  const isAuthPage = route === '/login' || route === '/register' || route === '/auth/login' || route === '/auth/register' || route === '/onboarding' || route === '/profile-completion' || route === '/oauth-callback';
   const isAdminPage = route.startsWith('/admin');
   const isAdminLoginPage = route === '/admin/login';
 
