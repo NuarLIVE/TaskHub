@@ -17,7 +17,8 @@ export default function AdminDeals() {
     active: 0,
     completed: 0,
     disputed: 0,
-    totalValue: 0
+    totalValue: 0,
+    totalCommission: 0
   });
 
   useEffect(() => {
@@ -44,12 +45,21 @@ export default function AdminDeals() {
       const disputed = dealsData.filter(d => d.status === 'DISPUTED').length;
       const totalValue = dealsData.reduce((sum, d) => sum + (d.price || 0), 0);
 
+      const totalCommission = dealsData
+        .filter(d => ['ACCEPTED', 'RESOLVED'].includes(d.status))
+        .reduce((sum, d) => {
+          const price = d.price || 0;
+          const rate = d.is_boosted ? 0.25 : 0.15;
+          return sum + (price * rate);
+        }, 0);
+
       setStats({
         total: dealsData.length,
         active,
         completed,
         disputed,
-        totalValue: totalValue / 100
+        totalValue: totalValue / 100,
+        totalCommission: totalCommission / 100
       });
     }
   };
@@ -100,7 +110,7 @@ export default function AdminDeals() {
           <p className="text-[#3F7F6E] mt-2">Отслеживание всех сделок на платформе</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           <Card className="border-[#6FE7C8]/20 shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -166,6 +176,20 @@ export default function AdminDeals() {
                 <div>
                   <p className="text-sm text-gray-600">Объём</p>
                   <p className="text-xl font-bold text-[#3F7F6E]">${stats.totalValue.toFixed(0)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[#6FE7C8]/20 shadow-md">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Комиссия</p>
+                  <p className="text-xl font-bold text-yellow-900">${stats.totalCommission.toFixed(0)}</p>
                 </div>
               </div>
             </CardContent>
@@ -250,6 +274,11 @@ export default function AdminDeals() {
                         <p className="text-lg font-bold text-[#3F7F6E]">
                           ${(deal.price / 100).toFixed(2)}
                         </p>
+                        {deal.is_boosted !== undefined && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Комиссия: {deal.is_boosted ? '25%' : '15%'}
+                          </p>
+                        )}
                         {deal.deadline && (
                           <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                             <Clock className="h-3 w-3" />
@@ -267,6 +296,16 @@ export default function AdminDeals() {
                       {deal.escrow_amount && (
                         <span className="font-medium text-[#3F7F6E]">
                           Escrow: ${(deal.escrow_amount / 100).toFixed(2)}
+                        </span>
+                      )}
+                      {deal.is_boosted && (
+                        <span className="font-medium text-yellow-600">
+                          С продвижением
+                        </span>
+                      )}
+                      {['ACCEPTED', 'RESOLVED'].includes(deal.status) && deal.price && (
+                        <span className="font-medium text-green-600">
+                          Исполнителю: ${((deal.price / 100) * (deal.is_boosted ? 0.75 : 0.85)).toFixed(2)}
                         </span>
                       )}
                     </div>

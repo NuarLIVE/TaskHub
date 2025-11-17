@@ -956,9 +956,12 @@ export default function MessagesPage() {
   const handleReportUser = async () => {
     if (!user || !selectedChatId) return;
 
-    const otherUserId = selectedChat?.participant1_id === user.id
-      ? selectedChat?.participant2_id
-      : selectedChat?.participant1_id;
+    const selectedChat = chats.find((c) => c.id === selectedChatId);
+    if (!selectedChat) return;
+
+    const otherUserId = selectedChat.participant1_id === user.id
+      ? selectedChat.participant2_id
+      : selectedChat.participant1_id;
 
     if (!otherUserId) return;
 

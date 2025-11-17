@@ -284,10 +284,54 @@ export default function MarketPage() {
     setCurrentPage(1);
   };
 
-  const openPreview = (item: any, type: 'order' | 'task') => {
+  const openPreview = async (item: any, type: 'order' | 'task') => {
     setPreviewItem(item);
     setPreviewType(type);
     setPreviewOpen(true);
+
+    const viewData: any = {
+      user_id: user?.id || null,
+    };
+
+    if (!user) {
+      viewData.ip_address = 'anonymous';
+    }
+
+    if (type === 'order') {
+      viewData.order_id = item.id;
+      await getSupabase()
+        .from('order_views')
+        .insert(viewData)
+        .select()
+        .maybeSingle();
+
+      const { count: viewsCount } = await getSupabase()
+        .from('order_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('order_id', item.id);
+
+      await getSupabase()
+        .from('orders')
+        .update({ views_count: viewsCount || 0 })
+        .eq('id', item.id);
+    } else {
+      viewData.task_id = item.id;
+      await getSupabase()
+        .from('task_views')
+        .insert(viewData)
+        .select()
+        .maybeSingle();
+
+      const { count: viewsCount } = await getSupabase()
+        .from('task_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('task_id', item.id);
+
+      await getSupabase()
+        .from('tasks')
+        .update({ views_count: viewsCount || 0 })
+        .eq('id', item.id);
+    }
   };
 
   const goToPage = (page: number) => {
