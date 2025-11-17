@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check, GraduationCap, Sparkles } from 'lucide-react';
+import { Star, Heart, MessageSquare, MapPin, AtSign, Link as LinkIcon, Clock, Image as ImageIcon, ExternalLink, Loader2, Eye, Calendar, Upload, X, Share2, Check, GraduationCap, Sparkles, Lock, Mail, AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { MediaEditor } from '@/components/MediaEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { getSupabase } from '@/lib/supabaseClient';
@@ -46,6 +46,14 @@ export default function ProfilePage() {
     avgResponseTime: '',
     repeatOrders: 0
   });
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [securityMessage, setSecurityMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isOAuthUser, setIsOAuthUser] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState<string>('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [profile, setProfile] = useState(() => {
     const raw = typeof window !== 'undefined' && localStorage.getItem('fh_profile');
     return raw ? JSON.parse(raw) : {
@@ -68,8 +76,24 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       loadInitialData();
+      checkAuthProvider();
     }
   }, [user, tab]);
+
+  const checkAuthProvider = async () => {
+    if (!user) return;
+
+    const supabase = getSupabase();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (authUser) {
+      const provider = authUser.app_metadata?.provider;
+      if (provider && provider !== 'email') {
+        setIsOAuthUser(true);
+        setOauthProvider(provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : provider);
+      }
+    }
+  };
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -540,6 +564,97 @@ export default function ProfilePage() {
     } catch (error: any) {
       console.error('Profile update error:', error);
       alert(`Ошибка при обновлении профиля: ${error.message}`);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecurityMessage(null);
+
+    if (!isOAuthUser && !currentPassword) {
+      setSecurityMessage({ type: 'error', text: 'Введите текущий пароль' });
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      setSecurityMessage({ type: 'error', text: 'Новый пароль должен содержать минимум 6 символов' });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setSecurityMessage({ type: 'error', text: 'Пароли не совпадают' });
+      return;
+    }
+
+    setSecurityLoading(true);
+
+    try {
+      const supabase = getSupabase();
+
+      if (!isOAuthUser && currentPassword) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user?.email || '',
+          password: currentPassword,
+        });
+
+        if (signInError) {
+          setSecurityMessage({ type: 'error', text: 'Неверный текущий пароль' });
+          setSecurityLoading(false);
+          return;
+        }
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        setSecurityMessage({ type: 'error', text: error.message });
+      } else {
+        setSecurityMessage({
+          type: 'success',
+          text: isOAuthUser
+            ? 'Пароль успешно установлен. Теперь вы можете входить по email'
+            : 'Пароль успешно изменён'
+        });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (error: any) {
+      setSecurityMessage({ type: 'error', text: 'Произошла ошибка при изменении пароля' });
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecurityMessage(null);
+
+    if (!newEmail || !newEmail.includes('@')) {
+      setSecurityMessage({ type: 'error', text: 'Введите корректный email' });
+      return;
+    }
+
+    setSecurityLoading(true);
+
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (error) {
+        setSecurityMessage({ type: 'error', text: error.message });
+      } else {
+        setSecurityMessage({ type: 'success', text: 'На новый email отправлено письмо для подтверждения' });
+        setNewEmail('');
+      }
+    } catch (error: any) {
+      setSecurityMessage({ type: 'error', text: 'Произошла ошибка при изменении email' });
+    } finally {
+      setSecurityLoading(false);
     }
   };
 
@@ -1383,19 +1498,164 @@ export default function ProfilePage() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2, ease: 'easeInOut' }}
                     >
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Настройки безопасности</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-center py-8">
-                            <p className="text-[#3F7F6E] mb-4">Управление паролем и email</p>
-                            <Button asChild>
-                              <a href="#/settings/security">Перейти к настройкам</a>
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      {securityMessage && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`mb-4 p-4 rounded-lg flex items-start gap-3 ${
+                            securityMessage.type === 'success'
+                              ? 'bg-green-50 border border-green-200'
+                              : 'bg-red-50 border border-red-200'
+                          }`}
+                        >
+                          {securityMessage.type === 'success' ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          <p className={`text-sm ${securityMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                            {securityMessage.text}
+                          </p>
+                        </motion.div>
+                      )}
+
+                      <div className="space-y-4 lg:space-y-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
+                              <Lock className="h-5 w-5" />
+                              Изменить пароль
+                            </CardTitle>
+                            {isOAuthUser && (
+                              <CardDescription className="text-xs lg:text-sm">
+                                Вы вошли через {oauthProvider}. Установите пароль для возможности входа по email.
+                              </CardDescription>
+                            )}
+                          </CardHeader>
+                          <CardContent>
+                            <form onSubmit={handleChangePassword} className="space-y-4">
+                              {!isOAuthUser && (
+                                <div>
+                                  <label className="text-sm font-medium mb-2 block">
+                                    Текущий пароль
+                                  </label>
+                                  <Input
+                                    type="password"
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                    placeholder="Введите текущий пароль"
+                                    required
+                                    className="w-full"
+                                  />
+                                </div>
+                              )}
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">
+                                  {isOAuthUser ? 'Установите пароль' : 'Новый пароль'}
+                                </label>
+                                <Input
+                                  type="password"
+                                  value={newPassword}
+                                  onChange={(e) => setNewPassword(e.target.value)}
+                                  placeholder="Минимум 6 символов"
+                                  required
+                                  minLength={6}
+                                  className="w-full"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">
+                                  {isOAuthUser ? 'Подтвердите пароль' : 'Подтвердите новый пароль'}
+                                </label>
+                                <Input
+                                  type="password"
+                                  value={confirmPassword}
+                                  onChange={(e) => setConfirmPassword(e.target.value)}
+                                  placeholder={isOAuthUser ? 'Повторите пароль' : 'Повторите новый пароль'}
+                                  required
+                                  minLength={6}
+                                  className="w-full"
+                                />
+                              </div>
+
+                              <Button type="submit" disabled={securityLoading} className="w-full sm:w-auto">
+                                {securityLoading ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Сохранение...
+                                  </>
+                                ) : (
+                                  <>
+                                    <KeyRound className="h-4 w-4 mr-2" />
+                                    {isOAuthUser ? 'Установить пароль' : 'Изменить пароль'}
+                                  </>
+                                )}
+                              </Button>
+                            </form>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
+                              <Mail className="h-5 w-5" />
+                              Изменить email
+                            </CardTitle>
+                            <CardDescription className="text-xs lg:text-sm">
+                              Текущий email: <span className="font-medium">{user?.email}</span>
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <form onSubmit={handleChangeEmail} className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">
+                                  Новый email
+                                </label>
+                                <Input
+                                  type="email"
+                                  value={newEmail}
+                                  onChange={(e) => setNewEmail(e.target.value)}
+                                  placeholder="example@domain.com"
+                                  required
+                                  className="w-full"
+                                />
+                              </div>
+
+                              <Button type="submit" disabled={securityLoading} className="w-full sm:w-auto">
+                                {securityLoading ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Сохранение...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Изменить email
+                                  </>
+                                )}
+                              </Button>
+                            </form>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-amber-200 bg-amber-50">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <div className="text-sm text-amber-800">
+                                <p className="font-medium mb-1">Важная информация</p>
+                                <ul className="list-disc list-inside space-y-1 text-xs lg:text-sm">
+                                  <li>После изменения email необходимо подтвердить его по ссылке из письма</li>
+                                  <li>Пароль должен содержать минимум 6 символов</li>
+                                  <li>Используйте надёжные уникальные пароли</li>
+                                </ul>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
