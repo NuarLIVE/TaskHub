@@ -70,6 +70,14 @@ function AppContent() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) || '/';
+
+      // Handle OAuth callback with access_token in hash
+      if (hash.includes('access_token=')) {
+        console.log('OAuth callback detected, redirecting to home...');
+        window.location.hash = '/';
+        return;
+      }
+
       const routeWithoutQuery = hash.split('?')[0];
       setRoute(routeWithoutQuery);
       window.scrollTo({ top: 0, behavior: 'smooth' });
