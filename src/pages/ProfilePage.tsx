@@ -11,7 +11,7 @@ import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUserEmail } = useAuth();
   const supabase = getSupabase();
   const [tab, setTab] = useState('portfolio');
 
@@ -682,15 +682,13 @@ export default function ProfilePage() {
           setSecurityMessage({ type: 'error', text: `Ошибка: ${errorMsg}` });
         }
       } else {
+        updateUserEmail(newEmail);
+
         setSecurityMessage({
           type: 'success',
           text: 'Email успешно обновлён!'
         });
         setNewEmail('');
-
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       }
     } catch (error: any) {
       console.error('Email update exception:', error);

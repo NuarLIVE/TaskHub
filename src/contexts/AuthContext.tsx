@@ -5,6 +5,7 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: { email: string; password: string; name: string; role: 'CLIENT' | 'FREELANCER' }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  updateUserEmail: (newEmail: string) => void;
   isAuthenticated: boolean;
 }
 
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login: authService.login.bind(authService),
     register: authService.register.bind(authService),
     logout: authService.logout.bind(authService),
+    updateUserEmail: authService.updateUserEmail.bind(authService),
     isAuthenticated: authService.isAuthenticated(),
   };
 

@@ -285,6 +285,13 @@ class AuthService {
   getUser(): User | null {
     return this.authState.user;
   }
+
+  updateUserEmail(newEmail: string) {
+    if (this.authState.user) {
+      this.authState.user.email = newEmail;
+      this.notify();
+    }
+  }
 }
 
 export const authService = AuthService.getInstance();
