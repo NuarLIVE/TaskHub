@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Briefcase, DollarSign, Settings, AlertTriangle, Lightbulb, LogOut, Menu, X, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, DollarSign, Settings, AlertTriangle, Lightbulb, LogOut, Menu, X, FolderOpen, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -53,6 +53,7 @@ export default function AdminLayout({ children, currentPage }: AdminLayoutProps)
     { name: 'Финансы', path: '/admin/finance', icon: DollarSign },
     { name: 'Категории', path: '/admin/categories', icon: FolderOpen },
     { name: 'Модерация', path: '/admin/moderation', icon: AlertTriangle },
+    { name: 'Жалобы', path: '/admin/complaints', icon: AlertCircle },
     { name: 'Предложения', path: '/admin/suggestions', icon: Lightbulb },
     { name: 'Настройки', path: '/admin/settings', icon: Settings }
   ];

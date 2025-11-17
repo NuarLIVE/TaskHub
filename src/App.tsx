@@ -38,12 +38,14 @@ const AdminFinance = lazy(() => import('./pages/admin/AdminFinance'));
 const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminSuggestions = lazy(() => import('./pages/admin/AdminSuggestions'));
+const AdminComplaints = lazy(() => import('./pages/admin/AdminComplaints'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
 const LearningPage = lazy(() => import('./pages/LearningPage'));
 const RecommendationsPage = lazy(() => import('./pages/RecommendationsPage'));
 const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
+const DisputePage = lazy(() => import('./pages/DisputePage'));
 import PaymentMethodsPage from './pages/PaymentMethodsPage';
 import MediaLibraryPage from './pages/MediaLibraryPage';
 import NotificationSettingsPage from './pages/NotificationSettingsPage';
@@ -158,8 +160,8 @@ function AppContent() {
     Page = NotificationsPage;
   } else if (route === '/saved') {
     Page = SavedPage;
-  } else if (route.startsWith('/disputes/')) {
-    Page = DisputesPage;
+  } else if (route.startsWith('/dispute/')) {
+    Page = DisputePage;
   } else if (route === '/disputes') {
     Page = DisputesPage;
   } else if (route === '/settings/profile') {
@@ -194,6 +196,8 @@ function AppContent() {
     Page = AdminModeration;
   } else if (route === '/admin/suggestions') {
     Page = AdminSuggestions;
+  } else if (route === '/admin/complaints') {
+    Page = AdminComplaints;
   } else if (route === '/terms') {
     Page = TermsPage;
   } else if (route === '/privacy') {

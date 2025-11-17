@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import PriceDisplay from '@/components/PriceDisplay';
 import ProfileBadges from '@/components/ui/ProfileBadges';
 import StarRating from '@/components/ui/StarRating';
+import OpenDisputeDialog from '@/components/OpenDisputeDialog';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -69,6 +70,12 @@ interface Order {
   views_count: number;
   created_at: string;
   hasActiveDeal?: boolean;
+  activeDeal?: {
+    id: string;
+    order_id: string;
+    task_id: string | null;
+    status: string;
+  };
 }
 
 interface Task {
@@ -83,6 +90,12 @@ interface Task {
   views_count: number;
   created_at: string;
   hasActiveDeal?: boolean;
+  activeDeal?: {
+    id: string;
+    order_id: string | null;
+    task_id: string;
+    status: string;
+  };
 }
 
 export default function MyDealsPage() {
@@ -95,6 +108,12 @@ export default function MyDealsPage() {
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+  const [disputeDialog, setDisputeDialog] = useState<{
+    open: boolean;
+    dealId?: string;
+    orderId?: string;
+    taskId?: string;
+  }>({ open: false });
 
   useEffect(() => {
     if (user) {
@@ -224,24 +243,26 @@ export default function MyDealsPage() {
 
         const { data: activeDeals } = await getSupabase()
           .from('deals')
-          .select('order_id, task_id, id')
+          .select('order_id, task_id, id, status')
           .neq('status', 'completed');
 
-        const ordersWithDeals = new Set(
-          (activeDeals || []).filter((d) => d.order_id).map((d) => d.order_id)
+        const ordersDealsMap = Object.fromEntries(
+          (activeDeals || []).filter((d) => d.order_id).map((d) => [d.order_id, d])
         );
-        const tasksWithDeals = new Set(
-          (activeDeals || []).filter((d) => d.task_id).map((d) => d.task_id)
+        const tasksDealsMap = Object.fromEntries(
+          (activeDeals || []).filter((d) => d.task_id).map((d) => [d.task_id, d])
         );
 
         const enrichedOrders = (ordersData || []).map((o) => ({
           ...o,
-          hasActiveDeal: ordersWithDeals.has(o.id)
+          hasActiveDeal: !!ordersDealsMap[o.id],
+          activeDeal: ordersDealsMap[o.id]
         }));
 
         const enrichedTasks = (tasksData || []).map((t) => ({
           ...t,
-          hasActiveDeal: tasksWithDeals.has(t.id)
+          hasActiveDeal: !!tasksDealsMap[t.id],
+          activeDeal: tasksDealsMap[t.id]
         }));
 
         setOrders(enrichedOrders);
@@ -1432,6 +1453,18 @@ export default function MyDealsPage() {
           </div>
         ) : null}
       </section>
+
+      <OpenDisputeDialog
+        open={disputeDialog.open}
+        onOpenChange={(open) => setDisputeDialog({ ...disputeDialog, open })}
+        dealId={disputeDialog.dealId || ''}
+        orderId={disputeDialog.orderId}
+        taskId={disputeDialog.taskId}
+        userId={user?.id || ''}
+        onSuccess={() => {
+          loadData();
+        }}
+      />
     </motion.div>
   );
 }
