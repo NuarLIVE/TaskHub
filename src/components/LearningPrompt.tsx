@@ -85,7 +85,7 @@ export default function LearningPrompt() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 50, scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-50 max-w-sm w-[calc(100%-3rem)] sm:w-auto"
+        className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 max-w-sm sm:max-w-sm mx-auto sm:mx-0"
       >
         <Card className="shadow-2xl border-2 border-[#6FE7C8] bg-gradient-to-br from-white to-[#EFFFF8]">
           <div className="p-5">
