@@ -35,7 +35,41 @@ export default function ProfileCompletionPage() {
   useEffect(() => {
     if (!user) {
       window.location.hash = '/login';
+      return;
     }
+
+    // Load existing profile data if available (e.g., from OAuth)
+    const loadProfile = async () => {
+      const supabase = getSupabase();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profile) {
+        // Pre-fill form with existing data
+        if (profile.avatar_url) {
+          setAvatarPreview(profile.avatar_url);
+        }
+
+        setFormData({
+          specialty: profile.specialty || '',
+          experience_years: profile.experience_years?.toString() || '',
+          age: profile.age?.toString() || '',
+          rate_min: profile.rate_min?.toString() || '',
+          rate_max: profile.rate_max?.toString() || '',
+          currency: profile.currency || 'USD',
+          skills: profile.skills || [],
+          location: profile.location || '',
+          contact_telegram: profile.contact_telegram || '',
+          contact_gmail: profile.contact_gmail || '',
+          bio: profile.bio || '',
+        });
+      }
+    };
+
+    loadProfile();
   }, [user]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {

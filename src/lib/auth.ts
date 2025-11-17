@@ -52,17 +52,25 @@ class AuthService {
 
   private async initializeAuth() {
     const supabase = getSupabase();
+
+    // Try to get existing session
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session?.user) {
+      console.log('Found existing session for user:', session.user.email);
       await this.loadUserProfile(session.user.id, session.user.email || '');
     }
 
+    // Listen for auth state changes
     supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user?.email);
+
       (async () => {
         if (event === 'SIGNED_IN' && session?.user) {
+          console.log('User signed in:', session.user.email);
           await this.loadUserProfile(session.user.id, session.user.email || '');
         } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
           this.authState = {
             user: null,
             accessToken: null,
@@ -71,6 +79,14 @@ class AuthService {
           this.notify();
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('Token refreshed automatically');
+          if (session?.user) {
+            this.authState.accessToken = session.access_token;
+            this.authState.refreshToken = session.refresh_token || null;
+            this.notify();
+          }
+        } else if (event === 'INITIAL_SESSION' && session?.user) {
+          console.log('Initial session detected:', session.user.email);
+          await this.loadUserProfile(session.user.id, session.user.email || '');
         }
       })();
     });
@@ -82,6 +98,7 @@ class AuthService {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
+        console.log('No session found in loadUserProfile');
         this.authState = {
           user: null,
           accessToken: null,
@@ -91,23 +108,55 @@ class AuthService {
         return;
       }
 
+      console.log('Loading profile for user:', userId, email);
+
+      // Try to get profile from database
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+      }
+
+      // Get user metadata from session
+      const userMetadata = session.user.user_metadata || {};
+      const displayName = userMetadata.full_name || userMetadata.name || email.split('@')[0];
+      const avatarUrl = userMetadata.avatar_url || userMetadata.picture;
+      const role = userMetadata.role || profile?.role || 'FREELANCER';
+
       this.authState = {
         user: {
           id: userId,
           email: email,
-          role: 'FREELANCER',
+          role: role,
           profile: {
             id: userId,
-            slug: email.split('@')[0],
-            name: email.split('@')[0],
-            skills: [],
+            slug: profile?.slug || email.split('@')[0],
+            name: profile?.name || displayName,
+            bio: profile?.bio,
+            skills: profile?.skills || [],
+            avatarUrl: profile?.avatar_url || avatarUrl,
+            location: profile?.location,
           }
         },
         accessToken: session.access_token,
         refreshToken: session.refresh_token || null,
       };
 
+      console.log('Profile loaded successfully:', this.authState.user);
       this.notify();
+
+      // Check if profile needs completion (only redirect if not already on that page)
+      if (profile && !profile.profile_completed && window.location.hash !== '#/profile-completion') {
+        console.log('Profile incomplete, redirecting to profile completion...');
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          window.location.hash = '/profile-completion';
+        }, 100);
+      }
     } catch (error) {
       console.error('Failed to load user profile:', error);
     }
