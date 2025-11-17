@@ -14,8 +14,7 @@ import {
   ChevronUp,
   Loader2,
   Briefcase,
-  ExternalLink,
-  AlertTriangle
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import PriceDisplay from '@/components/PriceDisplay';
 import ProfileBadges from '@/components/ui/ProfileBadges';
 import StarRating from '@/components/ui/StarRating';
+import OpenDisputeDialog from '@/components/OpenDisputeDialog';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -107,6 +107,12 @@ export default function MyDealsPage() {
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+  const [disputeDialog, setDisputeDialog] = useState<{
+    open: boolean;
+    dealId?: string;
+    orderId?: string;
+    taskId?: string;
+  }>({ open: false });
 
   useEffect(() => {
     if (user) {
@@ -1263,11 +1269,10 @@ export default function MyDealsPage() {
                             {deal.chat_id && (
                               <Button
                                 variant="default"
-                                size="sm"
+                                size="default"
                                 onClick={() =>
                                   (window.location.hash = `/messages?chat=${deal.chat_id}`)
                                 }
-                                className="min-w-[120px]"
                               >
                                 <MessageSquare className="h-4 w-4 mr-2" />
                                 Перейти
@@ -1371,7 +1376,7 @@ export default function MyDealsPage() {
                       {deal.chat_id && (
                         <Button
                           variant="default"
-                          size="sm"
+                          size="default"
                           onClick={() =>
                             (window.location.hash = `/messages?chat=${deal.chat_id}`)
                           }
@@ -1389,6 +1394,18 @@ export default function MyDealsPage() {
           </div>
         ) : null}
       </section>
+
+      <OpenDisputeDialog
+        open={disputeDialog.open}
+        onOpenChange={(open) => setDisputeDialog({ ...disputeDialog, open })}
+        dealId={disputeDialog.dealId || ''}
+        orderId={disputeDialog.orderId}
+        taskId={disputeDialog.taskId}
+        userId={user?.id || ''}
+        onSuccess={() => {
+          loadData();
+        }}
+      />
     </motion.div>
   );
 }

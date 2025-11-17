@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Users, Shield, Ban, CheckCircle, VolumeX, Volume2 } from 'lucide-react';
+import { Search, Users, Shield, Ban, CheckCircle, VolumeX, Volume2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,10 +18,9 @@ export default function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'ADMIN' | 'FREELANCER' | 'CLIENT'>('all');
   const [loading, setLoading] = useState(false);
-  const [muteDialog, setMuteDialog] = useState<{ open: boolean; userId?: string; userName?: string }>({ open: false });
-  const [banDialog, setBanDialog] = useState<{ open: boolean; userId?: string; userName?: string }>({ open: false });
-  const [muteDuration, setMuteDuration] = useState<number>(24);
-  const [processing, setProcessing] = useState(false);
+  const [muteDialog, setMuteDialog] = useState<{ open: boolean; userId?: string; currentStatus?: boolean }>({ open: false });
+  const [muteDuration, setMuteDuration] = useState<'1h' | '24h' | '7d' | 'permanent'>('24h');
+  const [muteReason, setMuteReason] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -74,92 +73,69 @@ export default function AdminUsers() {
     return labels[role] || role;
   };
 
+  const openMuteDialog = (userId: string, currentStatus: boolean) => {
+    setMuteDialog({ open: true, userId, currentStatus });
+    setMuteReason('');
+    setMuteDuration('24h');
+  };
+
   const handleMuteUser = async () => {
     if (!user || !muteDialog.userId) return;
 
-    setProcessing(true);
-    const muteUntil = new Date();
-    muteUntil.setHours(muteUntil.getHours() + muteDuration);
+    const newStatus = !muteDialog.currentStatus;
+    let mutedUntil: string | null = null;
+
+    if (newStatus && muteDuration !== 'permanent') {
+      const now = new Date();
+      if (muteDuration === '1h') {
+        now.setHours(now.getHours() + 1);
+      } else if (muteDuration === '24h') {
+        now.setHours(now.getHours() + 24);
+      } else if (muteDuration === '7d') {
+        now.setDate(now.getDate() + 7);
+      }
+      mutedUntil = now.toISOString();
+    }
 
     const { error } = await supabase
       .from('profiles')
       .update({
-        is_muted: true,
-        muted_until: muteUntil.toISOString(),
-        muted_at: new Date().toISOString(),
-        muted_by: user.id,
+        is_muted: newStatus,
+        muted_at: newStatus ? new Date().toISOString() : null,
+        muted_by: newStatus ? user.id : null,
+        muted_until: mutedUntil,
+        mute_reason: newStatus ? muteReason || null : null,
       })
       .eq('id', muteDialog.userId);
 
     if (error) {
-      alert('Ошибка при мьюте пользователя');
-    } else {
-      await loadUsers();
-      setMuteDialog({ open: false });
-      setMuteDuration(24);
+      alert('Ошибка при изменении статуса мьюта');
+      return;
     }
-    setProcessing(false);
+
+    setMuteDialog({ open: false });
+    await loadUsers();
   };
 
-  const handleUnmuteUser = async (userId: string) => {
+  const handleBanUser = async (userId: string, currentBanStatus: boolean) => {
     if (!user) return;
 
+    const newStatus = !currentBanStatus;
     const { error } = await supabase
       .from('profiles')
       .update({
-        is_muted: false,
-        muted_until: null,
-        muted_at: null,
-        muted_by: null,
+        is_banned: newStatus,
+        banned_at: newStatus ? new Date().toISOString() : null,
+        banned_by: newStatus ? user.id : null,
       })
       .eq('id', userId);
 
     if (error) {
-      alert('Ошибка при размьюте пользователя');
-    } else {
-      await loadUsers();
+      alert('Ошибка при изменении статуса бана');
+      return;
     }
-  };
 
-  const handleBanUser = async () => {
-    if (!user || !banDialog.userId) return;
-
-    setProcessing(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        is_banned: true,
-        banned_at: new Date().toISOString(),
-        banned_by: user.id,
-      })
-      .eq('id', banDialog.userId);
-
-    if (error) {
-      alert('Ошибка при бане пользователя');
-    } else {
-      await loadUsers();
-      setBanDialog({ open: false });
-    }
-    setProcessing(false);
-  };
-
-  const handleUnbanUser = async (userId: string) => {
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        is_banned: false,
-        banned_at: null,
-        banned_by: null,
-      })
-      .eq('id', userId);
-
-    if (error) {
-      alert('Ошибка при разбане пользователя');
-    } else {
-      await loadUsers();
-    }
+    await loadUsers();
   };
 
   return (
@@ -300,21 +276,30 @@ export default function AdminUsers() {
                       <Button
                         variant={user.is_muted ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => user.is_muted ? handleUnmuteUser(user.id) : setMuteDialog({ open: true, userId: user.id, userName: user.name })}
-                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[90px] ${user.is_muted ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+                        onClick={() => openMuteDialog(user.id, user.is_muted)}
+                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[100px] sm:h-10 ${user.is_muted ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                         title={user.is_muted ? 'Размьютить' : 'Замьютить'}
                       >
-                        {user.is_muted ? <Volume2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" /> : <VolumeX className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />}
-                        <span className="hidden sm:inline">{user.is_muted ? 'Размьютить' : 'Мьют'}</span>
+                        {user.is_muted ? (
+                          <>
+                            <Volume2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Размьютить</span>
+                          </>
+                        ) : (
+                          <>
+                            <VolumeX className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Мут</span>
+                          </>
+                        )}
                       </Button>
                       <Button
                         variant={user.is_banned ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => user.is_banned ? handleUnbanUser(user.id) : setBanDialog({ open: true, userId: user.id, userName: user.name })}
-                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[90px] ${user.is_banned ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                        onClick={() => handleBanUser(user.id, user.is_banned)}
+                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[100px] sm:h-10 ${user.is_banned ? 'bg-red-600 hover:bg-red-700' : ''}`}
                         title={user.is_banned ? 'Разбанить' : 'Забанить'}
                       >
-                        <Ban className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                        <Ban className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
                         <span className="hidden sm:inline">{user.is_banned ? 'Разбанить' : 'Бан'}</span>
                       </Button>
                     </div>
@@ -364,63 +349,88 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Mute Dialog */}
       <Dialog open={muteDialog.open} onOpenChange={(open) => setMuteDialog({ ...muteDialog, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Замьютить пользователя</DialogTitle>
-            <DialogDescription>
-              Заглушить пользователя <strong>{muteDialog.userName}</strong> на указанное время
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Длительность мьюта (часов)
-              </label>
-              <Input
-                type="number"
-                min="1"
-                value={muteDuration}
-                onChange={(e) => setMuteDuration(parseInt(e.target.value) || 1)}
-                className="w-full"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Пользователь будет заглушен до: {new Date(Date.now() + muteDuration * 60 * 60 * 1000).toLocaleString('ru-RU')}
-              </p>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">
+                {muteDialog.currentStatus ? 'Размьютить пользователя' : 'Замьютить пользователя'}
+              </h2>
+              <button
+                onClick={() => setMuteDialog({ open: false })}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {!muteDialog.currentStatus && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Длительность
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={muteDuration === '1h' ? 'default' : 'outline'}
+                      onClick={() => setMuteDuration('1h')}
+                      className="w-full"
+                    >
+                      1 час
+                    </Button>
+                    <Button
+                      variant={muteDuration === '24h' ? 'default' : 'outline'}
+                      onClick={() => setMuteDuration('24h')}
+                      className="w-full"
+                    >
+                      24 часа
+                    </Button>
+                    <Button
+                      variant={muteDuration === '7d' ? 'default' : 'outline'}
+                      onClick={() => setMuteDuration('7d')}
+                      className="w-full"
+                    >
+                      7 дней
+                    </Button>
+                    <Button
+                      variant={muteDuration === 'permanent' ? 'default' : 'outline'}
+                      onClick={() => setMuteDuration('permanent')}
+                      className="w-full"
+                    >
+                      Навсегда
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Причина (необязательно)
+                  </label>
+                  <Input
+                    value={muteReason}
+                    onChange={(e) => setMuteReason(e.target.value)}
+                    placeholder="Укажите причину мьюта..."
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setMuteDialog({ open: false })}
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={handleMuteUser}
+                className={muteDialog.currentStatus ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'}
+              >
+                {muteDialog.currentStatus ? 'Размьютить' : 'Замьютить'}
+              </Button>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMuteDialog({ open: false })} disabled={processing}>
-              Отмена
-            </Button>
-            <Button onClick={handleMuteUser} disabled={processing} className="bg-orange-600 hover:bg-orange-700">
-              {processing ? 'Обработка...' : 'Замьютить'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Ban Dialog */}
-      <Dialog open={banDialog.open} onOpenChange={(open) => setBanDialog({ ...banDialog, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Забанить пользователя</DialogTitle>
-            <DialogDescription>
-              Вы уверены, что хотите забанить пользователя <strong>{banDialog.userName}</strong>?
-              <br />
-              Бан навсегда, пользователь не сможет войти в систему.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBanDialog({ open: false })} disabled={processing}>
-              Отмена
-            </Button>
-            <Button onClick={handleBanUser} disabled={processing} className="bg-red-600 hover:bg-red-700">
-              {processing ? 'Обработка...' : 'Забанить навсегда'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        </div>
       </Dialog>
     </motion.div>
   );
