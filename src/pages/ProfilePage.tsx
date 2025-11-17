@@ -660,24 +660,41 @@ export default function ProfilePage() {
     setSecurityLoading(true);
 
     try {
-      
-      const { data, error } = await supabase.auth.updateUser({
-        email: newEmail,
+      console.log('Attempting to update email from', user?.email, 'to', newEmail);
+
+      const { data, error } = await supabase.rpc('update_user_email', {
+        user_id: user!.id,
+        new_email: newEmail
       });
+
+      console.log('Update result:', { data, error });
 
       if (error) {
         console.error('Email update error:', error);
         setSecurityMessage({ type: 'error', text: `Ошибка: ${error.message}` });
+      } else if (data && typeof data === 'object' && 'error' in data) {
+        const errorMsg = (data as any).error;
+        if (errorMsg.includes('already in use')) {
+          setSecurityMessage({ type: 'error', text: 'Этот email уже используется другим пользователем' });
+        } else if (errorMsg.includes('only update your own')) {
+          setSecurityMessage({ type: 'error', text: 'Ошибка авторизации' });
+        } else {
+          setSecurityMessage({ type: 'error', text: `Ошибка: ${errorMsg}` });
+        }
       } else {
         setSecurityMessage({
           type: 'success',
-          text: 'Письмо с подтверждением отправлено на новый email. Проверьте почту и перейдите по ссылке для подтверждения.'
+          text: 'Email успешно обновлён!'
         });
         setNewEmail('');
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       }
     } catch (error: any) {
       console.error('Email update exception:', error);
-      setSecurityMessage({ type: 'error', text: `Ошибка: ${error.message || 'Не удалось изменить email'}` });
+      setSecurityMessage({ type: 'error', text: 'Произошла ошибка при изменении email' });
     } finally {
       setSecurityLoading(false);
     }
