@@ -368,7 +368,8 @@ export default function ProfileCompletionPage() {
                   disabled={formData.skills.length >= 10}
                   className="px-6 py-3 bg-[#3F7F6E] text-white rounded-lg hover:bg-[#2F6F5E] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Добавить
+                  <span className="hidden sm:inline">Добавить</span>
+                  <span className="sm:hidden">+</span>
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">

@@ -18,7 +18,7 @@ interface UseModerationOptions {
 
 export function useContentModeration({
   contentType,
-  debounceMs = 500,
+  debounceMs = 100, // Reduced from 500ms to 100ms for faster detection
   onBlock,
   onWarning
 }: UseModerationOptions) {
@@ -27,6 +27,7 @@ export function useContentModeration({
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState<string>('');
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const cache = useRef<Map<string, ModerationResult>>(new Map()); // Cache results
 
   const checkContent = useCallback(async (content: string): Promise<ModerationResult | null> => {
     const trimmedContent = content?.trim() || '';
@@ -37,6 +38,28 @@ export function useContentModeration({
       setModerationError(null);
       setIsChecking(false);
       return null;
+    }
+
+    // Check cache first
+    const cacheKey = `${contentType}:${trimmedContent}`;
+    const cached = cache.current.get(cacheKey);
+    if (cached) {
+      console.log('Using cached moderation result');
+
+      if (cached.flagged) {
+        if (cached.action === 'blocked') {
+          setIsBlocked(true);
+          setBlockMessage(cached.message || 'Контент содержит запрещённую информацию');
+          onBlock?.(cached.message || 'Контент содержит запрещённую информацию');
+        } else if (cached.action === 'warning') {
+          onWarning?.(cached.message || 'Пожалуйста, проверьте содержание');
+        }
+      } else {
+        setIsBlocked(false);
+        setBlockMessage('');
+      }
+
+      return cached;
     }
 
     try {
@@ -71,6 +94,13 @@ export function useContentModeration({
       }
 
       const result: ModerationResult = await response.json();
+
+      // Cache result (max 100 items)
+      if (cache.current.size > 100) {
+        const firstKey = cache.current.keys().next().value;
+        cache.current.delete(firstKey);
+      }
+      cache.current.set(cacheKey, result);
 
       if (result.flagged) {
         if (result.action === 'blocked') {
