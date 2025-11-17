@@ -39,6 +39,7 @@ const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminSuggestions = lazy(() => import('./pages/admin/AdminSuggestions'));
 const AdminComplaints = lazy(() => import('./pages/admin/AdminComplaints'));
+const AdminChatReports = lazy(() => import('./pages/admin/AdminChatReports'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
@@ -198,6 +199,8 @@ function AppContent() {
     Page = AdminSuggestions;
   } else if (route === '/admin/complaints') {
     Page = AdminComplaints;
+  } else if (route === '/admin/chat-reports') {
+    Page = AdminChatReports;
   } else if (route === '/terms') {
     Page = TermsPage;
   } else if (route === '/privacy') {

@@ -71,9 +71,29 @@ export default function TaskDetailPage() {
 
       setTask(taskData);
 
+      const viewData: any = {
+        task_id: taskId,
+        user_id: user?.id || null,
+      };
+
+      if (!user) {
+        viewData.ip_address = 'anonymous';
+      }
+
+      await supabase
+        .from('task_views')
+        .insert(viewData)
+        .select()
+        .maybeSingle();
+
+      const { count: viewsCount } = await supabase
+        .from('task_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('task_id', taskId);
+
       await supabase
         .from('tasks')
-        .update({ views_count: (taskData.views_count || 0) + 1 })
+        .update({ views_count: viewsCount || 0 })
         .eq('id', taskId);
 
       const { data: profileData, error: profileError } = await supabase

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +42,6 @@ import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 import { CRMConfirmation } from '@/components/CRMConfirmation';
 import DealProgressPanel from '@/components/DealProgressPanel';
 import { ReviewInChat } from '@/components/ReviewInChat';
-import ReportUserDialog from '@/components/ReportUserDialog';
 import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
@@ -107,11 +107,7 @@ export default function MessagesPage() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [deleteAlsoChat, setDeleteAlsoChat] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-
-  const selectedChat = useMemo(
-    () => chats.find((c) => c.id === selectedChatId),
-    [chats, selectedChatId]
-  );
+  const [reportReason, setReportReason] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showMediaEditor, setShowMediaEditor] = useState(false);
@@ -957,6 +953,33 @@ export default function MessagesPage() {
     }
   };
 
+  const handleReportUser = async () => {
+    if (!user || !selectedChatId) return;
+
+    const otherUserId = selectedChat?.participant1_id === user.id
+      ? selectedChat?.participant2_id
+      : selectedChat?.participant1_id;
+
+    if (!otherUserId) return;
+
+    const { error } = await getSupabase()
+      .from('chat_reports')
+      .insert({
+        chat_id: selectedChatId,
+        reporter_id: user.id,
+        reported_user_id: otherUserId,
+        reason: reportReason || null,
+      });
+
+    if (error) {
+      alert('Ошибка при отправке жалобы');
+      return;
+    }
+
+    alert('Жалоба отправлена. Мы рассмотрим её в ближайшее время.');
+    setReportDialogOpen(false);
+    setReportReason('');
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1857,19 +1880,25 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      {selectedChat && user && (
-        <ReportUserDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          reportedUserId={selectedChat.other_user.id}
-          reportedUserName={selectedChat.other_user.name}
-          reporterId={user.id}
-          chatId={selectedChatId || undefined}
-          onSuccess={() => {
-            setReportDialogOpen(false);
-          }}
-        />
-      )}
+      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Пожаловаться на пользователя</DialogTitle>
+            <DialogDescription>Опишите причину жалобы. Мы рассмотрим её в ближайшее время.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Причина жалобы (необязательно)"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setReportDialogOpen(false); setReportReason(''); }}>Отмена</Button>
+            <Button variant="destructive" onClick={handleReportUser}>Отправить жалобу</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {showMediaEditor && fileToEdit && (
         <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />

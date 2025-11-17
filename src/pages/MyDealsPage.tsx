@@ -1265,20 +1265,6 @@ export default function MyDealsPage() {
                           <h3 className="text-base xs-375:text-lg font-semibold">
                             {deal.title}
                           </h3>
-                          <div className="hidden sm:flex sm:gap-2 flex-shrink-0 sm:items-center">
-                            {deal.chat_id && (
-                              <Button
-                                variant="default"
-                                size="default"
-                                onClick={() =>
-                                  (window.location.hash = `/messages?chat=${deal.chat_id}`)
-                                }
-                              >
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Перейти
-                              </Button>
-                            )}
-                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">
                           <Badge variant="secondary">
@@ -1307,6 +1293,20 @@ export default function MyDealsPage() {
                               : deal.status}
                           </Badge>
                         </div>
+                        {deal.chat_id && (
+                          <div className="hidden sm:flex mb-3">
+                            <Button
+                              variant="default"
+                              size="default"
+                              onClick={() =>
+                                (window.location.hash = `/messages?chat=${deal.chat_id}`)
+                              }
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Перейти
+                            </Button>
+                          </div>
+                        )}
                         <div className="flex flex-wrap items-center gap-3 mb-3 pt-3 border-t">
                           <div
                             className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition"
