@@ -30,10 +30,10 @@ export default function AdminDeals() {
       .from('deals')
       .select(`
         *,
-        client:client_id(name, email),
-        freelancer:freelancer_id(name, email),
-        order:order_id(title),
-        task:task_id(title)
+        client:profiles!deals_client_id_fkey(name, email),
+        freelancer:profiles!deals_freelancer_id_fkey(name, email),
+        order:orders(title),
+        task:tasks(title)
       `)
       .order('created_at', { ascending: false });
 

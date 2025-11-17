@@ -274,25 +274,6 @@ export default function AdminUsers() {
                         Профиль
                       </Button>
                       <Button
-                        variant={user.is_muted ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => openMuteDialog(user.id, user.is_muted)}
-                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[100px] sm:h-10 ${user.is_muted ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
-                        title={user.is_muted ? 'Размьютить' : 'Замьютить'}
-                      >
-                        {user.is_muted ? (
-                          <>
-                            <Volume2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Размьютить</span>
-                          </>
-                        ) : (
-                          <>
-                            <VolumeX className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Мут</span>
-                          </>
-                        )}
-                      </Button>
-                      <Button
                         variant={user.is_banned ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => handleBanUser(user.id, user.is_banned)}

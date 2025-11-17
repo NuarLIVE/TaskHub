@@ -6,6 +6,7 @@ import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import { DbStatus } from './components/DbStatus';
 import LearningPrompt from './components/LearningPrompt';
+import { BanCheck } from './components/BanCheck';
 import { useActivityTracker } from './hooks/useActivityTracker';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -230,32 +231,34 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {!isAuthPage && !isAdminPage && <NavBar />}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={route}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-        >
-          <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
-                <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+      <BanCheck>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={route}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#6FE7C8] border-r-transparent"></div>
+                  <p className="mt-4 text-[#3F7F6E]">Загрузка...</p>
+                </div>
               </div>
-            </div>
-          }>
-            {isAdminPage && !isAdminLoginPage ? (
-              <AdminLayout currentPage={route}>
+            }>
+              {isAdminPage && !isAdminLoginPage ? (
+                <AdminLayout currentPage={route}>
+                  <Page />
+                </AdminLayout>
+              ) : (
                 <Page />
-              </AdminLayout>
-            ) : (
-              <Page />
-            )}
-          </Suspense>
-        </motion.div>
-      </AnimatePresence>
+              )}
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
+      </BanCheck>
       {!isAuthPage && !isAdminPage && <Footer />}
       {!isAdminPage && <DbStatus />}
       <LearningPrompt />

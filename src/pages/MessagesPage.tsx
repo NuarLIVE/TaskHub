@@ -885,10 +885,12 @@ export default function MessagesPage() {
       const { error } = await getSupabase().from('chats').delete().eq('id', selectedChatId);
       if (error) throw error;
 
-      alert('Чат удален');
+      setChats((prev) => prev.filter((c) => c.id !== selectedChatId));
+      setMessages([]);
       setDeleteDialogOpen(false);
       setSelectedChatId(null);
-      await loadChats();
+      setShowChatOnMobile(false);
+      alert('Чат удален');
     } catch {
       alert('Ошибка при удалении чата');
     }

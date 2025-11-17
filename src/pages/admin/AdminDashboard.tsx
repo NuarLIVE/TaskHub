@@ -44,7 +44,7 @@ export default function AdminDashboard() {
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_online', true),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('last_seen', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('deals').select('id, status, created_at'),
-      supabase.from('wallet_ledger').select('amount').eq('entry_type', 'commission'),
+      supabase.from('wallet_ledger').select('amount_minor').eq('kind', 'platform_commission'),
       supabase.from('moderation_reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('deals').select('status'),
       supabase.from('deals').select('id, title, status, created_at').order('created_at', { ascending: false }).limit(10)
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
     const completedDeals = deals.filter(d => d.status === 'ACCEPTED' || d.status === 'RESOLVED').length;
     const lastDeal = deals.length > 0 ? deals[deals.length - 1].created_at : null;
 
-    const totalRevenue = (revenueRes.data || []).reduce((sum, entry) => sum + Number(entry.amount), 0);
+    const totalRevenue = (revenueRes.data || []).reduce((sum, entry) => sum + Number(entry.amount_minor), 0);
 
     const statusCounts = (dealStatusRes.data || []).reduce((acc: any, deal) => {
       acc[deal.status] = (acc[deal.status] || 0) + 1;

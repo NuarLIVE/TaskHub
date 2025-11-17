@@ -305,15 +305,8 @@ export default function MarketPage() {
         .select()
         .maybeSingle();
 
-      const { count: viewsCount } = await getSupabase()
-        .from('order_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('order_id', item.id);
-
       await getSupabase()
-        .from('orders')
-        .update({ views_count: viewsCount || 0 })
-        .eq('id', item.id);
+        .rpc('update_order_views_count', { p_order_id: item.id });
     } else {
       viewData.task_id = item.id;
       await getSupabase()
@@ -322,15 +315,8 @@ export default function MarketPage() {
         .select()
         .maybeSingle();
 
-      const { count: viewsCount } = await getSupabase()
-        .from('task_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('task_id', item.id);
-
       await getSupabase()
-        .from('tasks')
-        .update({ views_count: viewsCount || 0 })
-        .eq('id', item.id);
+        .rpc('update_task_views_count', { p_task_id: item.id });
     }
   };
 
