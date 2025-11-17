@@ -8,7 +8,12 @@ function makeClient() {
   if (!url || !key) throw new Error('Supabase env missing');
 
   const client = createClient(url, key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit'
+    },
     realtime: { params: { eventsPerSecond: 2 } }
   });
 
