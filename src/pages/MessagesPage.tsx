@@ -41,6 +41,7 @@ import { ChatCRMPanel } from '@/components/ChatCRMPanel';
 import { CRMConfirmation } from '@/components/CRMConfirmation';
 import DealProgressPanel from '@/components/DealProgressPanel';
 import { ReviewInChat } from '@/components/ReviewInChat';
+import ReportUserDialog from '@/components/ReportUserDialog';
 import { useRegion } from '@/contexts/RegionContext';
 
 const pageVariants = { initial: { opacity: 0 }, in: { opacity: 1 }, out: { opacity: 0 } };
@@ -951,10 +952,6 @@ export default function MessagesPage() {
     }
   };
 
-  const handleReportUser = () => {
-    alert('Жалоба отправлена. Мы рассмотрим её в ближайшее время.');
-    setReportDialogOpen(false);
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1855,18 +1852,19 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Пожаловаться на пользователя</DialogTitle>
-            <DialogDescription>Опишите причину жалобы. Мы рассмотрим её в ближайшее время.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setReportDialogOpen(false)}>Отмена</Button>
-            <Button variant="destructive" onClick={handleReportUser}>Отправить жалобу</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {selectedChat && user && (
+        <ReportUserDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          reportedUserId={selectedChat.other_user.id}
+          reportedUserName={selectedChat.other_user.name}
+          reporterId={user.id}
+          chatId={selectedChatId || undefined}
+          onSuccess={() => {
+            setReportDialogOpen(false);
+          }}
+        />
+      )}
 
       {showMediaEditor && fileToEdit && (
         <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />

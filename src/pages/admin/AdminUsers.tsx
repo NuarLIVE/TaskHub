@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,6 +18,10 @@ export default function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'ADMIN' | 'FREELANCER' | 'CLIENT'>('all');
   const [loading, setLoading] = useState(false);
+  const [muteDialog, setMuteDialog] = useState<{ open: boolean; userId?: string; userName?: string }>({ open: false });
+  const [banDialog, setBanDialog] = useState<{ open: boolean; userId?: string; userName?: string }>({ open: false });
+  const [muteDuration, setMuteDuration] = useState<number>(24);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -69,46 +74,92 @@ export default function AdminUsers() {
     return labels[role] || role;
   };
 
-  const handleMuteUser = async (userId: string, currentMuteStatus: boolean) => {
-    if (!user) return;
+  const handleMuteUser = async () => {
+    if (!user || !muteDialog.userId) return;
 
-    const newStatus = !currentMuteStatus;
+    setProcessing(true);
+    const muteUntil = new Date();
+    muteUntil.setHours(muteUntil.getHours() + muteDuration);
+
     const { error } = await supabase
       .from('profiles')
       .update({
-        is_muted: newStatus,
-        muted_at: newStatus ? new Date().toISOString() : null,
-        muted_by: newStatus ? user.id : null,
+        is_muted: true,
+        muted_until: muteUntil.toISOString(),
+        muted_at: new Date().toISOString(),
+        muted_by: user.id,
       })
-      .eq('id', userId);
+      .eq('id', muteDialog.userId);
 
     if (error) {
-      alert('Ошибка при изменении статуса мьюта');
-      return;
+      alert('Ошибка при мьюте пользователя');
+    } else {
+      await loadUsers();
+      setMuteDialog({ open: false });
+      setMuteDuration(24);
     }
-
-    await loadUsers();
+    setProcessing(false);
   };
 
-  const handleBanUser = async (userId: string, currentBanStatus: boolean) => {
+  const handleUnmuteUser = async (userId: string) => {
     if (!user) return;
 
-    const newStatus = !currentBanStatus;
     const { error } = await supabase
       .from('profiles')
       .update({
-        is_banned: newStatus,
-        banned_at: newStatus ? new Date().toISOString() : null,
-        banned_by: newStatus ? user.id : null,
+        is_muted: false,
+        muted_until: null,
+        muted_at: null,
+        muted_by: null,
       })
       .eq('id', userId);
 
     if (error) {
-      alert('Ошибка при изменении статуса бана');
-      return;
+      alert('Ошибка при размьюте пользователя');
+    } else {
+      await loadUsers();
     }
+  };
 
-    await loadUsers();
+  const handleBanUser = async () => {
+    if (!user || !banDialog.userId) return;
+
+    setProcessing(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: true,
+        banned_at: new Date().toISOString(),
+        banned_by: user.id,
+      })
+      .eq('id', banDialog.userId);
+
+    if (error) {
+      alert('Ошибка при бане пользователя');
+    } else {
+      await loadUsers();
+      setBanDialog({ open: false });
+    }
+    setProcessing(false);
+  };
+
+  const handleUnbanUser = async (userId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: false,
+        banned_at: null,
+        banned_by: null,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      alert('Ошибка при разбане пользователя');
+    } else {
+      await loadUsers();
+    }
   };
 
   return (
@@ -249,20 +300,22 @@ export default function AdminUsers() {
                       <Button
                         variant={user.is_muted ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => handleMuteUser(user.id, user.is_muted)}
-                        className={`text-xs flex-1 sm:flex-initial min-w-[60px] ${user.is_muted ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+                        onClick={() => user.is_muted ? handleUnmuteUser(user.id) : setMuteDialog({ open: true, userId: user.id, userName: user.name })}
+                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[90px] ${user.is_muted ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                         title={user.is_muted ? 'Размьютить' : 'Замьютить'}
                       >
-                        {user.is_muted ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
+                        {user.is_muted ? <Volume2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" /> : <VolumeX className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />}
+                        <span className="hidden sm:inline">{user.is_muted ? 'Размьютить' : 'Мьют'}</span>
                       </Button>
                       <Button
                         variant={user.is_banned ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => handleBanUser(user.id, user.is_banned)}
-                        className={`text-xs flex-1 sm:flex-initial min-w-[60px] ${user.is_banned ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                        onClick={() => user.is_banned ? handleUnbanUser(user.id) : setBanDialog({ open: true, userId: user.id, userName: user.name })}
+                        className={`text-xs sm:text-sm flex-1 sm:flex-initial min-w-[60px] sm:min-w-[90px] ${user.is_banned ? 'bg-red-600 hover:bg-red-700' : ''}`}
                         title={user.is_banned ? 'Разбанить' : 'Забанить'}
                       >
-                        <Ban className="h-3 w-3" />
+                        <Ban className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">{user.is_banned ? 'Разбанить' : 'Бан'}</span>
                       </Button>
                     </div>
                   </div>
@@ -310,6 +363,65 @@ export default function AdminUsers() {
           </Card>
         </div>
       </div>
+
+      {/* Mute Dialog */}
+      <Dialog open={muteDialog.open} onOpenChange={(open) => setMuteDialog({ ...muteDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Замьютить пользователя</DialogTitle>
+            <DialogDescription>
+              Заглушить пользователя <strong>{muteDialog.userName}</strong> на указанное время
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Длительность мьюта (часов)
+              </label>
+              <Input
+                type="number"
+                min="1"
+                value={muteDuration}
+                onChange={(e) => setMuteDuration(parseInt(e.target.value) || 1)}
+                className="w-full"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Пользователь будет заглушен до: {new Date(Date.now() + muteDuration * 60 * 60 * 1000).toLocaleString('ru-RU')}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMuteDialog({ open: false })} disabled={processing}>
+              Отмена
+            </Button>
+            <Button onClick={handleMuteUser} disabled={processing} className="bg-orange-600 hover:bg-orange-700">
+              {processing ? 'Обработка...' : 'Замьютить'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban Dialog */}
+      <Dialog open={banDialog.open} onOpenChange={(open) => setBanDialog({ ...banDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Забанить пользователя</DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите забанить пользователя <strong>{banDialog.userName}</strong>?
+              <br />
+              Бан навсегда, пользователь не сможет войти в систему.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialog({ open: false })} disabled={processing}>
+              Отмена
+            </Button>
+            <Button onClick={handleBanUser} disabled={processing} className="bg-red-600 hover:bg-red-700">
+              {processing ? 'Обработка...' : 'Забанить навсегда'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

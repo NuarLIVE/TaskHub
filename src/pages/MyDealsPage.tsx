@@ -23,7 +23,6 @@ import { Badge } from '@/components/ui/badge';
 import PriceDisplay from '@/components/PriceDisplay';
 import ProfileBadges from '@/components/ui/ProfileBadges';
 import StarRating from '@/components/ui/StarRating';
-import OpenDisputeDialog from '@/components/OpenDisputeDialog';
 import { getSupabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigateToProfile } from '@/lib/navigation';
@@ -108,12 +107,6 @@ export default function MyDealsPage() {
   const [proposals, setProposals] = useState<Record<string, Proposal[]>>({});
   const [proposalOptions, setProposalOptions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
-  const [disputeDialog, setDisputeDialog] = useState<{
-    open: boolean;
-    dealId?: string;
-    orderId?: string;
-    taskId?: string;
-  }>({ open: false });
 
   useEffect(() => {
     if (user) {
@@ -548,17 +541,7 @@ export default function MyDealsPage() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Начать спор
-                            </Button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <p className="text-[#3F7F6E] mb-4 line-clamp-2 text-sm xs-375:text-base">
@@ -678,17 +661,7 @@ export default function MyDealsPage() {
                                 Удалить
                               </Button>
                             </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Начать спор
-                            </Button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -947,17 +920,7 @@ export default function MyDealsPage() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Начать спор
-                            </Button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       <p className="text-[#3F7F6E] mb-4 line-clamp-2 text-sm xs-375:text-base">
@@ -1073,17 +1036,7 @@ export default function MyDealsPage() {
                                 Удалить
                               </Button>
                             </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Начать спор
-                            </Button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -1319,15 +1272,6 @@ export default function MyDealsPage() {
                                 Перейти
                               </Button>
                             )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                              title="Начать спор"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              Начать спор
-                            </Button>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-3">
@@ -1436,15 +1380,6 @@ export default function MyDealsPage() {
                           Перейти
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-amber-600 border-amber-300 hover:bg-amber-50 w-full bg-white"
-                        title="Начать спор"
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        Начать спор
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1453,18 +1388,6 @@ export default function MyDealsPage() {
           </div>
         ) : null}
       </section>
-
-      <OpenDisputeDialog
-        open={disputeDialog.open}
-        onOpenChange={(open) => setDisputeDialog({ ...disputeDialog, open })}
-        dealId={disputeDialog.dealId || ''}
-        orderId={disputeDialog.orderId}
-        taskId={disputeDialog.taskId}
-        userId={user?.id || ''}
-        onSuccess={() => {
-          loadData();
-        }}
-      />
     </motion.div>
   );
 }
