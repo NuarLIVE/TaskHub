@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const supabase = getSupabase();
   const [tab, setTab] = useState('portfolio');
 
   useEffect(() => {
@@ -76,14 +77,18 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       loadInitialData();
-      checkAuthProvider();
     }
-  }, [user, tab]);
+  }, [user]);
+
+  useEffect(() => {
+    if (user && !loading) {
+      loadTabData();
+    }
+  }, [tab]);
 
   const checkAuthProvider = async () => {
     if (!user) return;
 
-    const supabase = getSupabase();
     const { data: { user: authUser } } = await supabase.auth.getUser();
 
     if (authUser) {
@@ -98,17 +103,26 @@ export default function ProfilePage() {
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      await loadUserProfile();
-      await loadStatistics();
-      if (tab === 'market') {
-        await loadUserMarketItems();
-      } else if (tab === 'portfolio') {
-        await loadPortfolioProjects();
-      } else if (tab === 'reviews') {
-        await loadReviews();
-      }
+      await Promise.all([
+        loadUserProfile(),
+        loadStatistics(),
+        checkAuthProvider(),
+      ]);
+      await loadTabData();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTabData = async () => {
+    if (tab === 'market' && userOrders.length === 0 && userTasks.length === 0) {
+      setLoadingMarket(true);
+      await loadUserMarketItems();
+      setLoadingMarket(false);
+    } else if (tab === 'portfolio' && portfolioProjects.length === 0) {
+      await loadPortfolioProjects();
+    } else if (tab === 'reviews' && reviews.length === 0) {
+      await loadReviews();
     }
   };
 
@@ -147,7 +161,7 @@ export default function ProfilePage() {
   const loadStatistics = async () => {
     if (!user) return;
 
-    const supabase = getSupabase();
+    
 
     const { data: reviewsData } = await supabase
       .from('reviews')
@@ -233,7 +247,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
 
-    const supabase = getSupabase();
+    
 
     const reviewsChannel = supabase
       .channel('user-reviews')
@@ -258,7 +272,7 @@ export default function ProfilePage() {
     };
   }, [user, tab]);
 
-  const supabase = getSupabase();
+  
 
   const loadUserMarketItems = async () => {
     if (!user) return;
@@ -589,7 +603,7 @@ export default function ProfilePage() {
     setSecurityLoading(true);
 
     try {
-      const supabase = getSupabase();
+      
 
       if (!isOAuthUser && currentPassword) {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -646,21 +660,14 @@ export default function ProfilePage() {
     setSecurityLoading(true);
 
     try {
-      const supabase = getSupabase();
+      
       const { data, error } = await supabase.auth.updateUser({
         email: newEmail,
-      }, {
-        emailRedirectTo: `${window.location.origin}/#/me`
       });
 
       if (error) {
-        if (error.message.includes('invalid')) {
-          setSecurityMessage({ type: 'error', text: 'Некорректный формат email адреса' });
-        } else if (error.message.includes('already registered')) {
-          setSecurityMessage({ type: 'error', text: 'Этот email уже используется' });
-        } else {
-          setSecurityMessage({ type: 'error', text: `Ошибка: ${error.message}` });
-        }
+        console.error('Email update error:', error);
+        setSecurityMessage({ type: 'error', text: `Ошибка: ${error.message}` });
       } else {
         setSecurityMessage({
           type: 'success',
@@ -669,7 +676,8 @@ export default function ProfilePage() {
         setNewEmail('');
       }
     } catch (error: any) {
-      setSecurityMessage({ type: 'error', text: 'Произошла ошибка при изменении email' });
+      console.error('Email update exception:', error);
+      setSecurityMessage({ type: 'error', text: `Ошибка: ${error.message || 'Не удалось изменить email'}` });
     } finally {
       setSecurityLoading(false);
     }
