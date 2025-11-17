@@ -1267,6 +1267,7 @@ export default function MyDealsPage() {
                                 onClick={() =>
                                   (window.location.hash = `/messages?chat=${deal.chat_id}`)
                                 }
+                                className="min-w-[120px]"
                               >
                                 <MessageSquare className="h-4 w-4 mr-2" />
                                 Перейти

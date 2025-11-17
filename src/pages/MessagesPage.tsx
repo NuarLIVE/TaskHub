@@ -1852,19 +1852,24 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      {selectedChat && user && (
-        <ReportUserDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          reportedUserId={selectedChat.other_user.id}
-          reportedUserName={selectedChat.other_user.name}
-          reporterId={user.id}
-          chatId={selectedChatId || undefined}
-          onSuccess={() => {
-            setReportDialogOpen(false);
-          }}
-        />
-      )}
+      {selectedChatId && user && (() => {
+        const selectedChat = chats.find((c) => c.id === selectedChatId);
+        if (!selectedChat) return null;
+
+        return (
+          <ReportUserDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            reportedUserId={selectedChat.other_user.id}
+            reportedUserName={selectedChat.other_user.name}
+            reporterId={user.id}
+            chatId={selectedChatId || undefined}
+            onSuccess={() => {
+              setReportDialogOpen(false);
+            }}
+          />
+        );
+      })()}
 
       {showMediaEditor && fileToEdit && (
         <MediaEditor file={fileToEdit} onSave={handleMediaSave} onCancel={handleMediaCancel} />
