@@ -20,92 +20,6 @@ interface ModerationResult {
   message?: string;
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
-
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const body: ModerationRequest = await req.json();
-    const { content, contentType, contentId } = body;
-
-    if (!content) {
-      return new Response(
-        JSON.stringify({ error: 'Content is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const result = moderateContent(content);
-
-    await supabase.from('moderation_logs').insert({
-      user_id: user.id,
-      content_type: contentType,
-      content_id: contentId,
-      original_content: content,
-      flagged: result.flagged,
-      flag_reasons: result.reasons,
-      confidence_score: result.confidence,
-      action_taken: result.action,
-    });
-
-    if (result.flagged && result.action !== 'none') {
-      const severity = result.action === 'blocked' ? 3 : result.action === 'warning' ? 2 : 1;
-      
-      await supabase.from('user_warnings').insert({
-        user_id: user.id,
-        warning_type: result.reasons.join(', '),
-        description: result.message || 'Content violates platform guidelines',
-        severity,
-      });
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('warning_count')
-        .eq('id', user.id)
-        .single();
-
-      await supabase
-        .from('profiles')
-        .update({ warning_count: (profile?.warning_count || 0) + 1 })
-        .eq('id', user.id);
-    }
-
-    return new Response(
-      JSON.stringify(result),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('Moderation error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', flagged: false, reasons: [], confidence: 0, action: 'none' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});
-
 // Pre-compiled regex patterns for better performance
 const PATTERNS = {
   profanityRu: /хуй|пизд|еба|ебл|бля|сука|мудак|гандон|пидор|дерьмо/i,
@@ -271,3 +185,89 @@ function moderateContent(content: string): ModerationResult {
     message,
   };
 }
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const body: ModerationRequest = await req.json();
+    const { content, contentType, contentId } = body;
+
+    if (!content) {
+      return new Response(
+        JSON.stringify({ error: 'Content is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const result = moderateContent(content);
+
+    await supabase.from('moderation_logs').insert({
+      user_id: user.id,
+      content_type: contentType,
+      content_id: contentId,
+      original_content: content,
+      flagged: result.flagged,
+      flag_reasons: result.reasons,
+      confidence_score: result.confidence,
+      action_taken: result.action,
+    });
+
+    if (result.flagged && result.action !== 'none') {
+      const severity = result.action === 'blocked' ? 3 : result.action === 'warning' ? 2 : 1;
+
+      await supabase.from('user_warnings').insert({
+        user_id: user.id,
+        warning_type: result.reasons.join(', '),
+        description: result.message || 'Content violates platform guidelines',
+        severity,
+      });
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('warning_count')
+        .eq('id', user.id)
+        .single();
+
+      await supabase
+        .from('profiles')
+        .update({ warning_count: (profile?.warning_count || 0) + 1 })
+        .eq('id', user.id);
+    }
+
+    return new Response(
+      JSON.stringify(result),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Moderation error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', flagged: false, reasons: [], confidence: 0, action: 'none' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
