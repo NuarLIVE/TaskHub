@@ -45,7 +45,7 @@ function PriceTooltip({ original, className = '' }: { original: string; classNam
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative inline-flex ${className}`}>
       <button
         ref={buttonRef}
         type="button"
@@ -57,8 +57,11 @@ function PriceTooltip({ original, className = '' }: { original: string; classNam
       {isOpen && (
         <div
           ref={tooltipRef}
-          className="fixed left-1/2 -translate-x-1/2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-[9999] whitespace-nowrap"
+          className="fixed px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-[9999] whitespace-nowrap max-w-[90vw]"
           style={{
+            left: buttonRef.current
+              ? `${buttonRef.current.getBoundingClientRect().left}px`
+              : '50%',
             top: buttonRef.current
               ? `${buttonRef.current.getBoundingClientRect().top - 10}px`
               : '50%',
@@ -66,8 +69,8 @@ function PriceTooltip({ original, className = '' }: { original: string; classNam
           }}
         >
           <div className="text-center">
-            <div className="text-gray-300 mb-1">Приблизительная цена</div>
-            <div className="font-medium">Точное значение: {original}</div>
+            <div className="text-gray-300 mb-1 text-[10px] md:text-xs">Приблизительная цена</div>
+            <div className="font-medium text-[10px] md:text-xs break-words">Точное значение: {original}</div>
           </div>
           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
             <div className="w-2 h-2 bg-gray-900 rotate-45"></div>
@@ -93,11 +96,11 @@ export default function PriceDisplay({ amount, fromCurrency, currency, className
       const discountedMaxPrice = formatPriceWithOriginal(discountedMax, actualCurrency);
 
       return (
-        <div className={`inline-flex items-center gap-2 ${className}`}>
-          <span className="line-through text-red-500 text-sm">
+        <div className={`flex flex-wrap items-center gap-1 md:gap-2 ${className}`}>
+          <span className="line-through text-red-500 text-sm whitespace-nowrap">
             {minPrice.formatted}–{maxPrice.formatted}
           </span>
-          <span className="font-semibold">
+          <span className="font-semibold whitespace-nowrap">
             {discountedMinPrice.formatted}–{discountedMaxPrice.formatted}
           </span>
           {minPrice.isConverted && (
@@ -108,8 +111,8 @@ export default function PriceDisplay({ amount, fromCurrency, currency, className
     }
 
     return (
-      <div className={`inline-flex items-center gap-1.5 ${className}`}>
-        <span className="font-semibold">
+      <div className={`flex flex-wrap items-center gap-1 md:gap-1.5 ${className}`}>
+        <span className="font-semibold whitespace-nowrap">
           {minPrice.formatted}–{maxPrice.formatted}
         </span>
         {minPrice.isConverted && (
@@ -126,9 +129,9 @@ export default function PriceDisplay({ amount, fromCurrency, currency, className
     const discountedPrice = formatPriceWithOriginal(discountedAmount, actualCurrency);
 
     return (
-      <div className={`inline-flex items-center gap-2 ${className}`}>
-        <span className="line-through text-red-500 text-sm">{priceData.formatted}</span>
-        <span className="font-semibold">{discountedPrice.formatted}</span>
+      <div className={`flex flex-wrap items-center gap-1 md:gap-2 ${className}`}>
+        <span className="line-through text-red-500 text-sm whitespace-nowrap">{priceData.formatted}</span>
+        <span className="font-semibold whitespace-nowrap">{discountedPrice.formatted}</span>
         {priceData.isConverted && (
           <PriceTooltip original={discountedPrice.original} />
         )}
@@ -137,8 +140,8 @@ export default function PriceDisplay({ amount, fromCurrency, currency, className
   }
 
   return (
-    <div className={`inline-flex items-center gap-1.5 ${className}`}>
-      <span className="font-semibold">{priceData.formatted}</span>
+    <div className={`flex flex-wrap items-center gap-1 md:gap-1.5 ${className}`}>
+      <span className="font-semibold whitespace-nowrap">{priceData.formatted}</span>
       {priceData.isConverted && (
         <PriceTooltip original={priceData.original} />
       )}
