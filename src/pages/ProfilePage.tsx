@@ -632,8 +632,14 @@ export default function ProfilePage() {
     e.preventDefault();
     setSecurityMessage(null);
 
-    if (!newEmail || !newEmail.includes('@')) {
-      setSecurityMessage({ type: 'error', text: 'Введите корректный email' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!newEmail || !emailRegex.test(newEmail)) {
+      setSecurityMessage({ type: 'error', text: 'Введите корректный email адрес' });
+      return;
+    }
+
+    if (newEmail === user?.email) {
+      setSecurityMessage({ type: 'error', text: 'Новый email совпадает с текущим' });
       return;
     }
 
@@ -641,14 +647,25 @@ export default function ProfilePage() {
 
     try {
       const supabase = getSupabase();
-      const { error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         email: newEmail,
+      }, {
+        emailRedirectTo: `${window.location.origin}/#/me`
       });
 
       if (error) {
-        setSecurityMessage({ type: 'error', text: error.message });
+        if (error.message.includes('invalid')) {
+          setSecurityMessage({ type: 'error', text: 'Некорректный формат email адреса' });
+        } else if (error.message.includes('already registered')) {
+          setSecurityMessage({ type: 'error', text: 'Этот email уже используется' });
+        } else {
+          setSecurityMessage({ type: 'error', text: `Ошибка: ${error.message}` });
+        }
       } else {
-        setSecurityMessage({ type: 'success', text: 'На новый email отправлено письмо для подтверждения' });
+        setSecurityMessage({
+          type: 'success',
+          text: 'Письмо с подтверждением отправлено на новый email. Проверьте почту и перейдите по ссылке для подтверждения.'
+        });
         setNewEmail('');
       }
     } catch (error: any) {
@@ -862,10 +879,10 @@ export default function ProfilePage() {
                   {tab === 'portfolio' && (
                     <motion.div
                       key="portfolio"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                 <>
                   <div className="flex items-center justify-between mb-2 lg:mb-4">
@@ -927,10 +944,10 @@ export default function ProfilePage() {
                   {tab === 'market' && (
                     <motion.div
                       key="market"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                 <>
                   <div>
@@ -1076,10 +1093,10 @@ export default function ProfilePage() {
                   {tab === 'about' && (
                     <motion.div
                       key="about"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                 <div className="grid gap-4 lg:gap-6">
                   <Card>
@@ -1219,10 +1236,10 @@ export default function ProfilePage() {
                   {tab === 'reviews' && (
                     <motion.div
                       key="reviews"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                 <div className="grid gap-6">
                   <h2 className="text-2xl font-bold">Отзывы клиентов</h2>
@@ -1286,10 +1303,10 @@ export default function ProfilePage() {
                   {tab === 'edit' && (
                     <motion.div
                       key="edit"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                 <Card>
                   <CardContent className="p-6">
@@ -1493,16 +1510,17 @@ export default function ProfilePage() {
                   {tab === 'settings' && (
                     <motion.div
                       key="settings"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                       {securityMessage && (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`mb-4 p-4 rounded-lg flex items-start gap-3 ${
+                          transition={{ duration: 0.2 }}
+                          className={`mb-4 p-3 lg:p-4 rounded-lg flex items-start gap-3 ${
                             securityMessage.type === 'success'
                               ? 'bg-green-50 border border-green-200'
                               : 'bg-red-50 border border-red-200'
@@ -1521,18 +1539,18 @@ export default function ProfilePage() {
 
                       <div className="space-y-4 lg:space-y-6">
                         <Card>
-                          <CardHeader>
+                          <CardHeader className="p-4 lg:p-6">
                             <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
                               <Lock className="h-5 w-5" />
                               Изменить пароль
                             </CardTitle>
                             {isOAuthUser && (
-                              <CardDescription className="text-xs lg:text-sm">
+                              <CardDescription className="text-xs lg:text-sm mt-2">
                                 Вы вошли через {oauthProvider}. Установите пароль для возможности входа по email.
                               </CardDescription>
                             )}
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
                             <form onSubmit={handleChangePassword} className="space-y-4">
                               {!isOAuthUser && (
                                 <div>
@@ -1598,16 +1616,16 @@ export default function ProfilePage() {
                         </Card>
 
                         <Card>
-                          <CardHeader>
+                          <CardHeader className="p-4 lg:p-6">
                             <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
                               <Mail className="h-5 w-5" />
                               Изменить email
                             </CardTitle>
-                            <CardDescription className="text-xs lg:text-sm">
+                            <CardDescription className="text-xs lg:text-sm mt-2">
                               Текущий email: <span className="font-medium">{user?.email}</span>
                             </CardDescription>
                           </CardHeader>
-                          <CardContent>
+                          <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
                             <form onSubmit={handleChangeEmail} className="space-y-4">
                               <div>
                                 <label className="text-sm font-medium mb-2 block">
@@ -1641,11 +1659,11 @@ export default function ProfilePage() {
                         </Card>
 
                         <Card className="border-amber-200 bg-amber-50">
-                          <CardContent className="p-4">
+                          <CardContent className="p-4 lg:p-5">
                             <div className="flex items-start gap-3">
                               <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                               <div className="text-sm text-amber-800">
-                                <p className="font-medium mb-1">Важная информация</p>
+                                <p className="font-medium mb-2">Важная информация</p>
                                 <ul className="list-disc list-inside space-y-1 text-xs lg:text-sm">
                                   <li>После изменения email необходимо подтвердить его по ссылке из письма</li>
                                   <li>Пароль должен содержать минимум 6 символов</li>
