@@ -5,19 +5,29 @@ let _client: SupabaseClient | null = null;
 function makeClient() {
   const url = import.meta.env.VITE_SUPABASE_URL || (window as any).SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY || (window as any).SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error('Supabase env missing');
 
-  const client = createClient(url, key, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      flowType: 'implicit'
-    },
-    realtime: { params: { eventsPerSecond: 2 } }
-  });
+  if (!url || !key) {
+    console.error('Supabase environment variables missing:', { url: !!url, key: !!key });
+    throw new Error('Supabase env missing');
+  }
 
-  return client;
+  try {
+    const client = createClient(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit'
+      },
+      realtime: { params: { eventsPerSecond: 2 } }
+    });
+
+    console.log('Supabase client created successfully');
+    return client;
+  } catch (error) {
+    console.error('Failed to create Supabase client:', error);
+    throw error;
+  }
 }
 
 export function getSupabase(): SupabaseClient {

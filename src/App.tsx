@@ -267,6 +267,33 @@ function AppContent() {
 }
 
 function App() {
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const testSupabase = import.meta.env.VITE_SUPABASE_URL;
+      if (!testSupabase) {
+        setError('Supabase URL not configured');
+        console.error('Missing VITE_SUPABASE_URL');
+      }
+    } catch (err) {
+      setError('Failed to initialize application');
+      console.error('App initialization error:', err);
+    }
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Application Error</h1>
+          <p className="text-gray-600">{error}</p>
+          <p className="text-sm text-gray-500 mt-2">Check console for details</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthProvider>
       <RegionProvider>
